@@ -1,0 +1,384 @@
+@use '../../../styles/mixins' as *;
+
+/* One account per table row. The columns come from --account-columns on the
+ * list, so the header row and every account line up. */
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--account-columns);
+  column-gap: 16px;
+  align-items: center;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card:last-child {
+  border-bottom: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card:hover {
+    background: var(--bg-quinary);
+  }
+}
+
+.cardDisabled > :not(.actions) {
+  opacity: 0.55;
+}
+
+.cardSelected {
+  background: var(--bg-tertiary);
+}
+
+/* Anything that isn't a column (warnings, cooldowns, quota) gets its own line. */
+.card > :not(.head, .fileName, .health, .metaRow, .actions) {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  margin-left: 26px;
+}
+
+.head {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.selection {
+  flex-shrink: 0;
+}
+
+.identity {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.providerBadge {
+  flex-shrink: 0;
+  font-family: $font-mono;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.runtimeLabel {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.account {
+  min-width: 0;
+  color: var(--text-primary);
+  @include text-ellipsis;
+}
+
+.accountMono {
+  font-family: $font-mono;
+}
+
+.fileName {
+  grid-column: 1;
+  grid-row: 2;
+  margin: 0 0 0 26px;
+  font-family: $font-mono;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  @include text-ellipsis;
+}
+
+.note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  @include text-ellipsis;
+}
+
+/* ---------- 告警行 ---------- */
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--warning-text);
+
+  span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    @include text-ellipsis-multiline(2);
+  }
+}
+
+.warningIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.health {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.healthCounts {
+  order: 2;
+  display: flex;
+  gap: 12px;
+  font-family: $font-mono;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.countOk {
+  color: var(--text-quaternary);
+}
+
+.countFail {
+  color: var(--text-quaternary);
+}
+
+/* 绿色只给活的流量：有计数才点亮 */
+.countLive.countOk {
+  color: var(--viz-success);
+}
+
+.countLive.countFail {
+  color: var(--viz-failure);
+}
+
+/* ---------- ProviderStatusBar 注入样式（18 个契约类名） ---------- */
+
+.statusBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusBlocks {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.statusBlockWrapper {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 3px;
+}
+
+.statusBlock {
+  height: 10px;
+}
+
+.statusBlockIdle {
+  background: color-mix(in srgb, var(--text-quaternary) 26%, transparent);
+}
+
+.statusBlockActive .statusBlock {
+  outline: 1px solid var(--text-secondary);
+  outline-offset: 1px;
+}
+
+.statusRate {
+  font-family: $font-mono;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-quaternary);
+  min-width: 40px;
+  text-align: right;
+}
+
+.statusRateHigh {
+  color: var(--viz-success);
+}
+
+.statusRateMedium {
+  color: var(--quota-medium-color);
+}
+
+.statusRateLow {
+  color: var(--viz-failure);
+}
+
+.statusTooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  background: var(--floating-surface);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--floating-shadow);
+  pointer-events: none;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.statusTooltipLeft {
+  left: 0;
+  transform: none;
+}
+
+.statusTooltipRight {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.tooltipTime {
+  color: var(--text-tertiary);
+}
+
+.tooltipStats {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+}
+
+.tooltipSuccess {
+  color: var(--viz-success);
+}
+
+.tooltipFailure {
+  color: var(--viz-failure);
+}
+
+.tooltipRate {
+  color: var(--text-secondary);
+}
+
+.metaRow {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  font-family: $font-mono;
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.metaPriority,
+.metaWeight {
+  display: inline-flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+/* ---------- SIWC：状态药丸 + 到期时间，与元数据行同为 mono 小字 ---------- */
+
+.siwcRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+}
+
+.siwcExpires {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
+.actions {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.actionsMain {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.utilityActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.actions :global(.btn > span) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.actions :global(.btn svg) {
+  display: block;
+  flex-shrink: 0;
+}
+
+.card .actions .iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-tertiary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card .actions .iconButton:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+  }
+
+  .card .actions .iconButton:global(.btn-danger):hover:not(:disabled) {
+    color: var(--danger-color);
+    background: var(--destructive-10);
+  }
+}
+
+@include mobile {
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .fileName,
+  .card > :not(.head, .fileName, .health, .metaRow, .actions) {
+    margin-left: 0;
+  }
+
+  .actions {
+    justify-content: space-between;
+  }
+}

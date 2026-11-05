@@ -1,0 +1,87 @@
+@use '../../styles/variables' as *;
+
+.root {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-sm;
+  cursor: pointer;
+  user-select: none;
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.box {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  border: 1px solid var(--border-hover);
+  background: transparent;
+  color: var(--bg-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    border-color $transition-fast,
+    background-color $transition-fast,
+    box-shadow $transition-fast,
+    transform $transition-fast;
+}
+
+.root:hover .box {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 16%, transparent);
+}
+
+.root:active .box {
+  transform: scale(0.95);
+}
+
+.disabled:hover .box {
+  border-color: var(--border-color);
+  box-shadow: none;
+}
+
+.disabled:active .box {
+  transform: none;
+}
+
+.input:focus-visible + .box {
+  border-color: var(--primary-color);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--primary-color) 16%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--primary-color) 50%, transparent);
+}
+
+.boxChecked {
+  border-color: var(--primary-color);
+  background: var(--text-primary);
+}
+
+.boxChecked svg {
+  display: block;
+  stroke-width: 2.4;
+}
+
+.label {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}

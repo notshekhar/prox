@@ -1,0 +1,28 @@
+// The login screen follows the app theme, so it maps its names onto the shared tokens.
+@mixin login-palette {
+  --login-bg: var(--bg-secondary);
+  --login-title: var(--text-primary);
+  --login-text: var(--text-primary);
+  --login-text-muted: var(--text-secondary);
+  --login-text-faint: var(--text-tertiary);
+  --login-field-bg: var(--bg-primary);
+  --login-field-bg-focus: var(--bg-primary);
+  --login-readout-bg: var(--bg-quinary);
+  --login-border: var(--border-color);
+  --login-border-hover: var(--border-hover);
+  --login-focus-border: var(--primary-color);
+  --login-focus-ring: transparent;
+  --login-hover-bg: var(--bg-tertiary);
+  --login-outline: var(--primary-color);
+  --login-submit-bg: var(--text-primary);
+  --login-submit-hover: var(--text-secondary);
+  --login-submit-fg: var(--bg-secondary);
+  --login-error: var(--error-color);
+  --login-dropdown-bg: var(--floating-surface);
+  --login-dropdown-hover: var(--bg-tertiary);
+  --login-dropdown-active: var(--bg-tertiary);
+  --login-dropdown-border: var(--border-color);
+  --login-dropdown-shadow: var(--floating-shadow);
+  --login-loader-track: var(--border-color);
+  --login-loader-bar: var(--primary-color);
+}

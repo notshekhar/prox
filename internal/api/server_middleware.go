@@ -58,8 +58,8 @@ var corsAllowedRequestHeaders = []string{
 }
 
 const (
-	exampleAPIKeyManagementPath = "/management.html"
-	exampleAPIKeyManagementURL  = "/management.html?safe-mode=configure"
+	dashboardPath              = "/dashboard"
+	exampleAPIKeyManagementURL = dashboardPath + "?safe-mode=configure"
 )
 
 func (s *Server) maxRequestBodyBytes() int64 {
@@ -342,7 +342,7 @@ func (s *Server) homeHeartbeatMiddleware() gin.HandlerFunc {
 		}
 		if c != nil && c.Request != nil {
 			path := c.Request.URL.Path
-			if strings.HasPrefix(path, "/v0/management/") || path == "/v0/management" || strings.HasPrefix(path, "/v8/management/") || path == "/v8/management" || strings.HasPrefix(path, "/v0/resource/plugins/") || path == "/management.html" {
+			if strings.HasPrefix(path, "/v0/management/") || path == "/v0/management" || strings.HasPrefix(path, "/v8/management/") || path == "/v8/management" || strings.HasPrefix(path, "/v0/resource/plugins/") || isDashboardPath(path) || path == "/management.html" {
 				c.Next()
 				return
 			}
@@ -369,11 +369,11 @@ func (s *Server) exampleAPIKeySafeModeMiddleware() gin.HandlerFunc {
 		}
 
 		path := c.Request.URL.Path
-		if path == exampleAPIKeyManagementPath && c.Query("safe-mode") == "configure" {
+		if isDashboardPath(path) && c.Query("safe-mode") == "configure" {
 			c.Next()
 			return
 		}
-		if (path == "/" || path == exampleAPIKeyManagementPath) && (c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead) {
+		if (path == "/" || isDashboardPath(path)) && (c.Request.Method == http.MethodGet || c.Request.Method == http.MethodHead) {
 			s.serveExampleAPIKeyWarningPage(c)
 			return
 		}
@@ -386,7 +386,7 @@ func (s *Server) exampleAPIKeySafeModeMiddleware() gin.HandlerFunc {
 		c.Header("X-CPA-SAFE-MODE", "example-api-key")
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 			"error":   "unsafe_example_api_key",
-			"message": "Proxy API endpoints are disabled because api-keys contains template values. Open /management.html?safe-mode=configure, update api-keys in Management, then retry.",
+			"message": "Proxy API endpoints are disabled because api-keys contains template values. Open /dashboard?safe-mode=configure, update api-keys in Management, then retry.",
 		})
 	}
 }
@@ -598,4 +598,8 @@ func realtimeAuthMiddleware(manager *sdkaccess.Manager, handler *codexlive.Handl
 		}
 		c.Next()
 	}
+}
+
+func isDashboardPath(path string) bool {
+	return path == dashboardPath || strings.HasPrefix(path, dashboardPath+"/")
 }

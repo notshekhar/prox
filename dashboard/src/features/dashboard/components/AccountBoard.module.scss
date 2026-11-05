@@ -1,0 +1,122 @@
+$lamp-size: 8px;
+$lamp-column: 8px;
+$grid: $lamp-column minmax(0, 1.6fr) minmax(90px, 1fr) 96px 96px;
+
+.board {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+}
+
+.columns,
+.row {
+  display: grid;
+  grid-template-columns: $grid;
+  align-items: center;
+  column-gap: 12px;
+  padding: 0 12px;
+}
+
+.columns {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-tertiary);
+  font-size: 11px;
+
+  > :first-child {
+    grid-column: 2;
+  }
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  min-height: 44px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+
+  & + & {
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+.lamp {
+  width: $lamp-size;
+  height: $lamp-size;
+}
+
+.lampReady {
+  background: var(--success-color);
+}
+
+.lampProblem {
+  background: var(--error-color);
+}
+
+.lampOff {
+  border: 1px solid var(--border-hover);
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.note {
+  color: var(--error-color);
+  font-size: 12px;
+}
+
+.activity {
+  width: 100%;
+  height: 22px;
+}
+
+.idle {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.number {
+  font-family: $font-mono;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+@media (max-width: $breakpoint-mobile) {
+  .columns {
+    display: none;
+  }
+
+  .columns + .rows .row,
+  .row {
+    grid-template-columns: $lamp-column minmax(0, 1fr) auto;
+  }
+
+  .activity,
+  .idle,
+  .row > .number:last-child {
+    display: none;
+  }
+}

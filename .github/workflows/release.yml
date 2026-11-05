@@ -1,0 +1,46 @@
+# Builds the installer's assets when a version tag is pushed. prox is pure Go,
+# so one Linux runner cross-compiles every target.
+#
+# Assets: prox-<os>-<arch>.tar.gz holding <os>-<arch>/prox,
+# plus a .sha256 beside each. The folder inside the tarball lets the installer
+# swap a whole directory into place.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Build dashboard
+        working-directory: dashboard
+        run: bun install --frozen-lockfile && bun run build
+
+      - name: Build binaries
+        run: |
+          built=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          flags="-s -w -X main.Version=$GITHUB_REF_NAME -X main.Commit=${GITHUB_SHA::7} -X main.BuildDate=$built"
+          mkdir dist
+          for pair in darwin:arm64:darwin-arm64 darwin:amd64:darwin-x64 linux:amd64:linux-x64 linux:arm64:linux-arm64; do
+            IFS=: read -r goos goarch target <<< "$pair"
+            mkdir "dist/$target"
+            CGO_ENABLED=0 GOOS=$goos GOARCH=$goarch go build -trimpath -ldflags "$flags" -o "dist/$target/prox" ./cmd/server
+            tar -czf "dist/prox-$target.tar.gz" -C dist "$target"
+            (cd dist && sha256sum "prox-$target.tar.gz" > "prox-$target.tar.gz.sha256")
+          done
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.tar.gz dist/*.sha256 --generate-notes

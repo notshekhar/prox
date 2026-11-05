@@ -1,0 +1,61 @@
+@use '../../../styles/mixins' as *;
+
+/* 与额度页/凭证库头部同语汇：紧排标题 / ▍mono 遥测 meta 行。 */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.meta {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.metaWaiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+
+.pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: oauth-meta-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes oauth-meta-breathe {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.metaAdded {
+  color: var(--viz-success);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse {
+    animation: none;
+  }
+}

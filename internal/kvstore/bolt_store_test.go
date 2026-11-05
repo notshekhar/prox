@@ -79,7 +79,7 @@ func TestResolvePath_DefaultRelativeTildeAndAbsolute(t *testing.T) {
 	if errDefaultAuth != nil {
 		t.Fatalf("ResolvePathWithAuthDir('', '') error = %v", errDefaultAuth)
 	}
-	wantDefaultAuth := filepath.Clean(filepath.Join(homeDir, ".cli-proxy-api", config.DefaultKVStorePath))
+	wantDefaultAuth := filepath.Clean(filepath.Join(homeDir, ".prox", "auth", config.DefaultKVStorePath))
 	if gotDefaultAuth != wantDefaultAuth {
 		t.Fatalf("ResolvePathWithAuthDir('', '') = %q, want %q", gotDefaultAuth, wantDefaultAuth)
 	}

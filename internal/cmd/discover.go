@@ -185,7 +185,7 @@ func runDiscoverWithOptions(opts DiscoverOptions, stdout, stderr io.Writer, newB
 	if len(gateways) == 0 {
 		fmt.Fprintln(stdout, "\nNo AI gateways found on local network.")
 		fmt.Fprintln(stdout, "Tips:")
-		fmt.Fprintln(stdout, "  1. Ensure the target CPA instance has 'discovery.enabled: true' in its config.yaml.")
+		fmt.Fprintln(stdout, "  1. Ensure the target prox instance has 'discovery.enabled: true' in its config.yaml.")
 		fmt.Fprintln(stdout, "  2. Ensure your device is on the same local Wi-Fi / Ethernet subnet (mDNS does not traverse WAN).")
 		fmt.Fprintln(stdout, "  3. Check that your local firewall allows UDP port 5353 multicast traffic.")
 		return 0

@@ -1830,7 +1830,7 @@ func TestHomeEnabledHidesManagementEndpointsAndControlPanel(t *testing.T) {
 	})
 
 	t.Run("management control panel returns 404", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/management.html", nil)
+		req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
 		if rr.Code != http.StatusNotFound {
@@ -1860,7 +1860,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 			t.Fatalf("status = %d, want %d body=%s", rr.Code, http.StatusOK, rr.Body.String())
 		}
 		body := rr.Body.String()
-		for _, want := range []string{"Example API key detected", "Open Management", `href="/management.html?safe-mode=configure"`} {
+		for _, want := range []string{"Example API key detected", "Open dashboard", `href="/dashboard?safe-mode=configure"`} {
 			if !strings.Contains(body, want) {
 				t.Fatalf("warning page missing %q: %s", want, body)
 			}
@@ -1868,7 +1868,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 	})
 
 	t.Run("management html defaults to warning page", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/management.html", nil)
+		req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK {
@@ -1880,7 +1880,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 	})
 
 	t.Run("management html head stops at warning page", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodHead, "/management.html", nil)
+		req := httptest.NewRequest(http.MethodHead, "/dashboard", nil)
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK {
@@ -1895,7 +1895,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 	})
 
 	t.Run("management button query opens control panel", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/management.html?safe-mode=configure", nil)
+		req := httptest.NewRequest(http.MethodGet, "/dashboard?safe-mode=configure", nil)
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
 		if rr.Code != http.StatusOK {
@@ -1922,7 +1922,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 		if strings.Contains(rr.Body.String(), "management_url") {
 			t.Fatalf("body should not include management_url field: %s", rr.Body.String())
 		}
-		if !strings.Contains(rr.Body.String(), "/management.html?safe-mode=configure") {
+		if !strings.Contains(rr.Body.String(), "/dashboard?safe-mode=configure") {
 			t.Fatalf("body missing management link in message: %s", rr.Body.String())
 		}
 		if got := rr.Header().Get(internallogging.CPATraceIDHeader); got != "" {
@@ -3986,5 +3986,42 @@ func TestServerResponsesWebsocketReauthorizesEachTurn(t *testing.T) {
 	}
 	if gotCalls := wsExec.calls.Load(); gotCalls != 1 {
 		t.Fatalf("executor calls after revoked turn = %d, want 1", gotCalls)
+	}
+}
+
+func TestDashboardServesEveryPageAndKeepsOldAddress(t *testing.T) {
+	server := newTestServer(t)
+	staticDir := t.TempDir()
+	t.Setenv("MANAGEMENT_STATIC_PATH", staticDir)
+	if err := os.WriteFile(filepath.Join(staticDir, "management.html"), []byte("<html>app</html>"), 0o600); err != nil {
+		t.Fatalf("write panel: %v", err)
+	}
+
+	for _, path := range []string{"/dashboard", "/dashboard/accounts", "/dashboard/settings?field=x"} {
+		rr := httptest.NewRecorder()
+		server.engine.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, path, nil))
+		if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), "<html>app</html>") {
+			t.Fatalf("%s: status %d, body %q", path, rr.Code, rr.Body.String())
+		}
+	}
+
+	browser := httptest.NewRequest(http.MethodGet, "/", nil)
+	browser.Header.Set("Accept", "text/html,application/xhtml+xml")
+	rr := httptest.NewRecorder()
+	server.engine.ServeHTTP(rr, browser)
+	if rr.Code != http.StatusFound || rr.Header().Get("Location") != "/dashboard" {
+		t.Fatalf("browser at root: status %d, location %q", rr.Code, rr.Header().Get("Location"))
+	}
+
+	rr = httptest.NewRecorder()
+	server.engine.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"message":"prox"`) {
+		t.Fatalf("API client at root: status %d, body %q", rr.Code, rr.Body.String())
+	}
+
+	rr = httptest.NewRecorder()
+	server.engine.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/management.html?safe-mode=configure", nil))
+	if rr.Code != http.StatusFound || rr.Header().Get("Location") != "/dashboard?safe-mode=configure" {
+		t.Fatalf("redirect: status %d, location %q", rr.Code, rr.Header().Get("Location"))
 	}
 }

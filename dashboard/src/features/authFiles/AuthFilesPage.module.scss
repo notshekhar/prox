@@ -1,0 +1,107 @@
+@use '../../styles/mixins' as *;
+
+/* ============================================================
+ * 认证文件页壳层：纯布局，视觉细节都在各组件的 colocated 模块里。
+ * ============================================================ */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+  /* 底部为悬浮批量条留出实时高度 */
+  padding-bottom: calc(
+    var(--auth-files-action-bar-height, 0px) + 16px + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+/* ---------- 工作区（tabs + 工具栏 + 网格 + 分页） ---------- */
+
+.workbench {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.errorBanner {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--danger-color);
+  background: var(--bg-error-light);
+  border: 1px solid var(--warning-border);
+  border-radius: 3px;
+  padding: 9px 12px;
+  overflow-wrap: anywhere;
+}
+
+.list {
+  --account-columns: minmax(0, 1.6fr) minmax(180px, 1fr) 150px 210px;
+
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-primary);
+}
+
+.listHead {
+  display: grid;
+  grid-template-columns: var(--account-columns);
+  column-gap: 16px;
+  padding: 5px 12px 5px 38px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.listHeadActions {
+  text-align: right;
+}
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ---------- 分页 ---------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.pageInfo {
+  font-family: $font-mono;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ---------- OAuth 配置双卡 ---------- */
+
+.configGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+
+  @media (min-width: 1024px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@include mobile {
+  .page {
+    gap: 16px;
+  }
+
+  .listHead {
+    display: none;
+  }
+}

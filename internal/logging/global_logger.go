@@ -186,6 +186,9 @@ func isDirWritable(dir string) bool {
 
 // ResolveLogDirectory determines the directory used for application logs.
 func ResolveLogDirectory(cfg *config.Config) string {
+	if terminal := compact.Load(); terminal != nil {
+		return terminal.options.LogDir
+	}
 	logDir := "logs"
 	if base := util.WritablePath(); base != "" {
 		return filepath.Join(base, "logs")
@@ -217,7 +220,7 @@ func ConfigureLogOutput(cfg *config.Config) error {
 	logDir := ResolveLogDirectory(cfg)
 
 	protectedPath := ""
-	if cfg.LoggingToFile {
+	if cfg.LoggingToFile || CompactTerminalEnabled() {
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			return fmt.Errorf("logging: failed to create log directory: %w", err)
 		}

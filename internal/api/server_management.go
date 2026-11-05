@@ -309,6 +309,34 @@ func (s *Server) pluginResourceNoRoute(c *gin.Context) {
 	c.AbortWithStatus(http.StatusNotFound)
 }
 
+// serveRoot opens the dashboard for a person in a browser, while API clients
+// that probe the root keep getting a JSON description.
+func (s *Server) serveRoot(c *gin.Context) {
+	cfg := s.getConfig()
+	panelAvailable := cfg != nil && !cfg.Home.Enabled && !cfg.RemoteManagement.DisableControlPanel
+	if panelAvailable && strings.Contains(c.GetHeader("Accept"), "text/html") {
+		c.Redirect(http.StatusFound, dashboardPath)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"message": "prox",
+		"endpoints": []string{
+			"POST /v1/chat/completions",
+			"POST /v1/completions",
+			"GET /v1/models",
+		},
+	})
+}
+
+// redirectToDashboard keeps bookmarks to the upstream address working.
+func redirectToDashboard(c *gin.Context) {
+	target := dashboardPath
+	if query := c.Request.URL.RawQuery; query != "" {
+		target += "?" + query
+	}
+	c.Redirect(http.StatusFound, target)
+}
+
 func (s *Server) serveManagementControlPanel(c *gin.Context) {
 	cfg := s.getConfig()
 	if cfg == nil || cfg.Home.Enabled || cfg.RemoteManagement.DisableControlPanel {

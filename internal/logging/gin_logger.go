@@ -89,6 +89,7 @@ func GinLogrusLogger() gin.HandlerFunc {
 		statusCode := c.Writer.Status()
 		clientIP := c.ClientIP()
 		method := c.Request.Method
+		plainPath := c.Request.URL.Path
 		errorMessage := c.Errors.ByType(gin.ErrorTypePrivate).String()
 
 		if requestID == "" {
@@ -102,7 +103,10 @@ func GinLogrusLogger() gin.HandlerFunc {
 			logLine = logLine + " | " + errorMessage
 		}
 
-		entry := log.WithField("request_id", requestID)
+		entry := log.WithFields(log.Fields{
+			"request_id": requestID,
+			requestField: compactRequest{method: method, path: plainPath, status: statusCode, latency: latency},
+		})
 
 		switch {
 		case statusCode >= http.StatusInternalServerError:

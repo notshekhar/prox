@@ -1,0 +1,116 @@
+@use '../../../styles/mixins' as *;
+
+.tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 220px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border-color);
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glyphImage {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+/* Grid children of .tile directly, so name and caption fall in their columns. */
+.text {
+  display: contents;
+}
+
+.main {
+  @include button-reset;
+  @include text-ellipsis;
+  display: block;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+
+  /* Stretches the click target over the whole row. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible::after {
+    outline: 1px solid var(--primary-color);
+    outline-offset: -1px;
+  }
+}
+
+.caption {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.captionText {
+  @include text-ellipsis;
+  min-width: 0;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  @include text-ellipsis;
+}
+
+.statusDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  background: currentColor;
+}
+
+.tile[data-status='waiting'] .status {
+  color: var(--text-primary);
+}
+
+.tile[data-status='success'] .status {
+  color: var(--viz-success);
+}
+
+.tile[data-status='error'] .status {
+  color: var(--viz-failure);
+}
+
+.trail {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tile:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .tile:hover .trail {
+    color: var(--text-primary);
+  }
+}

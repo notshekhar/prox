@@ -58,7 +58,7 @@ func ExampleAPIKeyWarningPageHTML(keys []string, managementPath string) string {
 	if trimmed := strings.TrimSpace(managementPath); trimmed != "" {
 		b.WriteString(`<div class="actions"><a class="button" href="`)
 		b.WriteString(html.EscapeString(trimmed))
-		b.WriteString(`">Open Management</a></div>`)
+		b.WriteString(`">Open dashboard</a></div>`)
 	}
 	b.WriteString(`</section></main></body></html>`)
 	return b.String()
