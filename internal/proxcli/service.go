@@ -31,7 +31,21 @@ const plistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 
 func serviceTarget() string { return "gui/" + strconv.Itoa(os.Getuid()) }
 
-func serviceOn(p Paths, out, errOut io.Writer) int {
+// storeServicePassword proves the password before saving it, so a typo can't
+// leave the service failing to start at every login.
+func storeServicePassword(p Paths, cfg settings, errOut io.Writer) error {
+	password, err := requireMasterPassword(p, cfg, terminalOrEnvPassword(errOut), errOut)
+	if err != nil {
+		return err
+	}
+	return saveKeychainPassword(password)
+}
+
+func serviceOn(p Paths, cfg settings, out, errOut io.Writer) int {
+	if err := storeServicePassword(p, cfg, errOut); err != nil {
+		fmt.Fprintln(errOut, err)
+		return 1
+	}
 	exe, err := os.Executable()
 	if err == nil {
 		exe, err = filepath.EvalSymlinks(exe)
@@ -62,6 +76,7 @@ func serviceOn(p Paths, out, errOut io.Writer) int {
 
 func serviceOff(p Paths, out, errOut io.Writer) int {
 	_ = exec.Command("launchctl", "bootout", serviceTarget()+"/"+serviceLabel).Run()
+	deleteKeychainPassword()
 	if err := os.Remove(p.LaunchAgent); err != nil && !os.IsNotExist(err) {
 		fmt.Fprintf(errOut, "remove service file: %v\n", err)
 		return 1

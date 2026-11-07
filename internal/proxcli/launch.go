@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"strings"
 )
 
 const dashboardPath = "/dashboard"
@@ -35,30 +34,14 @@ func runClaude(p Paths, cfg settings, args []string, errOut io.Writer) int {
 	return 0
 }
 
-// openDashboard copies the key first so it is ready to paste on the login screen.
-func openDashboard(p Paths, cfg settings, out, errOut io.Writer) int {
+func openDashboard(cfg settings, out, errOut io.Writer) int {
 	if !isReachable(cfg) {
 		fmt.Fprintln(errOut, "prox is stopped. Start it with: prox start")
 		return 1
 	}
 	url := cfg.baseURL() + dashboardPath
-	if err := copyManagementKey(p); err != nil {
-		fmt.Fprintf(errOut, "Could not copy the key: %v\n", err)
-	} else {
-		fmt.Fprintln(out, "Management key copied. Paste it on the login screen.")
-	}
 	if err := exec.Command("open", url).Run(); err != nil {
 		fmt.Fprintf(out, "Open %s\n", url)
 	}
 	return 0
-}
-
-func copyManagementKey(p Paths) error {
-	raw, err := os.ReadFile(p.ManagementKey)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("pbcopy")
-	cmd.Stdin = strings.NewReader(strings.TrimSpace(string(raw)))
-	return cmd.Run()
 }

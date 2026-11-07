@@ -21,7 +21,7 @@ const usage = `prox: use all your AI accounts through one local endpoint
   prox login <provider>   Add an account (claude, codex)
   prox accounts           List your accounts
   prox status             Show whether the proxy is running
-  prox dashboard          Open the dashboard and copy its key
+  prox dashboard          Open the dashboard
   prox service on|off     Run in the background and start at login
   prox version            Show the version
 
@@ -75,11 +75,11 @@ func runCommand(p Paths, cfg settings, args []string, out, errOut io.Writer) Out
 	case "claude":
 		return finished(runClaude(p, cfg, rest, errOut))
 	case "dashboard":
-		return finished(openDashboard(p, cfg, out, errOut))
+		return finished(openDashboard(cfg, out, errOut))
 	case "accounts", "status":
 		return showAccounts(p, cfg, command, out, errOut)
 	case "service":
-		return service(p, rest, out, errOut)
+		return service(p, cfg, rest, out, errOut)
 	}
 	if command == "discover" {
 		return Outcome{ServerArgs: args}
@@ -95,6 +95,13 @@ func startServer(p Paths, cfg settings, errOut io.Writer) Outcome {
 	if isReachable(cfg) {
 		fmt.Fprintf(errOut, "prox is already running at %s\n", cfg.baseURL())
 		return finished(1)
+	}
+	input, err := startPasswordInput(errOut)
+	if err != nil {
+		return fail(errOut, err)
+	}
+	if _, err = requireMasterPassword(p, cfg, input, errOut); err != nil {
+		return fail(errOut, err)
 	}
 	imported, err := importLegacyAccounts(p, cfg)
 	if err != nil {
@@ -147,10 +154,10 @@ func showAccounts(p Paths, cfg settings, command string, out, errOut io.Writer) 
 	return finished(0)
 }
 
-func service(p Paths, args []string, out, errOut io.Writer) Outcome {
+func service(p Paths, cfg settings, args []string, out, errOut io.Writer) Outcome {
 	switch strings.Join(args, " ") {
 	case "on":
-		return finished(serviceOn(p, out, errOut))
+		return finished(serviceOn(p, cfg, out, errOut))
 	case "off":
 		return finished(serviceOff(p, out, errOut))
 	}

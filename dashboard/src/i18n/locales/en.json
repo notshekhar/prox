@@ -73,26 +73,26 @@
     "custom_connection_placeholder": "Eg: https://example.com:8317",
     "custom_connection_hint": "By default the current URL is used. Override it here if needed.",
     "remember_password_label": "Remember on this device",
-    "management_key_label": "Management key",
-    "management_key_placeholder": "Paste the key",
+    "management_key_label": "Master password",
+    "management_key_placeholder": "Enter your master password",
     "show_key": "Show key",
     "hide_key": "Hide key",
     "submit_button": "Open dashboard",
     "submitting": "Connecting...",
     "error_backend_detail": "Backend response",
     "error_required": "Please fill in complete connection information",
-    "error_invalid": "Connection failed, please check the server address, Management API, and management key",
+    "error_invalid": "Connection failed, please check the server address, Management API, and master password",
     "error_network": "Network connection failed, please check your network or server address",
     "error_timeout": "Connection timed out, server not responding",
-    "error_unauthorized": "Authentication failed, management key is missing or invalid",
-    "error_forbidden": "Access denied, remote management is disabled, the management key is not configured, or this IP is temporarily banned",
+    "error_unauthorized": "Wrong master password",
+    "error_forbidden": "Access denied, remote management is disabled, no master password is set, or this IP is temporarily banned",
     "error_not_found": "v8 Management API not found. Check the server address and upgrade prox to v8 or later; v0 is not supported.",
     "error_legacy_backend": "This backend accepts v0 Management API but does not provide v8. Upgrade prox to v8 or later to use this management page.",
     "error_server": "Backend failed while handling the management request, check the server logs",
     "error_cors": "Cross-origin request blocked, please check server configuration",
     "error_ssl": "SSL/TLS certificate verification failed",
     "title": "Open your dashboard",
-    "lede": "Paste your management key. Running prox dashboard copies it for you."
+    "lede": "Enter the master password you chose when you first ran prox start."
   },
   "header": {
     "refresh_all": "Refresh all",
@@ -1310,8 +1310,8 @@
           "disable_panel_desc": "Disable the built-in web control panel",
           "disable_auto_update_panel": "Disable panel auto updates",
           "disable_auto_update_panel_desc": "Download the panel when first missing, but never auto-update it from GitHub",
-          "secret_key": "Management key",
-          "secret_key_placeholder": "Set management key",
+          "secret_key": "Master password",
+          "secret_key_placeholder": "Set a new master password",
           "panel_repo": "Panel repository"
         },
         "auth": {
@@ -2025,7 +2025,8 @@
       "disable": "Disable"
     },
     "categories": {
-      "title": "Providers",
+      "inUse": "In use",
+      "available": "Available",
       "quickFill": "Quick fill",
       "activeCount": "{{active}}/{{total}} active"
     },

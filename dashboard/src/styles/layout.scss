@@ -586,7 +586,6 @@
     &.active {
       background: var(--bg-tertiary);
       color: var(--text-primary);
-      box-shadow: inset 2px 0 0 var(--primary-color);
 
       .nav-icon {
         color: var(--primary-active);

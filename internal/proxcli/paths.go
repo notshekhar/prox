@@ -9,10 +9,10 @@ import (
 // Paths holds every location prox reads or writes, so tests can point all of
 // them at a temporary directory instead of the user's real home.
 type Paths struct {
-	Home          string // prox's own state: config and management key
+	Home          string // prox's own state: config, accounts and logs
 	Config        string
 	Auth          string // account logins
-	ManagementKey string
+	ManagementKey string // left by older versions, removed once a master password is set
 	ClaudeDir     string // CLAUDE_CONFIG_DIR used by `prox claude`
 	LaunchAgent   string
 	Log           string

@@ -29,7 +29,7 @@ server:
   host: "127.0.0.1"
   port: %d
 management:
-  secret-key: %q
+  secret-key: ""
   disable-auto-update-panel: true
 access:
   api-keys:
@@ -55,6 +55,9 @@ type settings struct {
 		Host string `yaml:"host"`
 		Port int    `yaml:"port"`
 	} `yaml:"server"`
+	Management struct {
+		SecretKey string `yaml:"secret-key"`
+	} `yaml:"management"`
 	Access struct {
 		APIKeys []string `yaml:"api-keys"`
 	} `yaml:"access"`
@@ -98,20 +101,11 @@ func ensureConfig(p Paths) error {
 	if err := os.MkdirAll(p.Home, privateDir); err != nil {
 		return fmt.Errorf("create %s: %w", p.Home, err)
 	}
-	managementKey, err := newSecret()
-	if err != nil {
-		return err
-	}
 	clientKey, err := newSecret()
 	if err != nil {
 		return err
 	}
-	// The server replaces the config's copy with a hash on first start, so this
-	// file is the only readable copy of the key.
-	if err = os.WriteFile(p.ManagementKey, []byte(managementKey+"\n"), privateFile); err != nil {
-		return fmt.Errorf("write management key: %w", err)
-	}
-	body := fmt.Sprintf(configTemplate, defaultPort, managementKey, clientKey, p.Auth)
+	body := fmt.Sprintf(configTemplate, defaultPort, clientKey, p.Auth)
 	if err = os.WriteFile(p.Config, []byte(body), privateFile); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}

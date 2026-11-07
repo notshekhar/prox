@@ -4,29 +4,29 @@
 
 // 浅色主题（默认）
 :root {
-    --bg-secondary: #f4f5f5;
+    --bg-secondary: #f4f5f6;
   --bg-primary: #ffffff;
-  --bg-tertiary: #e9ebeb;
+  --bg-tertiary: #e9eaed;
   --bg-hover: var(--bg-tertiary);
-  --bg-quinary: #f8f9f9;
+  --bg-quinary: #f8f9fa;
   --bg-error-light: rgba(198,61,63,.08);
   --floating-surface: #ffffff;
   --floating-shadow: 0 6px 18px rgb(0 0 0 / .12);
 
-  --text-primary: #141716;
-  --text-secondary: #4c5452;
-  --text-tertiary: #6b7472;
-  --text-quaternary: #98a09e;
+  --text-primary: #141518;
+  --text-secondary: #4c4f57;
+  --text-tertiary: #6b6e76;
+  --text-quaternary: #989ba3;
   --text-muted: var(--text-tertiary);
 
-  --border-color: #dcdfdf;
+  --border-color: #dcdee2;
   --border-secondary: var(--border-color);
-  --border-primary: #cdd1d1;
-  --border-hover: #b0b6b5;
+  --border-primary: #cdcfd4;
+  --border-hover: #b0b3b9;
 
-  --primary-color: #0e7f78;
-  --primary-hover: #0a6a64;
-  --primary-active: #0a6a64;
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1d4ed8;
   --primary-contrast: #ffffff;
 
   --success-color: #16824f;
@@ -48,8 +48,8 @@
   --failure-badge-text: #a32f31;
   --failure-badge-border: rgba(198,61,63,.3);
 
-  --count-badge-bg: #e9ebeb;
-  --count-badge-text: #4c5452;
+  --count-badge-bg: #e9eaed;
+  --count-badge-text: #4c4f57;
 
   --shadow: none;
   --shadow-lg: 0 6px 18px rgb(0 0 0 / .12);
@@ -87,29 +87,29 @@
 }
 
 [data-theme='white'] {
-  --bg-secondary: #f4f5f5;
+  --bg-secondary: #f4f5f6;
   --bg-primary: #ffffff;
-  --bg-tertiary: #e9ebeb;
+  --bg-tertiary: #e9eaed;
   --bg-hover: var(--bg-tertiary);
-  --bg-quinary: #f8f9f9;
+  --bg-quinary: #f8f9fa;
   --bg-error-light: rgba(198,61,63,.08);
   --floating-surface: #ffffff;
   --floating-shadow: 0 6px 18px rgb(0 0 0 / .12);
 
-  --text-primary: #141716;
-  --text-secondary: #4c5452;
-  --text-tertiary: #6b7472;
-  --text-quaternary: #98a09e;
+  --text-primary: #141518;
+  --text-secondary: #4c4f57;
+  --text-tertiary: #6b6e76;
+  --text-quaternary: #989ba3;
   --text-muted: var(--text-tertiary);
 
-  --border-color: #dcdfdf;
+  --border-color: #dcdee2;
   --border-secondary: var(--border-color);
-  --border-primary: #cdd1d1;
-  --border-hover: #b0b6b5;
+  --border-primary: #cdcfd4;
+  --border-hover: #b0b3b9;
 
-  --primary-color: #0e7f78;
-  --primary-hover: #0a6a64;
-  --primary-active: #0a6a64;
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-active: #1d4ed8;
   --primary-contrast: #ffffff;
 
   --success-color: #16824f;
@@ -131,8 +131,8 @@
   --failure-badge-text: #a32f31;
   --failure-badge-border: rgba(198,61,63,.3);
 
-  --count-badge-bg: #e9ebeb;
-  --count-badge-text: #4c5452;
+  --count-badge-bg: #e9eaed;
+  --count-badge-text: #4c4f57;
 
   --shadow: none;
   --shadow-lg: 0 6px 18px rgb(0 0 0 / .12);
@@ -156,30 +156,30 @@
 // 深色主题（#191919）
 [data-theme='dark'] {
   // 极简暖灰：深色模式（提升对比度与层级）
-  --bg-secondary: #0b0c0c;
-  --bg-primary: #101212;
-  --bg-tertiary: #1a1d1d;
-  --bg-hover: #2e2a26;
-  --bg-quinary: #141616;
+  --bg-secondary: #0b0c0e;
+  --bg-primary: #101114;
+  --bg-tertiary: #1b1c20;
+  --bg-hover: #26272c;
+  --bg-quinary: #141518;
   --bg-error-light: rgba(242,104,106,.1);
-  --floating-surface: #151818;
+  --floating-surface: #16171a;
   --floating-shadow: 0 6px 18px rgb(0 0 0 / .55);
 
-  --text-primary: #e4e8e6;
-  --text-secondary: #a3aba8;
-  --text-tertiary: #7f8885;
-  --text-quaternary: #5f6765;
+  --text-primary: #e6e7ea;
+  --text-secondary: #a4a7ae;
+  --text-tertiary: #81848c;
+  --text-quaternary: #60636a;
   --text-muted: var(--text-tertiary);
 
-  --border-color: #242828;
+  --border-color: #25262b;
   --border-secondary: var(--border-color);
-  --border-primary: #2f3434;
-  --border-hover: #404646;
+  --border-primary: #303238;
+  --border-hover: #42444b;
 
-  --primary-color: #3fb9b0;
-  --primary-hover: #5ad8ce;
-  --primary-active: #5ad8ce;
-  --primary-contrast: #061110;
+  --primary-color: #5b93ff;
+  --primary-hover: #82adff;
+  --primary-active: #82adff;
+  --primary-contrast: #07101f;
 
   --success-color: #4fd18b;
   --quota-medium-color: #d9a441;
@@ -200,8 +200,8 @@
   --failure-badge-text: #f2686a;
   --failure-badge-border: rgba(242,104,106,.3);
 
-  --count-badge-bg: #1a1d1d;
-  --count-badge-text: #a3aba8;
+  --count-badge-bg: #1b1c20;
+  --count-badge-text: #a4a7ae;
 
   --shadow: none;
   --shadow-lg: 0 6px 18px rgb(0 0 0 / .55);

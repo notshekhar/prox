@@ -14,6 +14,8 @@ import (
 
 // sandbox points HOME, PROX_HOME and PATH at a temp folder, so no test can
 // reach the user's real config, accounts or tools.
+const sandboxPassword = "sandbox-password"
+
 type sandbox struct {
 	home string
 	bin  string
@@ -30,6 +32,7 @@ func newSandbox(t *testing.T) sandbox {
 	t.Setenv("PROX_HOME", filepath.Join(home, ".prox"))
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+"/usr/bin:/bin")
 	t.Setenv("MANAGEMENT_STATIC_PATH", "")
+	t.Setenv(masterPasswordEnv, sandboxPassword)
 	return sandbox{home: home, bin: bin}
 }
 
@@ -202,25 +205,14 @@ func TestClaudeRunsWithHubConfigAndKeepsExitCode(t *testing.T) {
 	}
 }
 
-func TestDashboardCopiesKeyAndOpensPanel(t *testing.T) {
+func TestDashboardOpensPanel(t *testing.T) {
 	s := newSandbox(t)
 	s.listenOnConfiguredPort(t)
-	if err := os.WriteFile(filepath.Join(s.home, ".prox", "management.key"), []byte("panel-key\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	clip, opened := filepath.Join(s.home, "clip"), filepath.Join(s.home, "opened")
-	s.fakeTool(t, "pbcopy", "cat > "+clip)
+	opened := filepath.Join(s.home, "opened")
 	s.fakeTool(t, "open", fmt.Sprintf(`echo "$1" > %s`, opened))
 
-	outcome, out, _ := run("dashboard")
-	if outcome.ExitCode != 0 {
+	if outcome, _, _ := run("dashboard"); outcome.ExitCode != 0 {
 		t.Fatalf("exit = %d", outcome.ExitCode)
-	}
-	if strings.Contains(out, "panel-key") {
-		t.Fatal("key printed to the terminal")
-	}
-	if got, _ := os.ReadFile(clip); string(got) != "panel-key" {
-		t.Fatalf("clipboard = %q", got)
 	}
 	if got, _ := os.ReadFile(opened); !strings.HasSuffix(strings.TrimSpace(string(got)), dashboardPath) {
 		t.Fatalf("opened %q", got)

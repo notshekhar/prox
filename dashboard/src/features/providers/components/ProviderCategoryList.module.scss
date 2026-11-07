@@ -1,56 +1,56 @@
 @use '../../../styles/mixins' as *;
 @use '../../../styles/variables' as *;
 
-.stack {
+.rail {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   min-width: 0;
   align-self: start;
+
+  @media (min-width: 900px) {
+    position: sticky;
+    top: 12px;
+  }
 }
 
-.aside {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  padding: 4px;
-  min-width: 0;
-}
-
-.eyebrow {
-  margin: 4px 8px 8px;
+.groupLabel {
+  margin: 0 8px 4px;
   font-size: 12px;
-  font-weight: 500;
-  color: var(--muted-foreground);
+  color: var(--text-tertiary);
 }
 
 .list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 1px;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 8px;
-  border-radius: 2px;
+  gap: 10px;
+  height: 30px;
+  padding: 0 8px;
   border: 0;
+  border-radius: 3px;
   background: transparent;
   cursor: pointer;
   text-align: left;
   width: 100%;
-  color: var(--text-primary);
+  min-width: 0;
+  color: var(--text-secondary);
   transition:
     background-color $transition-fast,
-    border-color $transition-fast,
     color $transition-fast;
-  min-width: 0;
 
-  &:hover:not(.active) {
+  &:hover {
     background: var(--bg-tertiary);
+    color: var(--text-primary);
   }
 
   &:focus-visible {
@@ -60,16 +60,8 @@
 
   &.active {
     background: var(--bg-tertiary);
-    box-shadow: inset 2px 0 0 var(--primary-color);
+    color: var(--text-primary);
   }
-}
-
-.itemLeft {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
 }
 
 .logo {
@@ -113,29 +105,18 @@
   }
 }
 
-.itemText {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
 .itemTitle {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
-  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.itemSubtitle {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.badge {
+.count {
   font-family: $font-mono;
   font-size: 11px;
   color: var(--text-tertiary);
   flex-shrink: 0;
 }
-

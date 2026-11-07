@@ -29,7 +29,7 @@ From a checkout, with Go and Bun installed:
 prox login claude     # add an account, once per account
 prox start            # run the proxy
 prox claude           # open Claude Code through it
-prox dashboard        # open the dashboard, with its key on your clipboard
+prox dashboard        # open the dashboard
 ```
 
 | Command | What it does |
@@ -39,16 +39,36 @@ prox dashboard        # open the dashboard, with its key on your clipboard
 | `prox login <provider>` | Add an account (`claude`, `codex`) |
 | `prox accounts` | List your accounts |
 | `prox status` | Show whether the proxy is running |
-| `prox dashboard` | Open the dashboard and copy its key |
+| `prox dashboard` | Open the dashboard |
 | `prox service on\|off` | Run in the background and start at login (macOS) |
 | `prox version` | Show the version |
 
 `prox start` keeps the terminal quiet: one line per AI request, plus errors. The
 full log is in `~/.prox/logs/main.log` and on the dashboard's Logs page.
 
-Everything lives in `~/.prox`: `config.yaml`, `management.key`, your logins in
+Everything lives in `~/.prox`: `config.yaml`, your logins in
 `auth/`, logs in `logs/` and the binary in `bin/`. Set `PROX_HOME` to use another folder. Logins
 from `~/.cli-proxy-api` are copied in the first time you run `prox start`.
+
+## Master password
+
+`prox start` won't run without your master password. You choose it the first
+time, and the same password opens the dashboard. Only a hash is stored, so if you
+forget it, set `secret-key: ""` under `management:` in `~/.prox/config.yaml` and
+start prox to choose a new one.
+
+Where no terminal can ask, set `PROX_MASTER_PASSWORD`. `prox service on` keeps the
+password in your macOS Keychain so the background service can start at login.
+
+The password guards starting prox and the dashboard. It doesn't encrypt your
+logins in `~/.prox/auth`, and server flags such as `prox -tui` don't ask for it.
+
+## How requests are spread
+
+With `strategy: "round-robin"`, each new conversation goes to the next account.
+A conversation then stays on its account, so its prompt cache keeps working, and
+moves only when that account hits a limit or fails. To rotate on every request
+instead, set `session-affinity: false` under `routing:`.
 
 ## Develop
 
