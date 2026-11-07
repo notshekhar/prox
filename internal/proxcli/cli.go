@@ -23,6 +23,7 @@ const usage = `prox: use all your AI accounts through one local endpoint
   prox status             Show whether the proxy is running
   prox dashboard          Open the dashboard
   prox service on|off     Run in the background and start at login
+  prox upgrade [--force]  Update to the latest release
   prox version            Show the version
 
 Server flags still work, for example: prox -tui
@@ -78,6 +79,8 @@ func runCommand(p Paths, cfg settings, args []string, out, errOut io.Writer) Out
 		return finished(openDashboard(cfg, out, errOut))
 	case "accounts", "status":
 		return showAccounts(p, cfg, command, out, errOut)
+	case "upgrade":
+		return finished(upgrade(cfg, rest, out, errOut))
 	case "service":
 		return service(p, cfg, rest, out, errOut)
 	}

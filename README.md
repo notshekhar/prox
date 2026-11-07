@@ -41,6 +41,7 @@ prox dashboard        # open the dashboard
 | `prox status` | Show whether the proxy is running |
 | `prox dashboard` | Open the dashboard |
 | `prox service on\|off` | Run in the background and start at login (macOS) |
+| `prox upgrade [--force]` | Update to the latest release |
 | `prox version` | Show the version |
 
 `prox start` keeps the terminal quiet: one line per AI request, plus errors. The
