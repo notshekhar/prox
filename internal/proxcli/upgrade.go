@@ -106,10 +106,13 @@ func parseVersion(version string) (parts []int, suffix string, ok bool) {
 
 // runInstaller leaves the shell rc alone: a first install already set up PATH.
 // A known tag is also pinned, so the installer can't pick a different release
-// than the one this lookup found.
+// than the one this lookup found. The connect timeout is because
+// raw.githubusercontent.com shares GitHub's CDN addresses and one can be
+// unreachable from a given network: without it curl waits the OS's full 75s
+// on that address first.
 func runInstaller(tag string, force bool, out, errOut io.Writer) error {
 	ref := cmp.Or(tag, installerFallbackRef)
-	cmd := exec.Command("bash", "-c", `set -o pipefail; curl -fsSL "$0" | bash`, fmt.Sprintf(installerURLTemplate, ref))
+	cmd := exec.Command("bash", "-c", `set -o pipefail; curl --connect-timeout 10 -fsSL "$0" | bash`, fmt.Sprintf(installerURLTemplate, ref))
 	cmd.Stdout, cmd.Stderr = out, errOut
 	cmd.Env = append(os.Environ(), "PROX_NO_MODIFY_PATH=1")
 	if tag != "" {
