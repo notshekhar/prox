@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -15,6 +15,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -72,7 +73,7 @@ func TestCodexCallbackRejectsSIWCState(t *testing.T) {
 	cfg.RemoteManagement.SecretKey = string(hash)
 	s := newTestServerWithConfig(t, cfg)
 	metadata := map[string]any{"type": "codex", "access_token": "outer-token", "refresh_token": "outer-refresh"}
-	data, err := json.Marshal(metadata)
+	data, err := json.Marshal(metadata, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +106,7 @@ func TestCodexCallbackRejectsSIWCState(t *testing.T) {
 		State string `json:"state"`
 		Flow  string `json:"flow"`
 	}
-	if errDecode := json.Unmarshal(started.Body.Bytes(), &flow); errDecode != nil {
+	if errDecode := json.Unmarshal(started.Body.Bytes(), &flow, jsoncompat.Decode); errDecode != nil {
 		t.Fatal(errDecode)
 	}
 	if flow.State == "" || flow.Flow != "siwc_bind" {
@@ -145,7 +146,7 @@ func TestSIWCStatusEndpoint(t *testing.T) {
 	s := newTestServerWithConfig(t, cfg)
 	metadata := map[string]any{"type": "codex", "access_token": "outer-token", "refresh_token": "outer-refresh"}
 	path := filepath.Join(s.cfg.AuthDir, "codex.json")
-	data, err := json.Marshal(metadata)
+	data, err := json.Marshal(metadata, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}

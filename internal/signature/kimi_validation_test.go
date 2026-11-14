@@ -1,8 +1,9 @@
 package signature
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -61,7 +62,7 @@ func loadKimiCorpus(t *testing.T) []string {
 			Signature string `json:"signature"`
 		} `json:"samples"`
 	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	if err := json.Unmarshal(raw, &doc, jsoncompat.Decode); err != nil {
 		t.Fatalf("parse kimi corpus: %v", err)
 	}
 	out := make([]string, 0, len(doc.Samples))
@@ -334,7 +335,7 @@ func TestDetectSignatureProvider_KimiProbeDoesNotDisturbCatalog(t *testing.T) {
 			ClaimedProvider string `json:"claimed_provider"`
 		} `json:"records"`
 	}
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	if err := json.Unmarshal(raw, &doc, jsoncompat.Decode); err != nil {
 		t.Fatalf("parse signature catalog: %v", err)
 	}
 

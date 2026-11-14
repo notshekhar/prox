@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 )
 
@@ -610,7 +611,7 @@ type logCursor struct {
 	Offset          int64  `json:"offset"`
 	Size            int64  `json:"size"`
 	ModTime         int64  `json:"modTime"`
-	ModTimeUnixNano int64  `json:"modTimeUnixNano,omitempty"`
+	ModTimeUnixNano int64  `json:"modTimeUnixNano,omitzero"`
 	LatestTimestamp int64  `json:"latestTimestamp"`
 	Fingerprint     string `json:"fingerprint"`
 }
@@ -972,7 +973,7 @@ func logFileMatchesCursor(path string, cursor logCursor) (bool, bool, error) {
 }
 
 func encodeLogCursor(cursor logCursor) (string, error) {
-	raw, err := json.Marshal(cursor)
+	raw, err := json.Marshal(cursor, jsoncompat.Encode)
 	if err != nil {
 		return "", err
 	}
@@ -992,7 +993,7 @@ func decodeLogCursor(raw string) (logCursor, error) {
 		return logCursor{}, fmt.Errorf("invalid cursor encoding")
 	}
 	var cursor logCursor
-	if errUnmarshal := json.Unmarshal(data, &cursor); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &cursor, jsoncompat.Decode); errUnmarshal != nil {
 		return logCursor{}, fmt.Errorf("invalid cursor payload")
 	}
 	if errValidate := validateLogCursor(cursor); errValidate != nil {

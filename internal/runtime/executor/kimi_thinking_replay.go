@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"sort"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -263,13 +265,11 @@ func kimiJSONEqual(left, right []byte) bool {
 }
 
 func kimiCanonicalJSON(raw []byte) ([]byte, bool) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
 	var value any
-	if errDecode := decoder.Decode(&value); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &value, jsoncompat.DecodeUseNumber); errDecode != nil {
 		return nil, false
 	}
-	canonical, errMarshal := json.Marshal(value)
+	canonical, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, false
 	}

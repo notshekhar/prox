@@ -3,7 +3,7 @@ package helps
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"strings"
 	"sync"
@@ -281,8 +281,8 @@ func appendClaudeTokenJSON(segments *[]string, value ojson.Result) {
 	if raw == "" {
 		return
 	}
-	var compact bytes.Buffer
-	if err := json.Compact(&compact, []byte(raw)); err == nil {
+	compact := jsontext.Value(raw)
+	if err := compact.Compact(); err == nil {
 		appendClaudeTokenString(segments, compact.String())
 		return
 	}

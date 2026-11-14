@@ -2,7 +2,8 @@ package live
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
@@ -193,9 +195,9 @@ func (h *Handler) HandleDirectWebsocket(c *gin.Context) {
 			return
 		}
 		update, errMarshal := json.Marshal(struct {
-			Type    string          `json:"type"`
-			Session json.RawMessage `json:"session"`
-		}{Type: "session.update", Session: updateSession})
+			Type    string         `json:"type"`
+			Session jsontext.Value `json:"session"`
+		}{Type: "session.update", Session: updateSession}, jsoncompat.Encode)
 		if errMarshal != nil {
 			_ = closeUpstream()
 			writeRealtimeError(c, http.StatusInternalServerError, "Failed to apply Realtime client secret session", "server_error", "realtime_session_failed")
@@ -238,15 +240,15 @@ func (h *Handler) HandleDirectWebsocket(c *gin.Context) {
 	}
 }
 
-func realtimeSessionUpdate(session json.RawMessage) (json.RawMessage, error) {
-	var update map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(session, &update); errUnmarshal != nil {
+func realtimeSessionUpdate(session jsontext.Value) (jsontext.Value, error) {
+	var update map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(session, &update, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	for _, field := range []string{"model", "id", "object", "expires_at", "client_secret"} {
 		delete(update, field)
 	}
-	return json.Marshal(update)
+	return json.Marshal(update, jsoncompat.Encode)
 }
 
 func (h *Handler) directRealtimeURL(model string) string {

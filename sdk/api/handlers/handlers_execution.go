@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"maps"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -387,7 +388,7 @@ func executionErrorMessage(err error) *interfaces.ErrorMessage {
 		var headers http.Header
 		if len(body) > 0 {
 			contentType := http.DetectContentType(body)
-			if json.Valid(body) {
+			if jsontext.Value(body).IsValid(jsoncompat.Decode) {
 				contentType = "application/json"
 			}
 			headers = http.Header{"Content-Type": []string{contentType}}

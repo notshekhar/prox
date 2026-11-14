@@ -2,10 +2,12 @@ package pluginstore
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestPluginSyncResponseValidatesAndClearsResolvedAuth(t *testing.T) {
@@ -48,7 +50,7 @@ func TestPluginSyncResponseJSONKeepsSecretsOutOfPlainText(t *testing.T) {
 		ExpiresAt:     time.Now().UTC().Add(time.Minute),
 		Items:         []PluginSyncItem{{Auth: []ResolvedAuthConfig{{Token: Secret("temporary-token")}}}},
 	}
-	raw, errMarshal := json.Marshal(response)
+	raw, errMarshal := json.Marshal(response, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
@@ -56,7 +58,7 @@ func TestPluginSyncResponseJSONKeepsSecretsOutOfPlainText(t *testing.T) {
 		t.Fatalf("Marshal() exposed token as plain text: %s", raw)
 	}
 	var decoded PluginSyncResponse
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("Unmarshal() error = %v", errUnmarshal)
 	}
 	if got := string(decoded.Items[0].Auth[0].Token); got != "temporary-token" {

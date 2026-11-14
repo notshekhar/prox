@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -119,7 +120,7 @@ func resolveSIWCBindFile(authDir, path string) (string, map[string]any, error) {
 		return "", nil, errRead
 	}
 	var metadata map[string]any
-	if errJSON := json.Unmarshal(data, &metadata); errJSON != nil {
+	if errJSON := json.Unmarshal(data, &metadata, jsoncompat.Decode); errJSON != nil {
 		return "", nil, errors.New("invalid credential JSON")
 	}
 	provider, _ := metadata["type"].(string)
@@ -172,7 +173,7 @@ func (h *Handler) GetSIWCStatus(c *gin.Context) {
 		full := filepath.Join(cfg.AuthDir, name)
 		if data, errRead := os.ReadFile(full); errRead == nil {
 			var metadata map[string]any
-			if json.Unmarshal(data, &metadata) == nil && metadata != nil {
+			if json.Unmarshal(data, &metadata, jsoncompat.Decode) == nil && metadata != nil {
 				provider, _ := metadata["type"].(string)
 				target = &coreauth.Auth{ID: name, FileName: name, Provider: strings.TrimSpace(provider), Metadata: metadata}
 			}

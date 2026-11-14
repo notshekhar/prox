@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"hash/fnv"
 	"math"
@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/credentialweight"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -157,7 +158,7 @@ func (e *modelCooldownError) Error() string {
 		}
 	}
 	payload := map[string]any{"error": errorBody}
-	data, err := json.Marshal(payload)
+	data, err := json.Marshal(payload, jsoncompat.Encode)
 	if err != nil {
 		return fmt.Sprintf(`{"error":{"code":"model_cooldown","message":"%s"}}`, message)
 	}
@@ -1221,7 +1222,7 @@ func (s *SessionAffinitySelector) Pick(ctx context.Context, provider, model stri
 
 	if cachedAuthID, ok := s.cache.GetAndRefresh(cacheKey); ok {
 		for _, auth := range available {
-			if auth.ID == cachedAuthID {
+			if auth.ID == cachedAuthID && !s.shouldLeaveBoundAuth(auth, fallbackAuths, now) {
 				bind(auth.ID, true)
 				entry.Infof("session-affinity: cache hit | session=%s auth=%s provider=%s model=%s", truncateSessionID(primaryID), auth.ID, provider, model)
 				return auth, nil

@@ -2,7 +2,7 @@ package cliproxy
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -46,7 +46,7 @@ func TestAntigravityDynamicRegistrationLifecycle(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		w.WriteHeader(int(status.Load()))
-		_ = json.NewEncoder(w).Encode(response.Load())
+		_ = json.MarshalWrite(w, response.Load())
 	}))
 	defer server.Close()
 	cfg := &config.Config{OAuthModelAlias: map[string][]config.OAuthModelAlias{"antigravity": {{Name: allowed, Alias: "my-model"}}}}

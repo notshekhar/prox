@@ -2,7 +2,7 @@ package openai
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +18,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -240,7 +241,7 @@ func readVideosCreateRequest(c *gin.Context) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !json.Valid(rawJSON) {
+		if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 			return nil, fmt.Errorf("body must be valid JSON")
 		}
 		return rawJSON, nil
@@ -252,7 +253,7 @@ func readXAIVideosNativeRequest(c *gin.Context) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		return nil, fmt.Errorf("body must be valid JSON")
 	}
 	return rawJSON, nil
@@ -636,7 +637,7 @@ func buildVideosRetrieveAPIResponseFromXAI(videoID string, payload []byte, fallb
 func setOpenAIVideoErrorFromXAIDoc(outDoc *ojson.Doc, payload []byte) {
 	if errPayload := ojson.GetBytesNoCopy(payload, "error"); errPayload.Exists() {
 		markOpenAIVideoFailedDoc(outDoc)
-		if errPayload.Type == ojson.JSON && json.Valid([]byte(errPayload.Raw)) {
+		if errPayload.Type == ojson.JSON && jsontext.Value(errPayload.Raw).IsValid(jsoncompat.Decode) {
 			message := strings.TrimSpace(errPayload.Get("message").String())
 			if message != "" {
 				code := strings.TrimSpace(ojson.GetBytesNoCopy(payload, "code").String())

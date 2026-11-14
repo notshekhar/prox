@@ -6,7 +6,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -711,11 +713,11 @@ func ensureColonSpacedJSON(payload []byte) []byte {
 	}
 
 	var decoded any
-	if err := json.Unmarshal(trimmed, &decoded); err != nil {
+	if err := json.Unmarshal(trimmed, &decoded, jsoncompat.Decode); err != nil {
 		return payload
 	}
 
-	indented, err := json.MarshalIndent(decoded, "", "  ")
+	indented, err := json.Marshal(decoded, jsoncompat.Encode, jsontext.WithIndent("  "))
 	if err != nil {
 		return payload
 	}

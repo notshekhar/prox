@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -54,7 +55,7 @@ openai-compatibility:
 		{
 			name: "JSON",
 			decode: func(cfg *Config) error {
-				return json.Unmarshal([]byte(jsonConfig), cfg)
+				return json.Unmarshal([]byte(jsonConfig), cfg, jsoncompat.Decode)
 			},
 		},
 	} {

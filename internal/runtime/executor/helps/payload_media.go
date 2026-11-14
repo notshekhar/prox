@@ -2,7 +2,8 @@ package helps
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"io"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -79,7 +81,7 @@ func outOrBody(out, body []byte, multipartBody bool) []byte {
 }
 
 func mediaPayloadJSON(body []byte, contentType string) ([]byte, bool, error) {
-	if json.Valid(body) {
+	if jsontext.Value(body).IsValid(jsoncompat.Decode) {
 		return body, false, nil
 	}
 	mediaType, params, errParse := mime.ParseMediaType(contentType)
@@ -118,6 +120,6 @@ func mediaPayloadJSON(body []byte, contentType string) ([]byte, bool, error) {
 			fields[key] = value
 		}
 	}
-	view, errMarshal := json.Marshal(fields)
+	view, errMarshal := json.Marshal(fields, jsoncompat.Encode)
 	return view, true, errMarshal
 }

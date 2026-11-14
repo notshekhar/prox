@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -183,7 +184,7 @@ func TestFetchCredentialQuota_Endpoint(t *testing.T) {
 		t.Fatalf("expected status 200, got %d: %s", recSuccess.Code, recSuccess.Body.String())
 	}
 	var quotaResp pluginapi.QuotaFetchResponse
-	if errUnmarshal := json.Unmarshal(recSuccess.Body.Bytes(), &quotaResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recSuccess.Body.Bytes(), &quotaResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to parse quota response: %v", errUnmarshal)
 	}
 	if quotaResp.Subscription == nil || quotaResp.Subscription.Plan != "Pro" {
@@ -360,7 +361,7 @@ func TestAuthFilesList_IncludesQuotaSupport(t *testing.T) {
 	var resp struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to unmarshal files: %v", errUnmarshal)
 	}
 
@@ -449,7 +450,7 @@ func TestAuthFilesListV8_QuotaPluginIDAndNoQuotaProbe(t *testing.T) {
 		var resp struct {
 			Files []map[string]any `json:"files"`
 		}
-		if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("failed to unmarshal files: %v", errUnmarshal)
 		}
 		out := make(map[string]map[string]any, len(resp.Files))
@@ -596,7 +597,7 @@ func TestFetchCredentialQuota_DeclarativeProbe(t *testing.T) {
 	}
 
 	var quotaResp pluginapi.QuotaFetchResponse
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode response: %v", errUnmarshal)
 	}
 	if quotaResp.Subscription == nil || quotaResp.Subscription.Plan != "ProbePro" {
@@ -636,7 +637,7 @@ func TestFetchCredentialQuota_DeclarativeProbeSummaryOnly(t *testing.T) {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	var quotaResp pluginapi.QuotaFetchResponse
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode response: %v", errUnmarshal)
 	}
 	if len(quotaResp.Summary) != 1 || quotaResp.Summary[0].Key != "balance" || quotaResp.Summary[0].Value != 42 {
@@ -769,7 +770,7 @@ func TestFetchCredentialQuota_DeclarativeProbeIgnoresMalformedOptionalSummary(t 
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 	var quotaResp pluginapi.QuotaFetchResponse
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode response: %v", errUnmarshal)
 	}
 	if quotaResp.Subscription == nil || quotaResp.Subscription.Plan != "ProbePro" || len(quotaResp.Summary) != 0 {
@@ -841,7 +842,7 @@ func TestFetchCredentialQuota_DeclarativeProbeWithMapping(t *testing.T) {
 	}
 
 	var quotaResp pluginapi.QuotaFetchResponse
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode response: %v", errUnmarshal)
 	}
 	if quotaResp.Subscription == nil || quotaResp.Subscription.Plan != "Enterprise" {
@@ -1156,7 +1157,7 @@ func TestFetchCredentialQuota_LegitimateZeroQuotaAccepted(t *testing.T) {
 		t.Fatalf("expected status 200 for legitimate zero remaining fraction, got %d: %s", rec.Code, rec.Body.String())
 	}
 	var quotaResp pluginapi.QuotaFetchResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &quotaResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 	if len(quotaResp.Groups) != 1 || len(quotaResp.Groups[0].Buckets) != 1 || quotaResp.Groups[0].Buckets[0].RemainingFraction != 0 {
@@ -1240,7 +1241,7 @@ func TestFetchCredentialQuota_MixedValidAndInvalidBuckets(t *testing.T) {
 		t.Fatalf("expected status 200 for response with at least one valid bucket, got %d: %s", rec.Code, rec.Body.String())
 	}
 	var quotaResp pluginapi.QuotaFetchResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &quotaResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &quotaResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 	if len(quotaResp.Groups) != 1 {

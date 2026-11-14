@@ -2,10 +2,12 @@ package common
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -23,7 +25,7 @@ func ClaudeMessagesJSONToSSE(rawJSON []byte) ([]byte, string) {
 	var out bytes.Buffer
 	emit := func(event map[string]any) {
 		// All values are JSON primitives or validated raw JSON from the response.
-		payload, _ := json.Marshal(event)
+		payload, _ := json.Marshal(event, jsoncompat.Encode)
 		out.WriteString("data: ")
 		out.Write(payload)
 		out.WriteString("\n\n")
@@ -32,7 +34,7 @@ func ClaudeMessagesJSONToSSE(rawJSON []byte) ([]byte, string) {
 	_ = messageDoc.SetRawBytes("content", []byte(`[]`))
 	_ = messageDoc.Set("stop_reason", nil)
 	_ = messageDoc.Set("stop_sequence", nil)
-	emit(map[string]any{"type": "message_start", "message": json.RawMessage(messageDoc.Bytes())})
+	emit(map[string]any{"type": "message_start", "message": jsontext.Value(messageDoc.Bytes())})
 
 	for index, block := range root.Get("content").Array() {
 		start := []byte(block.Raw)
@@ -55,14 +57,14 @@ func ClaudeMessagesJSONToSSE(rawJSON []byte) ([]byte, string) {
 			start = startDoc.Bytes()
 			delta = map[string]any{"type": "thinking_delta", "thinking": block.Get("thinking").String()}
 		}
-		emit(map[string]any{"type": "content_block_start", "index": index, "content_block": json.RawMessage(start)})
+		emit(map[string]any{"type": "content_block_start", "index": index, "content_block": jsontext.Value(start)})
 		if delta != nil {
 			emit(map[string]any{"type": "content_block_delta", "index": index, "delta": delta})
 		}
 		if block.Get("type").String() == "text" {
 			for _, citation := range block.Get("citations").Array() {
 				emit(map[string]any{"type": "content_block_delta", "index": index, "delta": map[string]any{
-					"type": "citations_delta", "citation": json.RawMessage(citation.Raw),
+					"type": "citations_delta", "citation": jsontext.Value(citation.Raw),
 				}})
 			}
 		}
@@ -73,9 +75,9 @@ func ClaudeMessagesJSONToSSE(rawJSON []byte) ([]byte, string) {
 		}
 		emit(map[string]any{"type": "content_block_stop", "index": index})
 	}
-	usage := json.RawMessage(root.Get("usage").Raw)
+	usage := jsontext.Value(root.Get("usage").Raw)
 	if len(usage) == 0 {
-		usage = json.RawMessage(`{}`)
+		usage = jsontext.Value(`{}`)
 	}
 	emit(map[string]any{"type": "message_delta", "delta": map[string]any{
 		"stop_reason": root.Get("stop_reason").Value(), "stop_sequence": root.Get("stop_sequence").Value(),

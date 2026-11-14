@@ -2,7 +2,8 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -218,13 +219,13 @@ func TestClusterLatencyCapabilityNegotiationAndIsolatedFailure(t *testing.T) {
 				t.Fatalf("report error = %v, mode = %s", errReport, mode)
 			}
 			if mode == "malformed response" {
-				var syntaxError *json.SyntaxError
+				var syntaxError *jsontext.SyntacticError
 				if !errors.As(errReport, &syntaxError) {
 					t.Fatalf("report error = %v, want JSON syntax error", errReport)
 				}
 			}
 			if mode == "wrong response type" {
-				var typeError *json.UnmarshalTypeError
+				var typeError *json.SemanticError
 				if !errors.As(errReport, &typeError) {
 					t.Fatalf("report error = %v, want JSON type error", errReport)
 				}

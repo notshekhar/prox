@@ -2,7 +2,8 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type siwcBindHook struct {
@@ -27,7 +29,7 @@ func setupSIWCBinding(t *testing.T, name string) (*Manager, *Auth, string, *siwc
 	dir := t.TempDir()
 	path := filepath.Join(dir, name)
 	metadata := map[string]any{"type": "codex", "access_token": "outer", "refresh_token": "outer-refresh", "account_id": "account", "notes": "old", "disabled": false, "siwc": map[string]any{"access_token": "old-siwc", "refresh_token": "old-siwc-refresh", "client_id": "client"}}
-	data, errMarshal := json.Marshal(metadata)
+	data, errMarshal := json.Marshal(metadata, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}
@@ -66,7 +68,7 @@ func TestBindCodexSIWCPreservesLatestDiskAndRebinds(t *testing.T) {
 	latest["refresh_token"] = "latest-refresh"
 	latest["notes"] = "latest notes"
 	latest["disabled"] = true
-	latest["unknown"] = json.RawMessage(`9007199254740993`)
+	latest["unknown"] = jsontext.Value(`9007199254740993`)
 	if err := codex.WriteJSONFileAtomic(path, latest); err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +395,7 @@ func TestBindCodexSIWCRelativeAuthDir(t *testing.T) {
 			}
 			rel := filepath.Join("auths", "auth.json")
 			metadata := map[string]any{"type": "codex", "access_token": "outer", "refresh_token": "outer-refresh", "account_id": "account"}
-			data, errMarshal := json.Marshal(metadata)
+			data, errMarshal := json.Marshal(metadata, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
@@ -432,7 +434,7 @@ func TestBindCodexSIWCRelativeAuthDir(t *testing.T) {
 			t.Fatal(errMkdir)
 		}
 		metadata := map[string]any{"type": "codex", "access_token": "outer", "refresh_token": "outer-refresh", "account_id": "account"}
-		data, errMarshal := json.Marshal(metadata)
+		data, errMarshal := json.Marshal(metadata, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatal(errMarshal)
 		}
@@ -510,7 +512,7 @@ func TestBindCodexSIWCRejectsInPlaceRewriteDuringCommit(t *testing.T) {
 		"notes":         "in-place-upload",
 		"disabled":      false,
 	}
-	rewrittenBytes, errMarshal := json.Marshal(rewritten)
+	rewrittenBytes, errMarshal := json.Marshal(rewritten, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}

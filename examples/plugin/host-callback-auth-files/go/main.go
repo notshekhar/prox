@@ -57,7 +57,8 @@ import "C"
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"html"
 	"net/http"
@@ -76,9 +77,9 @@ const (
 )
 
 type envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *envelopeError  `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitempty"`
+	Error  *envelopeError `json:"error,omitzero"`
 }
 
 type envelopeError struct {
@@ -129,7 +130,7 @@ type authOpOptions struct {
 	Op        string
 	AuthIndex string
 	Name      string
-	JSON      json.RawMessage
+	JSON      jsontext.Value
 }
 
 func main() {}
@@ -264,7 +265,7 @@ func applyAuthOpOptions(dst *authOpOptions, src authOpOptions) {
 		dst.Name = strings.TrimSpace(src.Name)
 	}
 	if len(src.JSON) > 0 && string(src.JSON) != "null" {
-		dst.JSON = append(json.RawMessage(nil), src.JSON...)
+		dst.JSON = append(jsontext.Value(nil), src.JSON...)
 	}
 }
 
@@ -282,10 +283,10 @@ func applyQueryAuthOptions(opts *authOpOptions, query url.Values) error {
 		opts.Name = raw
 	}
 	if raw := strings.TrimSpace(query.Get("json")); raw != "" {
-		if !json.Valid([]byte(raw)) {
+		if !jsontext.Value(raw).IsValid() {
 			return fmt.Errorf("query json must be valid JSON")
 		}
-		opts.JSON = json.RawMessage(raw)
+		opts.JSON = jsontext.Value(raw)
 	}
 	return nil
 }
@@ -353,7 +354,7 @@ func callHostAuthGetRuntime(authIndex string) (pluginapi.HostAuthGetRuntimeRespo
 	return resp, nil
 }
 
-func callHostAuthSave(name string, rawJSON json.RawMessage) (pluginapi.HostAuthSaveResponse, error) {
+func callHostAuthSave(name string, rawJSON jsontext.Value) (pluginapi.HostAuthSaveResponse, error) {
 	result, errCall := callHost(pluginabi.MethodHostAuthSave, pluginapi.HostAuthSaveRequest{
 		Name: name,
 		JSON: rawJSON,
@@ -368,7 +369,7 @@ func callHostAuthSave(name string, rawJSON json.RawMessage) (pluginapi.HostAuthS
 	return resp, nil
 }
 
-func callHost(method string, payload any) (json.RawMessage, error) {
+func callHost(method string, payload any) (jsontext.Value, error) {
 	rawPayload, errMarshal := json.Marshal(payload)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("marshal host callback payload %s: %w", method, errMarshal)
@@ -411,7 +412,7 @@ func callHost(method string, payload any) (json.RawMessage, error) {
 	if callCode != 0 {
 		return nil, fmt.Errorf("host callback %s returned code=%d", method, int(callCode))
 	}
-	return append(json.RawMessage(nil), env.Result...), nil
+	return append(jsontext.Value(nil), env.Result...), nil
 }
 
 func htmlResponse(statusCode int, body []byte) managementResponse {
@@ -468,15 +469,15 @@ func writeDefinition(out *bytes.Buffer, key string, value string) {
 }
 
 func prettyBody(raw []byte) string {
-	var buf bytes.Buffer
-	if errIndent := json.Indent(&buf, raw, "", "  "); errIndent == nil {
-		return buf.String()
+	pretty := jsontext.Value(bytes.Clone(raw))
+	if errIndent := pretty.Indent(jsontext.WithIndent("  ")); errIndent == nil {
+		return pretty.String()
 	}
 	return string(raw)
 }
 
 func prettyJSON(v any) string {
-	raw, errMarshal := json.MarshalIndent(v, "", "  ")
+	raw, errMarshal := json.Marshal(v, json.Deterministic(true), jsontext.WithIndent("  "))
 	if errMarshal != nil {
 		return fmt.Sprintf("%v", v)
 	}

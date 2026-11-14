@@ -104,3 +104,45 @@ func TestGinRequestReachesTerminalWithoutQuery(t *testing.T) {
 		t.Fatalf("query string leaked: %q", out.String())
 	}
 }
+
+func captureTerminal(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	out := &bytes.Buffer{}
+	logger := log.StandardLogger()
+	previousHooks, previousOutput := logger.ReplaceHooks(make(log.LevelHooks)), logger.Out
+	t.Cleanup(func() {
+		logger.ReplaceHooks(previousHooks)
+		logger.SetOutput(previousOutput)
+	})
+	logger.SetOutput(&bytes.Buffer{})
+	logger.AddHook(&compactTerminal{options: CompactOptions{Out: out}})
+	return out
+}
+
+func TestTerminalNamesTheAccountThatServedARequest(t *testing.T) {
+	out := captureTerminal(t)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(GinLogrusLogger())
+	router.POST("/v1/messages", func(c *gin.Context) {
+		SetSelectedAccount(c, "claude-f38fbc47-someone@example.com.json")
+		c.Status(http.StatusOK)
+	})
+	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/v1/messages", nil))
+
+	if !strings.Contains(out.String(), "someone@example.com") {
+		t.Fatalf("terminal = %q", out.String())
+	}
+}
+
+func TestClaudeCodesLaunchProbeStaysOutOfTheLog(t *testing.T) {
+	out := captureTerminal(t)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(GinLogrusLogger())
+	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodHead, "/api/hello", nil))
+
+	if out.Len() != 0 {
+		t.Fatalf("terminal = %q", out.String())
+	}
+}

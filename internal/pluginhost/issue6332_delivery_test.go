@@ -2,7 +2,7 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +14,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
@@ -83,7 +84,7 @@ func TestIssue6332PluginNestedDelivery(t *testing.T) {
 			callbackID, closeCallback := host.openCallbackContextForPlugin(outer, "tool-loop-plugin")
 			defer closeCallback()
 			call := func(body string) (string, error) {
-				raw, _ := json.Marshal(rpcHostModelExecutionRequest{HostCallbackID: callbackID, HostModelExecutionRequest: pluginapi.HostModelExecutionRequest{EntryProtocol: "openai-response", ExitProtocol: "openai-response", Model: model, Stream: true, Body: []byte(body)}})
+				raw, _ := json.Marshal(rpcHostModelExecutionRequest{HostCallbackID: callbackID, HostModelExecutionRequest: pluginapi.HostModelExecutionRequest{EntryProtocol: "openai-response", ExitProtocol: "openai-response", Model: model, Stream: true, Body: []byte(body)}}, jsoncompat.Encode)
 				response, errCall := host.callFromPlugin(context.Background(), pluginabi.MethodHostModelExecuteStream, raw)
 				if errCall != nil {
 					return "", errCall

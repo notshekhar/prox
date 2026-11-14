@@ -15,14 +15,17 @@ export interface PolicyPanelProps {
   onChange: (next: RoutingSettings) => void;
 }
 
+// Three dots: even (round-robin), graded (weighted), first one filled (fill-first),
+// emptiest one filled (least-used).
+const STRATEGY_MARKS: Record<RoutingStrategy, number[]> = {
+  'round-robin': [1, 1, 1],
+  'weighted-round-robin': [1, 0.6, 0.3],
+  'fill-first': [1, 0.25, 0.25],
+  'least-used': [0.25, 0.25, 1],
+};
+
 function StrategyMark({ strategy }: { strategy: RoutingStrategy }) {
-  // Three dots: even (round-robin), graded (weighted), first one filled (fill-first).
-  const opacities =
-    strategy === 'round-robin'
-      ? [1, 1, 1]
-      : strategy === 'weighted-round-robin'
-        ? [1, 0.6, 0.3]
-        : [1, 0.25, 0.25];
+  const opacities = STRATEGY_MARKS[strategy];
   return (
     <svg width="18" height="10" viewBox="0 0 18 10" aria-hidden="true" focusable="false">
       {opacities.map((opacity, index) => (

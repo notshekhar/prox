@@ -14,6 +14,8 @@ type Paths struct {
 	Auth          string // account logins
 	ManagementKey string // left by older versions, removed once a master password is set
 	ClaudeDir     string // CLAUDE_CONFIG_DIR used by `prox claude`
+	ServiceEnv    string // the Linux service's password, readable only by this user
+	SystemdUnit   string
 	LaunchAgent   string
 	Log           string
 	Logs          string // full server logs, kept out of the terminal
@@ -37,6 +39,8 @@ func DefaultPaths() (Paths, error) {
 		Auth:          filepath.Join(home, "auth"),
 		ManagementKey: filepath.Join(home, "management.key"),
 		ClaudeDir:     filepath.Join(userHome, ".claude-hub"),
+		ServiceEnv:    filepath.Join(home, "service.env"),
+		SystemdUnit:   filepath.Join(userHome, ".config", "systemd", "user", systemdUnitName),
 		LaunchAgent:   filepath.Join(userHome, "Library", "LaunchAgents", serviceLabel+".plist"),
 		Log:           filepath.Join(home, "prox.log"),
 		Logs:          filepath.Join(home, "logs"),

@@ -2,12 +2,13 @@ package redisqueue
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -200,7 +201,7 @@ func (p *usageQueuePlugin) HandleUsage(ctx context.Context, record coreusage.Rec
 		ToolUsageDetails:      usageDetail.ToolUsageDetails.Clone(),
 		Iterations:            usageDetail.IterationSlice(),
 		CostDetails:           usageDetail.CostDetails.Clone(),
-	})
+	}, jsoncompat.Encode)
 	if err != nil {
 		return
 	}
@@ -226,8 +227,8 @@ type queuedUsageDetail struct {
 	SessionID             string                      `json:"session_id,omitempty"`
 	ParentSessionID       string                      `json:"parent_session_id,omitempty"`
 	NodeKind              string                      `json:"node_kind,omitempty"`
-	IsFork                bool                        `json:"is_fork,omitempty"`
-	IsCompaction          bool                        `json:"is_compaction,omitempty"`
+	IsFork                bool                        `json:"is_fork,omitzero"`
+	IsCompaction          bool                        `json:"is_compaction,omitzero"`
 	ReasoningEffort       string                      `json:"reasoning_effort"`
 	ServiceTier           string                      `json:"service_tier"`
 	EffectiveServiceTier  string                      `json:"effective_service_tier,omitempty"`
@@ -236,15 +237,15 @@ type queuedUsageDetail struct {
 	ResponseModel         string                      `json:"response_model,omitempty"`
 	Speed                 string                      `json:"speed,omitempty"`
 	InferenceGeo          string                      `json:"inference_geo,omitempty"`
-	CacheDetails          *coreusage.CacheDetails     `json:"cache_details,omitempty"`
-	WebSearchRequests     *int64                      `json:"web_search_requests,omitempty"`
-	ImageCount            *int64                      `json:"image_count,omitempty"`
-	RequestedImageDetails *coreusage.ImageDetails     `json:"requested_image_details,omitempty"`
-	ImageDetails          *coreusage.ImageDetails     `json:"image_details,omitempty"`
-	MediaCounts           *coreusage.MediaCounts      `json:"media_counts,omitempty"`
-	ToolUsageDetails      *coreusage.ToolUsageDetails `json:"tool_usage_details,omitempty"`
+	CacheDetails          *coreusage.CacheDetails     `json:"cache_details,omitzero"`
+	WebSearchRequests     *int64                      `json:"web_search_requests,omitzero"`
+	ImageCount            *int64                      `json:"image_count,omitzero"`
+	RequestedImageDetails *coreusage.ImageDetails     `json:"requested_image_details,omitzero"`
+	ImageDetails          *coreusage.ImageDetails     `json:"image_details,omitzero"`
+	MediaCounts           *coreusage.MediaCounts      `json:"media_counts,omitzero"`
+	ToolUsageDetails      *coreusage.ToolUsageDetails `json:"tool_usage_details,omitzero"`
 	Iterations            []coreusage.IterationUsage  `json:"iterations,omitempty"`
-	CostDetails           *coreusage.CostDetails      `json:"cost_details,omitempty"`
+	CostDetails           *coreusage.CostDetails      `json:"cost_details,omitzero"`
 }
 
 type requestDetail struct {
@@ -274,23 +275,23 @@ type tokenStats struct {
 	CacheReadTokens          int64  `json:"cache_read_tokens"`
 	CacheReadTokensPresent   bool   `json:"cache_read_tokens_present"`
 	CacheCreationTokens      int64  `json:"cache_creation_tokens"`
-	CacheCreation5mTokens    *int64 `json:"cache_creation_5m_tokens,omitempty"`
-	CacheCreation30mTokens   *int64 `json:"cache_creation_30m_tokens,omitempty"`
-	CacheCreation1hTokens    *int64 `json:"cache_creation_1h_tokens,omitempty"`
-	CacheCreation12hTokens   *int64 `json:"cache_creation_12h_tokens,omitempty"`
-	TextInputTokens          *int64 `json:"text_input_tokens,omitempty"`
-	ImageInputTokens         *int64 `json:"image_input_tokens,omitempty"`
-	AudioInputTokens         *int64 `json:"audio_input_tokens,omitempty"`
-	VideoInputTokens         *int64 `json:"video_input_tokens,omitempty"`
-	FileInputTokens          *int64 `json:"file_input_tokens,omitempty"`
-	CachedTextTokens         *int64 `json:"cached_text_tokens,omitempty"`
-	CachedImageTokens        *int64 `json:"cached_image_tokens,omitempty"`
-	CachedAudioTokens        *int64 `json:"cached_audio_tokens,omitempty"`
-	TextOutputTokens         *int64 `json:"text_output_tokens,omitempty"`
-	ImageOutputTokens        *int64 `json:"image_output_tokens,omitempty"`
-	AudioOutputTokens        *int64 `json:"audio_output_tokens,omitempty"`
-	AcceptedPredictionTokens *int64 `json:"accepted_prediction_tokens,omitempty"`
-	RejectedPredictionTokens *int64 `json:"rejected_prediction_tokens,omitempty"`
+	CacheCreation5mTokens    *int64 `json:"cache_creation_5m_tokens,omitzero"`
+	CacheCreation30mTokens   *int64 `json:"cache_creation_30m_tokens,omitzero"`
+	CacheCreation1hTokens    *int64 `json:"cache_creation_1h_tokens,omitzero"`
+	CacheCreation12hTokens   *int64 `json:"cache_creation_12h_tokens,omitzero"`
+	TextInputTokens          *int64 `json:"text_input_tokens,omitzero"`
+	ImageInputTokens         *int64 `json:"image_input_tokens,omitzero"`
+	AudioInputTokens         *int64 `json:"audio_input_tokens,omitzero"`
+	VideoInputTokens         *int64 `json:"video_input_tokens,omitzero"`
+	FileInputTokens          *int64 `json:"file_input_tokens,omitzero"`
+	CachedTextTokens         *int64 `json:"cached_text_tokens,omitzero"`
+	CachedImageTokens        *int64 `json:"cached_image_tokens,omitzero"`
+	CachedAudioTokens        *int64 `json:"cached_audio_tokens,omitzero"`
+	TextOutputTokens         *int64 `json:"text_output_tokens,omitzero"`
+	ImageOutputTokens        *int64 `json:"image_output_tokens,omitzero"`
+	AudioOutputTokens        *int64 `json:"audio_output_tokens,omitzero"`
+	AcceptedPredictionTokens *int64 `json:"accepted_prediction_tokens,omitzero"`
+	RejectedPredictionTokens *int64 `json:"rejected_prediction_tokens,omitzero"`
 	TotalTokens              int64  `json:"total_tokens"`
 }
 

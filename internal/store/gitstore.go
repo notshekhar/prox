@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -22,6 +22,7 @@ import (
 	"github.com/go-git/go-git/v6/plumbing/transport"
 	"github.com/go-git/go-git/v6/plumbing/transport/http"
 	"github.com/go-git/go-git/v6/storage/filesystem/dotgit"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
 )
@@ -481,7 +482,7 @@ func (s *GitTokenStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (stri
 			}
 		case auth.Metadata != nil:
 			auth.Metadata["disabled"] = auth.Disabled
-			raw, errMarshal := json.Marshal(auth.Metadata)
+			raw, errMarshal := json.Marshal(auth.Metadata, jsoncompat.Encode)
 			if errMarshal != nil {
 				return "", fmt.Errorf("auth filestore: marshal metadata failed: %w", errMarshal)
 			}
@@ -725,7 +726,7 @@ func (s *GitTokenStore) readAuthFile(path, baseDir string) (*cliproxyauth.Auth, 
 		return nil, nil
 	}
 	metadata := make(map[string]any)
-	if err = json.Unmarshal(data, &metadata); err != nil {
+	if err = json.Unmarshal(data, &metadata, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("unmarshal auth json: %w", err)
 	}
 	cliproxyauth.NormalizeCredentialMetadata(metadata)
@@ -2040,10 +2041,10 @@ func ensureEmptyFile(path string) error {
 func jsonEqual(a, b []byte) bool {
 	var objA any
 	var objB any
-	if err := json.Unmarshal(a, &objA); err != nil {
+	if err := json.Unmarshal(a, &objA, jsoncompat.Decode); err != nil {
 		return false
 	}
-	if err := json.Unmarshal(b, &objB); err != nil {
+	if err := json.Unmarshal(b, &objB, jsoncompat.Decode); err != nil {
 		return false
 	}
 	return deepEqualJSON(objA, objB)

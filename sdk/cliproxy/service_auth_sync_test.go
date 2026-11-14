@@ -3,7 +3,7 @@ package cliproxy
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"mime/multipart"
 	"net/http"
@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	internalregistry "github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher"
@@ -1173,7 +1174,7 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 	var resp struct {
 		Models []map[string]any `json:"models"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) == 0 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) == 0 {
 		t.Fatalf("expected initial models, got %s", rec.Body.String())
 	}
 
@@ -1196,7 +1197,7 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 		t.Fatalf("GetAuthFileModels after disable status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	resp.Models = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) != 0 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) != 0 {
 		t.Fatalf("expected 0 models after disable, got: %s", rec.Body.String())
 	}
 
@@ -1219,7 +1220,7 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 		t.Fatalf("GetAuthFileModels after re-enable status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 	resp.Models = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) == 0 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) == 0 {
 		t.Fatalf("expected models to be restored after re-enable, got: %s", rec.Body.String())
 	}
 }
@@ -1676,7 +1677,7 @@ func TestEndToEndAuthFileReplacement_RestoresModelsInV1ModelsWithoutRestart(t *t
 	var modelsResp struct {
 		Data []map[string]any `json:"data"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode /v1/models response: %v", err)
 	}
 	hasModel := func(modelID string) bool {
@@ -1716,7 +1717,7 @@ func TestEndToEndAuthFileReplacement_RestoresModelsInV1ModelsWithoutRestart(t *t
 	req = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	handler.ServeHTTP(rec, req)
 	modelsResp.Data = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode /v1/models response: %v", err)
 	}
 	for _, m := range teamModels {
@@ -1754,7 +1755,7 @@ func TestEndToEndAuthFileReplacement_RestoresModelsInV1ModelsWithoutRestart(t *t
 	req = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	handler.ServeHTTP(rec, req)
 	modelsResp.Data = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode /v1/models response: %v", err)
 	}
 	for _, m := range teamModels {
@@ -1868,7 +1869,7 @@ func TestEndToEndAuthFilePatch_RestoresModelsInV1ModelsWithoutRestart(t *testing
 	var modelsResp struct {
 		Data []map[string]any `json:"data"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode /v1/models response: %v", err)
 	}
 	hasModel := func(modelID string) bool {
@@ -1901,7 +1902,7 @@ func TestEndToEndAuthFilePatch_RestoresModelsInV1ModelsWithoutRestart(t *testing
 	req = httptest.NewRequest(http.MethodGet, "/v1/models", nil)
 	handler.ServeHTTP(rec, req)
 	modelsResp.Data = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &modelsResp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode /v1/models response: %v", err)
 	}
 	for _, m := range teamModels {

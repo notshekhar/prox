@@ -1,11 +1,9 @@
 package toolschema
 
 import (
-	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -14,6 +12,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -485,28 +484,20 @@ func stripIncompatiblePatternsFromJSON(rawStr string) (string, bool) {
 		return rawStr, false
 	}
 	var root any
-	dec := json.NewDecoder(strings.NewReader(rawStr))
-	dec.UseNumber()
-	if errDecode := dec.Decode(&root); errDecode != nil || root == nil {
-		return rawStr, false
-	}
-	var dummy any
-	if errEOF := dec.Decode(&dummy); errEOF != io.EOF {
+	if errDecode := json.Unmarshal([]byte(rawStr), &root, jsoncompat.DecodeUseNumber); errDecode != nil || root == nil {
 		return rawStr, false
 	}
 	if !stripIncompatiblePatterns(root) {
 		return rawStr, false
 	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if errEncode := enc.Encode(root); errEncode != nil {
+	out, errEncode := json.Marshal(root, jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return rawStr, false
 	}
-	return strings.TrimSpace(buf.String()), true
+	return string(out), true
 }
 
-func isNumericBoundOutOfInt64(number json.Number) bool {
+func isNumericBoundOutOfInt64(number jsoncompat.Number) bool {
 	raw := strings.TrimSpace(number.String())
 	if raw == "" {
 		return false
@@ -601,7 +592,7 @@ func stripIncompatiblePatterns(v any) bool {
 			changed = true
 		}
 		for _, boundKey := range codexNumericBoundKeywords {
-			if boundVal, ok := schema[boundKey].(json.Number); ok && isNumericBoundOutOfInt64(boundVal) {
+			if boundVal, ok := schema[boundKey].(jsoncompat.Number); ok && isNumericBoundOutOfInt64(boundVal) {
 				delete(schema, boundKey)
 				changed = true
 			}

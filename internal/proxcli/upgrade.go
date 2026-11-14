@@ -17,13 +17,19 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/buildinfo"
 )
 
-const releaseLookupTimeout = 10 * time.Second
+const (
+	// upgradeLookupTimeout is generous because an upgrade is about to download anyway.
+	upgradeLookupTimeout = 10 * time.Second
+	// installerFallbackRef is used when the latest release can't be looked up.
+	installerFallbackRef = "main"
+)
 
 // Variables so tests can point them at a fake server: the real installer
-// rewrites the system's prox link.
+// rewrites the system's prox link. installerURLTemplate takes a git ref, so an
+// upgrade runs the installer that shipped with the release, not whatever is on main.
 var (
-	latestReleaseURL = "https://github.com/notshekhar/prox/releases/latest"
-	installerURL     = "https://raw.githubusercontent.com/notshekhar/prox/main/install.sh"
+	latestReleaseURL     = "https://github.com/notshekhar/prox/releases/latest"
+	installerURLTemplate = "https://raw.githubusercontent.com/notshekhar/prox/%s/install.sh"
 )
 
 var versionPattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)(.*)$`)
@@ -32,12 +38,12 @@ var versionPattern = regexp.MustCompile(`^v(\d+)\.(\d+)\.(\d+)(.*)$`)
 // runs it, because the installer does its own lookup and reports its own errors.
 func upgrade(cfg settings, args []string, out, errOut io.Writer) int {
 	force := slices.Contains(args, "--force") || slices.Contains(args, "-f")
-	latest := fetchLatestTag()
+	latest := fetchLatestTag(upgradeLookupTimeout)
 	if !force && latest != "" && !isNewerRelease(latest, buildinfo.Version) {
 		fmt.Fprintf(out, "prox is up to date (%s)\n", buildinfo.Version)
 		return 0
 	}
-	if err := runInstaller(force, out, errOut); err != nil {
+	if err := runInstaller(latest, force, out, errOut); err != nil {
 		fmt.Fprintf(errOut, "Upgrade failed: %v\n", err)
 		return 1
 	}
@@ -49,8 +55,8 @@ func upgrade(cfg settings, args []string, out, errOut io.Writer) int {
 
 // fetchLatestTag reads the tag from the releases/latest redirect, which isn't
 // rate limited the way GitHub's anonymous API is.
-func fetchLatestTag() string {
-	ctx, cancel := context.WithTimeout(context.Background(), releaseLookupTimeout)
+func fetchLatestTag(timeout time.Duration) string {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, latestReleaseURL, nil)
 	if err != nil {
@@ -99,10 +105,16 @@ func parseVersion(version string) (parts []int, suffix string, ok bool) {
 }
 
 // runInstaller leaves the shell rc alone: a first install already set up PATH.
-func runInstaller(force bool, out, errOut io.Writer) error {
-	cmd := exec.Command("bash", "-c", `set -o pipefail; curl -fsSL "$0" | bash`, installerURL)
+// A known tag is also pinned, so the installer can't pick a different release
+// than the one this lookup found.
+func runInstaller(tag string, force bool, out, errOut io.Writer) error {
+	ref := cmp.Or(tag, installerFallbackRef)
+	cmd := exec.Command("bash", "-c", `set -o pipefail; curl -fsSL "$0" | bash`, fmt.Sprintf(installerURLTemplate, ref))
 	cmd.Stdout, cmd.Stderr = out, errOut
 	cmd.Env = append(os.Environ(), "PROX_NO_MODIFY_PATH=1")
+	if tag != "" {
+		cmd.Env = append(cmd.Env, "PROX_VERSION="+tag)
+	}
 	if force {
 		cmd.Env = append(cmd.Env, "PROX_FORCE=1")
 	}

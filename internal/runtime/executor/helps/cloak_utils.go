@@ -3,10 +3,11 @@ package helps
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"regexp"
 
 	"github.com/google/uuid"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 var claudeMetadataDeviceIDPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
@@ -33,14 +34,14 @@ func generateFakeUserIDWithSessionID(sessionID string) string {
 		DeviceID:    hex.EncodeToString(hexBytes),
 		AccountUUID: "",
 		SessionID:   sessionID,
-	})
+	}, jsoncompat.Encode)
 	return string(value)
 }
 
 // isValidUserID checks the Claude Code 2.1.220 metadata.user_id shape.
 func isValidUserID(userID string) bool {
 	var value claudeMetadataUserID
-	if errUnmarshal := json.Unmarshal([]byte(userID), &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(userID), &value, jsoncompat.Decode); errUnmarshal != nil {
 		return false
 	}
 	if !claudeMetadataDeviceIDPattern.MatchString(value.DeviceID) {

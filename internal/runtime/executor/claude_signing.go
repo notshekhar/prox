@@ -2,7 +2,7 @@ package executor
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"net/url"
 	"sort"
@@ -11,6 +11,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	xxHash64 "github.com/pierrec/xxHash/xxHash64"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -388,7 +389,7 @@ func isLowerHex(value []byte) bool {
 // normalizeClaudeCCHInput builds the hash view without reserializing JSON.
 // Model string values are emptied, while dispatch-only members are omitted.
 func normalizeClaudeCCHInput(body []byte) ([]byte, error) {
-	if !json.Valid(body) {
+	if !jsontext.Value(body).IsValid(jsoncompat.Decode) {
 		return nil, fmt.Errorf("invalid JSON body")
 	}
 

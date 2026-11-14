@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -27,13 +27,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
 )
 
 func TestAuthDispatchRequestIncludesCount(t *testing.T) {
 	req := newAuthDispatchRequest("gpt-5.4", "session-1", "", http.Header{"Authorization": {"Bearer test"}}, 2, "", nil, "")
 
-	raw, err := json.Marshal(&req)
+	raw, err := json.Marshal(&req, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("marshal auth dispatch request: %v", err)
 	}
@@ -66,7 +67,7 @@ func TestAuthDispatchRequestDefaultsCountToOne(t *testing.T) {
 
 func TestAuthDispatchRequestIncludesCredentialPolicy(t *testing.T) {
 	req := newAuthDispatchRequest("gpt-5.4", "", "", nil, 1, "codex_alpha_search_v1", nil, "")
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -85,7 +86,7 @@ func TestAuthDispatchRequestIncludesExcludedAuthIDs(t *testing.T) {
 	if req.Count != 1 {
 		t.Fatalf("new retry-contract count = %d, want 1 for legacy Home compatibility", req.Count)
 	}
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -105,7 +106,7 @@ func TestAuthDispatchRequestIncludesEmptyExcludedAuthIDs(t *testing.T) {
 	if req.Count != 1 {
 		t.Fatalf("new retry-contract count = %d, want 1 for legacy Home compatibility", req.Count)
 	}
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -123,7 +124,7 @@ func TestAuthDispatchRequestIncludesPinnedAuthID(t *testing.T) {
 	excludedAuthIDs := []string{}
 	req := newAuthDispatchRequest("gpt-5.4", "", "", nil, 2, "", &excludedAuthIDs, " auth-pinned ")
 
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -139,7 +140,7 @@ func TestAuthDispatchRequestIncludesPinnedAuthID(t *testing.T) {
 func TestAuthDispatchRequestDistinguishesLegacyAndRetryRoundProtocol(t *testing.T) {
 	excludedAuthIDs := []string{"auth-a"}
 	legacy := newAuthDispatchRequest("gpt-5.4", "", "", nil, 3, "", &excludedAuthIDs, "")
-	legacyRaw, errMarshal := json.Marshal(&legacy)
+	legacyRaw, errMarshal := json.Marshal(&legacy, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy auth dispatch request: %v", errMarshal)
 	}
@@ -152,7 +153,7 @@ func TestAuthDispatchRequestDistinguishesLegacyAndRetryRoundProtocol(t *testing.
 	}
 
 	initial := newAuthDispatchRequestWithRetryRound("gpt-5.4", "", "", nil, 3, "", 0, &excludedAuthIDs, "")
-	initialRaw, errMarshal := json.Marshal(&initial)
+	initialRaw, errMarshal := json.Marshal(&initial, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal initial auth dispatch request: %v", errMarshal)
 	}
@@ -168,7 +169,7 @@ func TestAuthDispatchRequestDistinguishesLegacyAndRetryRoundProtocol(t *testing.
 	}
 
 	additional := newAuthDispatchRequestWithRetryRound("gpt-5.4", "", "", nil, 3, "", 2, &excludedAuthIDs, "")
-	additionalRaw, errMarshal := json.Marshal(&additional)
+	additionalRaw, errMarshal := json.Marshal(&additional, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal additional auth dispatch request: %v", errMarshal)
 	}
@@ -193,7 +194,7 @@ func TestAuthDispatchRequestIncludesParentSessionID(t *testing.T) {
 		t.Fatalf("parent_session_id = %q, want slot:pi-main", req.ParentSessionID)
 	}
 
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -216,7 +217,7 @@ func TestAuthDispatchRequestIncludesNodeKind(t *testing.T) {
 		t.Fatalf("node_kind = %q, want compaction", req.NodeKind)
 	}
 
-	raw, errMarshal := json.Marshal(&req)
+	raw, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal auth dispatch request: %v", errMarshal)
 	}
@@ -893,7 +894,7 @@ func TestGetPluginSyncUsesDedicatedCommandAndDecodesResponse(t *testing.T) {
 			}},
 		}},
 	}
-	payload, errMarshal := json.Marshal(response)
+	payload, errMarshal := json.Marshal(response, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
@@ -925,7 +926,7 @@ func TestGetPluginSyncUsesDedicatedCommandAndDecodesResponse(t *testing.T) {
 		t.Fatalf("plugin sync command = %#v, want GET plugin-sync <request>", got)
 	}
 	var gotRequest pluginstore.PluginSyncRequest
-	if errUnmarshal := json.Unmarshal([]byte(got[2]), &gotRequest); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(got[2]), &gotRequest, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode request command: %v", errUnmarshal)
 	}
 	if gotRequest.InstalledVersions["sample"] != "0.9.0" {
@@ -939,7 +940,7 @@ func TestGetPluginSyncExceedsBaseTimeoutAndKeepsBaseClientUsable(t *testing.T) {
 		ExpiresAt:     time.Now().UTC().Add(time.Minute),
 		Items:         []pluginstore.PluginSyncItem{},
 	}
-	payload, errMarshal := json.Marshal(response)
+	payload, errMarshal := json.Marshal(response, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
@@ -1548,7 +1549,7 @@ func TestModelsRequestSerializationCarriesCredentials(t *testing.T) {
 		Query:   queryToLowerMap(url.Values{"key": {"gemini-key"}}),
 	}
 
-	raw, err := json.Marshal(&req)
+	raw, err := json.Marshal(&req, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("marshal models request: %v", err)
 	}
@@ -1579,7 +1580,7 @@ func TestModelsRequestSerializationCarriesCredentials(t *testing.T) {
 func TestModelsRequestOmitsEmptyCredentials(t *testing.T) {
 	req := modelsRequest{Type: "models"}
 
-	raw, err := json.Marshal(&req)
+	raw, err := json.Marshal(&req, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("marshal models request: %v", err)
 	}

@@ -64,7 +64,7 @@ type DiscoveredService struct {
 	IPv4         []net.IP `json:"ipv4"`
 	IPv6         []net.IP `json:"ipv6"`
 	// InterfaceIndex separates identical service names observed on different links.
-	InterfaceIndex int `json:"interface_index,omitempty"`
+	InterfaceIndex int `json:"interface_index,omitzero"`
 	// IPv6Zones maps link-local address strings to their receiving interface names.
 	IPv6Zones map[string]string `json:"ipv6_zones,omitempty"`
 	// Path is the gateway mount path from the TXT path key; empty for legacy advertisers.

@@ -1,11 +1,13 @@
 package interactions
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -395,7 +397,7 @@ func copyInteractionsToolsToCodexDoc(doc *ojson.Doc, root ojson.Result, hasToolC
 		_ = doc.SetRawBytes("tools", []byte(tools.Raw))
 		return
 	}
-	raw, errMarshal := json.Marshal(normalized)
+	raw, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 	if errMarshal != nil {
 		_ = doc.SetRawBytes("tools", []byte(tools.Raw))
 		return
@@ -694,11 +696,11 @@ func codexToolFromDeclaration(declaration ojson.Result) map[string]any {
 	return tool
 }
 
-func cleanedCodexToolParameters(params ojson.Result) json.RawMessage {
+func cleanedCodexToolParameters(params ojson.Result) jsontext.Value {
 	hasSchema := params.Get("$schema").Exists()
 	needsAdditionalProps := params.Get("additionalProperties").Type != ojson.False
 	if !hasSchema && !needsAdditionalProps {
-		return json.RawMessage(params.Raw)
+		return jsontext.Value(params.Raw)
 	}
 	doc := ojson.NewDocString(params.Raw)
 	if hasSchema {
@@ -707,7 +709,7 @@ func cleanedCodexToolParameters(params ojson.Result) json.RawMessage {
 	if needsAdditionalProps {
 		_ = doc.Set("additionalProperties", false)
 	}
-	return json.RawMessage(doc.Bytes())
+	return jsontext.Value(doc.Bytes())
 }
 
 func interactionsCodexContentText(content ojson.Result) string {

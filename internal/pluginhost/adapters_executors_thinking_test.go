@@ -2,12 +2,13 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -38,7 +39,7 @@ func (r *recordingThinkingApplier) ApplyThinking(_ context.Context, req pluginap
 	if req.Config.Budget != 0 {
 		payload["thinking_budget"] = req.Config.Budget
 	}
-	out, errMarshal := json.Marshal(payload)
+	out, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return pluginapi.PayloadResponse{}, errMarshal
 	}

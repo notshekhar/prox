@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -733,7 +734,7 @@ func (d *handlerAccountedHomeDispatcher) RPopAuth(_ context.Context, model strin
 		"model":       model,
 		"auth_index":  "handler-cred",
 		"auth":        map[string]any{"id": "handler-cred", "provider": "bootstrap-test", "status": coreauth.StatusActive},
-	})
+	}, jsoncompat.Encode)
 }
 func (*handlerAccountedHomeDispatcher) AbortAmbiguousDispatch() {}
 

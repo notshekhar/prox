@@ -16,22 +16,22 @@ type Content struct {
 // Part represents a distinct piece of content within a message.
 // A part can be text, inline data (like an image), a function call, or a function response.
 type Part struct {
-	Thought bool `json:"thought,omitempty"`
+	Thought bool `json:"thought,omitzero"`
 
 	// Text contains plain text content.
 	Text string `json:"text,omitempty"`
 
 	// InlineData contains base64-encoded data with its MIME type (e.g., images).
-	InlineData *InlineData `json:"inlineData,omitempty"`
+	InlineData *InlineData `json:"inlineData,omitzero"`
 
 	// ThoughtSignature is a provider-required signature that accompanies certain parts.
 	ThoughtSignature string `json:"thoughtSignature,omitempty"`
 
 	// FunctionCall represents a tool call requested by the model.
-	FunctionCall *FunctionCall `json:"functionCall,omitempty"`
+	FunctionCall *FunctionCall `json:"functionCall,omitzero"`
 
 	// FunctionResponse represents the result of a tool execution.
-	FunctionResponse *FunctionResponse `json:"functionResponse,omitempty"`
+	FunctionResponse *FunctionResponse `json:"functionResponse,omitzero"`
 }
 
 // InlineData represents base64-encoded data with its MIME type.
@@ -74,7 +74,7 @@ type FunctionResponse struct {
 // This structure defines all the parameters needed for generating content from an AI model.
 type GenerateContentRequest struct {
 	// SystemInstruction provides system-level instructions that guide the model's behavior.
-	SystemInstruction *Content `json:"systemInstruction,omitempty"`
+	SystemInstruction *Content `json:"systemInstruction,omitzero"`
 
 	// Contents is the conversation history between the user and the model.
 	Contents []Content `json:"contents"`
@@ -90,19 +90,19 @@ type GenerateContentRequest struct {
 // These parameters affect the creativity, randomness, and reasoning of the model's responses.
 type GenerationConfig struct {
 	// ThinkingConfig specifies configuration for the model's "thinking" process.
-	ThinkingConfig GenerationConfigThinkingConfig `json:"thinkingConfig,omitempty"`
+	ThinkingConfig GenerationConfigThinkingConfig `json:"thinkingConfig"`
 
 	// Temperature controls the randomness of the model's responses.
 	// Values closer to 0 make responses more deterministic, while values closer to 1 increase randomness.
-	Temperature float64 `json:"temperature,omitempty"`
+	Temperature float64 `json:"temperature,omitzero"`
 
 	// TopP controls nucleus sampling, which affects the diversity of responses.
 	// It limits the model to consider only the top P% of probability mass.
-	TopP float64 `json:"topP,omitempty"`
+	TopP float64 `json:"topP,omitzero"`
 
 	// TopK limits the model to consider only the top K most likely tokens.
 	// This can help control the quality and diversity of generated text.
-	TopK float64 `json:"topK,omitempty"`
+	TopK float64 `json:"topK,omitzero"`
 }
 
 // GenerationConfigThinkingConfig specifies configuration for the model's "thinking" process.
@@ -110,7 +110,7 @@ type GenerationConfig struct {
 type GenerationConfigThinkingConfig struct {
 	// IncludeThoughts determines whether the model should output its reasoning process.
 	// When enabled, the model will include its step-by-step thinking in the response.
-	IncludeThoughts bool `json:"include_thoughts,omitempty"`
+	IncludeThoughts bool `json:"include_thoughts,omitzero"`
 }
 
 // ToolDeclaration defines the structure for declaring tools (like functions)

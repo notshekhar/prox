@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -126,7 +127,7 @@ func setupSIWCFlow(t *testing.T, blocked bool) *siwcFixture {
 
 func siwcRequest(t *testing.T, router http.Handler, method, path string, body any) *httptest.ResponseRecorder {
 	t.Helper()
-	data, errJSON := json.Marshal(body)
+	data, errJSON := json.Marshal(body, jsoncompat.Encode)
 	if errJSON != nil {
 		t.Fatal(errJSON)
 	}
@@ -147,7 +148,7 @@ func (f *siwcFixture) start(t *testing.T) (string, *siwcBindSession) {
 		URL, State, Flow string
 		ExpiresIn        int `json:"expires_in"`
 	}
-	if errJSON := json.Unmarshal(w.Body.Bytes(), &response); errJSON != nil {
+	if errJSON := json.Unmarshal(w.Body.Bytes(), &response, jsoncompat.Decode); errJSON != nil {
 		t.Fatal(errJSON)
 	}
 	if response.Flow != "siwc_bind" || response.ExpiresIn != 300 {
@@ -223,7 +224,7 @@ func TestSIWCBindCallbackFormsAndSummary(t *testing.T) {
 			if entry["siwc_bound"] != true || entry["use_siwc"] != true || entry["siwc_status"] != "valid" || entry["siwc_bind_supported"] != true || entry["siwc_expires_at"] != "2035-01-01T00:00:00Z" {
 				t.Fatalf("missing summary: %#v", entry)
 			}
-			encoded, _ := json.Marshal(entry)
+			encoded, _ := json.Marshal(entry, jsoncompat.Encode)
 			if strings.Contains(string(encoded), "new-siwc") || strings.Contains(string(encoded), "oaiapp_issued") {
 				t.Fatal("credential secrets exposed in summary")
 			}
@@ -593,7 +594,7 @@ func TestSIWCBindLegacyUploadDuringCommitWindow(t *testing.T) {
 		"account_id":    "account",
 		"note":          "uploaded-during-commit",
 	}
-	rawBody, errMarshal := json.Marshal(uploadedBody)
+	rawBody, errMarshal := json.Marshal(uploadedBody, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}
@@ -729,7 +730,7 @@ func TestWriteAuthFileWaitsForCodexFileLock(t *testing.T) {
 				}
 			}
 
-			rawBody, errMarshal := json.Marshal(tc.uploadedBody)
+			rawBody, errMarshal := json.Marshal(tc.uploadedBody, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}

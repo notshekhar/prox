@@ -1,13 +1,15 @@
 package util
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"reflect"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestCleanJSONSchemaForAntigravity_ConstToEnum(t *testing.T) {
@@ -652,8 +654,8 @@ func compareJSON(t *testing.T, expectedJSON, actualJSON string) {
 	}
 
 	if !reflect.DeepEqual(expMap, actMap) {
-		expBytes, _ := json.MarshalIndent(expMap, "", "  ")
-		actBytes, _ := json.MarshalIndent(actMap, "", "  ")
+		expBytes, _ := json.Marshal(expMap, jsoncompat.Encode, jsontext.WithIndent("  "))
+		actBytes, _ := json.Marshal(actMap, jsoncompat.Encode, jsontext.WithIndent("  "))
 		t.Errorf("JSON mismatch:\nExpected:\n%s\n\nActual:\n%s", string(expBytes), string(actBytes))
 	}
 }

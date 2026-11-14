@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -23,6 +23,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/redis/go-redis/v9/maintnotifications"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/kvstore"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
 	log "github.com/sirupsen/logrus"
@@ -855,7 +856,7 @@ func (c *Client) refreshClusterNodes(ctx context.Context) (bool, error) {
 
 func parseClusterNodesPayload(raw []byte) ([]clusterNode, error) {
 	var envelope clusterNodesEnvelope
-	if errUnmarshal := json.Unmarshal(raw, &envelope); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	return normalizeClusterNodes(envelope.Nodes), nil
@@ -1020,7 +1021,7 @@ func (c *Client) GetModels(ctx context.Context, headers http.Header, query url.V
 		Headers: headersToLowerMap(headers),
 		Query:   queryToLowerMap(query),
 	}
-	keyBytes, err := json.Marshal(&req)
+	keyBytes, err := json.Marshal(&req, jsoncompat.Encode)
 	if err != nil {
 		return nil, err
 	}
@@ -1386,7 +1387,7 @@ func (c *Client) rPopAuth(ctx context.Context, requestedModel string, sessionID 
 	} else {
 		req = newAuthDispatchRequestWithRetryRound(requestedModel, sessionID, parentSessionID, headers, count, credentialPolicy, *retryRound, excludedAuthIDs, pinnedAuthID)
 	}
-	keyBytes, errMarshal := json.Marshal(&req)
+	keyBytes, errMarshal := json.Marshal(&req, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, errMarshal
 	}
@@ -1450,7 +1451,7 @@ func (c *Client) GetRefreshAuth(ctx context.Context, authIndex string, accessTok
 		AuthIndex: authIndex,
 	}
 	req.ObservedAccessTokenSHA256 = strings.TrimSpace(accessTokenSHA256)
-	keyBytes, err := json.Marshal(&req)
+	keyBytes, err := json.Marshal(&req, jsoncompat.Encode)
 	if err != nil {
 		return nil, err
 	}
@@ -1497,7 +1498,7 @@ func (c *Client) PushConcurrencyRelease(ctx context.Context, frame ConcurrencyRe
 	if errClient != nil {
 		return errClient
 	}
-	payload, errMarshal := json.Marshal(frame)
+	payload, errMarshal := json.Marshal(frame, jsoncompat.Encode)
 	if errMarshal != nil {
 		return fmt.Errorf("marshal concurrency release frame: %w", errMarshal)
 	}
@@ -1613,7 +1614,7 @@ func (c *Client) GetPluginTasks(ctx context.Context) ([]PluginTask, error) {
 		return nil, nil
 	}
 	var tasks []PluginTask
-	if errUnmarshal := json.Unmarshal(raw, &tasks); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &tasks, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	return tasks, nil
@@ -1624,7 +1625,7 @@ func (c *Client) GetPluginSync(ctx context.Context, request pluginstore.PluginSy
 	if errOptions != nil {
 		return pluginstore.PluginSyncResponse{}, errOptions
 	}
-	payload, errMarshal := json.Marshal(request)
+	payload, errMarshal := json.Marshal(request, jsoncompat.Encode)
 	if errMarshal != nil {
 		return pluginstore.PluginSyncResponse{}, fmt.Errorf("marshal plugin sync request: %w", errMarshal)
 	}
@@ -1652,7 +1653,7 @@ func (c *Client) GetPluginSync(ctx context.Context, request pluginstore.PluginSy
 		return pluginstore.PluginSyncResponse{}, fmt.Errorf("%w: %s", ErrPluginSyncUnsupported, message)
 	}
 	var response pluginstore.PluginSyncResponse
-	if errUnmarshal := json.Unmarshal(raw, &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &response, jsoncompat.Decode); errUnmarshal != nil {
 		response.Clear()
 		return pluginstore.PluginSyncResponse{}, fmt.Errorf("decode plugin sync response: %w", errUnmarshal)
 	}
@@ -1816,7 +1817,7 @@ func pluginSyncUnsupportedResponse(raw []byte) (string, bool) {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(raw, &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &response, jsoncompat.Decode); errUnmarshal != nil {
 		return "", false
 	}
 	if pluginSyncUnsupportedCode(response.Error.Code) || pluginSyncUnsupportedCode(response.Error.Type) {

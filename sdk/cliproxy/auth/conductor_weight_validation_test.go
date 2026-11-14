@@ -2,8 +2,9 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type weightValidationStore struct {
@@ -27,8 +28,8 @@ func (s *weightValidationStore) Delete(context.Context, string) error {
 func TestManagerLoadSkipsInvalidExplicitWeights(t *testing.T) {
 	store := &weightValidationStore{auths: []*Auth{
 		{ID: "omitted", Provider: "test"},
-		{ID: "zero", Provider: "test", Metadata: map[string]any{AttributeWeight: json.Number("0")}},
-		{ID: "fraction", Provider: "test", Metadata: map[string]any{AttributeWeight: json.Number("1.5")}},
+		{ID: "zero", Provider: "test", Metadata: map[string]any{AttributeWeight: jsoncompat.Number("0")}},
+		{ID: "fraction", Provider: "test", Metadata: map[string]any{AttributeWeight: jsoncompat.Number("1.5")}},
 		{ID: "overflow", Provider: "test", Attributes: map[string]string{AttributeWeight: "9223372036854775808"}},
 	}}
 	manager := NewManager(store, nil, nil)

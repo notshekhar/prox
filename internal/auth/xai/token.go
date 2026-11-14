@@ -1,11 +1,13 @@
 package xai
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
@@ -17,7 +19,7 @@ type TokenStorage struct {
 	RefreshToken  string `json:"refresh_token"`
 	IDToken       string `json:"id_token,omitempty"`
 	TokenType     string `json:"token_type,omitempty"`
-	ExpiresIn     int    `json:"expires_in,omitempty"`
+	ExpiresIn     int    `json:"expires_in,omitzero"`
 	Expire        string `json:"expired,omitempty"`
 	LastRefresh   string `json:"last_refresh,omitempty"`
 	Email         string `json:"email,omitempty"`
@@ -59,9 +61,8 @@ func (ts *TokenStorage) SaveTokenToFile(authFilePath string) error {
 		}
 	}()
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err = encoder.Encode(data); err != nil {
+	encoder := jsontext.NewEncoder(file, jsoncompat.Encode, jsontext.WithIndent("  "))
+	if err = json.MarshalEncode(encoder, data); err != nil {
 		return fmt.Errorf("xai token storage: write token file: %w", err)
 	}
 	return nil

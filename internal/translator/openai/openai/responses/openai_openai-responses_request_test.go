@@ -2,7 +2,7 @@ package responses
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"strings"
 	"testing"
@@ -15,8 +15,8 @@ func prettyJSONForTest(raw []byte) string {
 	if !ojson.ValidBytes(raw) {
 		return string(raw)
 	}
-	var out bytes.Buffer
-	if err := json.Indent(&out, raw, "", "  "); err != nil {
+	out := jsontext.Value(bytes.Clone(raw))
+	if err := out.Indent(jsontext.WithIndent("  ")); err != nil {
 		return string(raw)
 	}
 	return out.String()

@@ -1,7 +1,7 @@
 package helps
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -120,7 +121,7 @@ func ShouldExecuteVertexOpenAPIForRequest(cfg *config.Config, auth *cliproxyauth
 		requestedModel = strings.TrimSpace(ojson.GetBytesNoCopy(opts.OriginalRequest, "model").String())
 	}
 	if requestedModel == "" && len(opts.Metadata) > 0 {
-		if data, errMarshal := json.Marshal(opts.Metadata); errMarshal == nil {
+		if data, errMarshal := json.Marshal(opts.Metadata, jsoncompat.Encode); errMarshal == nil {
 			requestedModel = strings.TrimSpace(ojson.GetBytesNoCopy(data, "model").String())
 		}
 	}
@@ -139,7 +140,7 @@ func ShouldExecuteVertexOpenAPIForRequest(cfg *config.Config, auth *cliproxyauth
 	var oauthAndAuthRules []config.OAuthModelAlias
 	if auth != nil {
 		for _, key := range []string{"model_aliases", "model-aliases", "models"} {
-			if data, errMarshal := json.Marshal(auth.Metadata[key]); errMarshal == nil {
+			if data, errMarshal := json.Marshal(auth.Metadata[key], jsoncompat.Encode); errMarshal == nil {
 				oauthAndAuthRules = append(oauthAndAuthRules, vertexModelOpenAPIRules(data)...)
 			}
 		}
@@ -207,7 +208,7 @@ func vertexModelOpenAPIRules(data []byte) []config.OAuthModelAlias {
 	var rules []config.OAuthModelAlias
 	for _, item := range util.ParseGJSONBytesNoCopy(data).Array() {
 		var rule config.OAuthModelAlias
-		if errUnmarshal := json.Unmarshal([]byte(item.Raw), &rule); errUnmarshal == nil && (strings.TrimSpace(rule.Name) != "" || strings.TrimSpace(rule.Alias) != "") {
+		if errUnmarshal := json.Unmarshal([]byte(item.Raw), &rule, jsoncompat.Decode); errUnmarshal == nil && (strings.TrimSpace(rule.Name) != "" || strings.TrimSpace(rule.Alias) != "") {
 			rules = append(rules, rule)
 		}
 	}

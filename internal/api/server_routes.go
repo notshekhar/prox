@@ -2,7 +2,8 @@ package api
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
@@ -287,8 +289,8 @@ func (s *Server) codexAlphaSearchSelectionModel(ctx context.Context, c *gin.Cont
 }
 
 func sanitizeCodexAlphaSearchBody(body []byte) []byte {
-	var payload map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil || payload == nil {
+	var payload map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil || payload == nil {
 		return body
 	}
 
@@ -303,7 +305,7 @@ func sanitizeCodexAlphaSearchBody(body []byte) []byte {
 		return body
 	}
 
-	sanitizedBody, errMarshal := json.Marshal(payload)
+	sanitizedBody, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return body
 	}
@@ -318,15 +320,15 @@ func rewriteCodexAlphaSearchModel(body []byte, upstreamModel string) []byte {
 		return body
 	}
 
-	var payload map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil || payload == nil {
+	var payload map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil || payload == nil {
 		return body
 	}
 	if _, exists := payload["model"]; !exists {
 		return body
 	}
 
-	modelJSON, errMarshalModel := json.Marshal(upstreamModel)
+	modelJSON, errMarshalModel := json.Marshal(upstreamModel, jsoncompat.Encode)
 	if errMarshalModel != nil {
 		return body
 	}
@@ -335,7 +337,7 @@ func rewriteCodexAlphaSearchModel(body []byte, upstreamModel string) []byte {
 	}
 
 	payload["model"] = modelJSON
-	rewrittenBody, errMarshal := json.Marshal(payload)
+	rewrittenBody, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return body
 	}
@@ -368,7 +370,7 @@ func (s *Server) codexAlphaSearch(c *gin.Context) {
 		ID    string `json:"id"`
 		Model string `json:"model"`
 	}
-	_ = json.Unmarshal(body, &routing)
+	_ = json.Unmarshal(body, &routing, jsoncompat.Decode)
 	upstreamRequestBody := sanitizeCodexAlphaSearchBody(body)
 
 	selectionHeaders := c.Request.Header.Clone()
@@ -1131,7 +1133,7 @@ func homeModelsErrorType(raw []byte) string {
 	var errObj struct {
 		Type string `json:"type"`
 	}
-	if errUnmarshal := json.Unmarshal(rawErr, &errObj); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rawErr, &errObj, jsoncompat.Decode); errUnmarshal != nil {
 		return ""
 	}
 	return strings.TrimSpace(errObj.Type)
@@ -1149,7 +1151,7 @@ func homeModelsErrorMessage(raw []byte) string {
 	var errObj struct {
 		Message string `json:"message"`
 	}
-	if errUnmarshal := json.Unmarshal(rawErr, &errObj); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rawErr, &errObj, jsoncompat.Decode); errUnmarshal != nil {
 		return "home models request failed"
 	}
 	if msg := strings.TrimSpace(errObj.Message); msg != "" {
@@ -1158,12 +1160,12 @@ func homeModelsErrorMessage(raw []byte) string {
 	return "home models request failed"
 }
 
-func unmarshalHomeModelsTopLevel(raw []byte) (map[string]json.RawMessage, bool) {
+func unmarshalHomeModelsTopLevel(raw []byte) (map[string]jsontext.Value, bool) {
 	if len(raw) == 0 {
 		return nil, false
 	}
-	var top map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(raw, &top); errUnmarshal != nil {
+	var top map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(raw, &top, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, false
 	}
 	return top, true
@@ -1175,7 +1177,7 @@ func decodeHomeModels(raw []byte) ([]homeModelEntry, error) {
 	}
 
 	var bySection map[string][]map[string]any
-	if err := json.Unmarshal(raw, &bySection); err != nil {
+	if err := json.Unmarshal(raw, &bySection, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("parse home models payload: %w", err)
 	}
 	if bySection == nil {
@@ -1316,12 +1318,12 @@ func homeModelThinkingSupport(model map[string]any) *registry.ThinkingSupport {
 	if !ok || raw == nil {
 		return nil
 	}
-	data, errMarshal := json.Marshal(raw)
+	data, errMarshal := json.Marshal(raw, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil
 	}
 	var thinking registry.ThinkingSupport
-	if errUnmarshal := json.Unmarshal(data, &thinking); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &thinking, jsoncompat.Decode); errUnmarshal != nil {
 		return nil
 	}
 	return &thinking
@@ -1336,7 +1338,7 @@ func homeModelInt64Value(model map[string]any, keys ...string) int64 {
 			return value
 		case int:
 			return int64(value)
-		case json.Number:
+		case jsoncompat.Number:
 			if n, errInt := value.Int64(); errInt == nil {
 				return n
 			}

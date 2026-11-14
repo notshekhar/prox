@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -17,7 +18,7 @@ type testTokenStorage struct {
 func (s *testTokenStorage) SetMetadata(meta map[string]any) { s.meta = meta }
 
 func (s *testTokenStorage) SaveTokenToFile(authFilePath string) error {
-	raw, err := json.Marshal(s.meta)
+	raw, err := json.Marshal(s.meta, jsoncompat.Encode)
 	if err != nil {
 		return err
 	}

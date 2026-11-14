@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -1165,11 +1166,8 @@ func buildTextBlock(text string, cacheControl *claudeCacheControl) string {
 }
 
 func marshalJSONStringWithoutHTMLEscape(value string) string {
-	var encoded bytes.Buffer
-	encoder := json.NewEncoder(&encoded)
-	encoder.SetEscapeHTML(false)
-	_ = encoder.Encode(value)
-	return strings.TrimSuffix(encoded.String(), "\n")
+	encoded, _ := json.Marshal(value, jsoncompat.EncodeNoHTMLEscape)
+	return string(encoded)
 }
 
 func prependClaudeSystemRemindersToFirstUserMessage(payload []byte, texts []string) []byte {

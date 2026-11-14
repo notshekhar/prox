@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
@@ -22,6 +23,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -5556,7 +5558,7 @@ func TestCheckSystemInstructionsWithSigningMode_LongPromptIsExactAndIdempotent(t
 			map[string]any{"role": "user", "content": "follow-up"},
 		},
 	}
-	payload, errMarshal := json.Marshal(payloadMap)
+	payload, errMarshal := json.Marshal(payloadMap, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal payload: %v", errMarshal)
 	}
@@ -9534,7 +9536,7 @@ func TestClaudeExecutorPayloadOverrideDisabledThinking(t *testing.T) {
 				cfg: &config.Config{Payload: config.PayloadConfig{
 					Default: []config.PayloadRule{{
 						Models: modelRules,
-						Params: map[string]any{"context_management": json.RawMessage(claudeCodeContextManagement)},
+						Params: map[string]any{"context_management": jsontext.Value(claudeCodeContextManagement)},
 					}},
 					Override: []config.PayloadRule{{
 						Models: modelRules,
@@ -9561,7 +9563,7 @@ func TestClaudeExecutorPayloadOverrideDisabledThinking(t *testing.T) {
 					Models: modelRules,
 					Params: map[string]any{
 						"thinking.type":      "disabled",
-						"context_management": json.RawMessage(claudeCodeContextManagement),
+						"context_management": jsontext.Value(claudeCodeContextManagement),
 					},
 				}}}},
 			},

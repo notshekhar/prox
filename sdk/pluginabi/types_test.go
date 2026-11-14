@@ -1,13 +1,16 @@
 package pluginabi
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestEnvelopeRoundTrip(t *testing.T) {
-	payload := json.RawMessage(`{"name":"example"}`)
+	payload := jsontext.Value(`{"name":"example"}`)
 	env := Envelope{
 		OK:     true,
 		Result: payload,
@@ -19,7 +22,7 @@ func TestEnvelopeRoundTrip(t *testing.T) {
 	}
 
 	var decoded Envelope
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal envelope: %v", errUnmarshal)
 	}
 	if !decoded.OK || string(decoded.Result) != string(payload) {
@@ -182,7 +185,7 @@ func TestErrorInterfaceAndConstructor(t *testing.T) {
 		t.Fatalf("NewErrorEnvelope() error = %v", errEnv)
 	}
 	var env Envelope
-	if errUnmarshal := json.Unmarshal(envBytes, &env); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(envBytes, &env, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error envelope: %v", errUnmarshal)
 	}
 	if env.OK {

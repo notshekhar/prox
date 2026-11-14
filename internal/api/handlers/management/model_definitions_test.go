@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -53,7 +55,7 @@ func invokeGetStaticModelDefinitions(t *testing.T, h *Handler, channel string) (
 		Error   string               `json:"error"`
 		Models  []registry.ModelInfo `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &body); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal response body %q: %v", rec.Body.String(), errUnmarshal)
 	}
 	return rec, body
@@ -171,24 +173,24 @@ func TestRefreshModelDefinitions_UpdatesCatalogAndReportsChangedProviders(t *tes
 		t.Fatal(err)
 	}
 
-	var rawCatalog map[string]json.RawMessage
+	var rawCatalog map[string]jsontext.Value
 	if err := json.Unmarshal(baseModels, &rawCatalog); err != nil {
 		t.Fatal(err)
 	}
 	var claudeModels []registry.ModelInfo
-	if err := json.Unmarshal(rawCatalog["claude"], &claudeModels); err != nil {
+	if err := json.Unmarshal(rawCatalog["claude"], &claudeModels, jsoncompat.Decode); err != nil {
 		t.Fatal(err)
 	}
 	claudeModels = append(claudeModels, registry.ModelInfo{
 		ID:          "claude-mgmt-refresh-7039",
 		DisplayName: "Claude Mgmt Refresh 7039",
 	})
-	updatedClaude, err := json.Marshal(claudeModels)
+	updatedClaude, err := json.Marshal(claudeModels, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rawCatalog["claude"] = updatedClaude
-	updatedModelsJSON, err := json.Marshal(rawCatalog)
+	updatedModelsJSON, err := json.Marshal(rawCatalog, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +244,7 @@ func TestRefreshModelDefinitions_UpdatesCatalogAndReportsChangedProviders(t *tes
 		DevinCatalog     string   `json:"devin_catalog"`
 		ChangedProviders []string `json:"changed_providers"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal response %q: %v", rec.Body.String(), err)
 	}
 	if !resp.OK || resp.Catalog != generalSrv.URL || resp.CodexCatalog != codexSrv.URL || resp.DevinCatalog != devinSrv.URL {

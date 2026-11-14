@@ -3,12 +3,17 @@ package proxcli
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"slices"
+	"strconv"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,7 +40,7 @@ access:
   api-keys:
     - %q
 routing:
-  strategy: "round-robin"
+  strategy: "least-used"
   session-affinity: true
   session-affinity-ttl: "1h"
   retry:
@@ -61,6 +66,10 @@ type settings struct {
 	Access struct {
 		APIKeys []string `yaml:"api-keys"`
 	} `yaml:"access"`
+	Routing struct {
+		Strategy        string `yaml:"strategy"`
+		SessionAffinity bool   `yaml:"session-affinity"`
+	} `yaml:"routing"`
 	OAuth struct {
 		AuthDir string `yaml:"auth-dir"`
 	} `yaml:"oauth"`
@@ -71,7 +80,7 @@ func (s settings) address() string {
 	if host == "" {
 		host = "127.0.0.1"
 	}
-	return fmt.Sprintf("%s:%d", host, s.Server.Port)
+	return net.JoinHostPort(host, strconv.Itoa(s.Server.Port))
 }
 
 func (s settings) baseURL() string { return "http://" + s.address() }
@@ -127,21 +136,19 @@ func loadSettings(p Paths) (settings, error) {
 	return cfg, nil
 }
 
+// ensureClaudeSettings points `prox claude` at this proxy. It runs before every
+// command because the port and client key can change after setup, and a stale
+// copy fails with "connection refused" or 401. Other settings are left alone.
 func ensureClaudeSettings(p Paths, cfg settings) error {
 	path := filepath.Join(p.ClaudeDir, "settings.json")
-	if _, err := os.Stat(path); err == nil {
+	doc, ok := readClaudeSettings(path)
+	if !ok || !syncClaudeEnv(doc, cfg) {
 		return nil
-	}
-	if len(cfg.Access.APIKeys) == 0 {
-		return fmt.Errorf("%s has no access.api-keys entry", p.Config)
 	}
 	if err := os.MkdirAll(p.ClaudeDir, privateDir); err != nil {
 		return fmt.Errorf("create %s: %w", p.ClaudeDir, err)
 	}
-	body, err := json.MarshalIndent(map[string]map[string]string{"env": {
-		"ANTHROPIC_BASE_URL":   cfg.baseURL(),
-		"ANTHROPIC_AUTH_TOKEN": cfg.Access.APIKeys[0],
-	}}, "", "  ")
+	body, err := json.Marshal(doc, jsoncompat.Encode, jsontext.WithIndent("  "))
 	if err != nil {
 		return fmt.Errorf("encode Claude settings: %w", err)
 	}
@@ -149,6 +156,43 @@ func ensureClaudeSettings(p Paths, cfg settings) error {
 		return fmt.Errorf("write Claude settings: %w", err)
 	}
 	return nil
+}
+
+// readClaudeSettings returns an empty document for a missing file. A file that
+// isn't valid JSON is reported as not ok: it is the user's, so it is never replaced.
+func readClaudeSettings(path string) (map[string]any, bool) {
+	raw, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return map[string]any{}, true
+	}
+	var doc map[string]any
+	if err != nil || json.Unmarshal(raw, &doc, jsoncompat.Decode) != nil || doc == nil {
+		return nil, false
+	}
+	return doc, true
+}
+
+// syncClaudeEnv reports whether it changed anything. Any configured client key
+// is kept, so adding a second key doesn't rewrite the file. With no client keys
+// the proxy asks for none, so the token is left as it is.
+func syncClaudeEnv(doc map[string]any, cfg settings) bool {
+	env, _ := doc["env"].(map[string]any)
+	if env == nil {
+		env = map[string]any{}
+		doc["env"] = env
+	}
+	changed := false
+	set := func(key, value string) {
+		if env[key] != value {
+			env[key], changed = value, true
+		}
+	}
+	set("ANTHROPIC_BASE_URL", cfg.baseURL())
+	keys := cfg.Access.APIKeys
+	if token, _ := env["ANTHROPIC_AUTH_TOKEN"].(string); len(keys) > 0 && !slices.Contains(keys, token) {
+		set("ANTHROPIC_AUTH_TOKEN", keys[0])
+	}
+	return changed
 }
 
 func newSecret() (string, error) {

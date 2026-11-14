@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { apiClient } from '@/services/api/client';
+import { readConfigDocument } from '@/services/api/configValue';
 import { apiKeysApi } from '@/services/api/apiKeys';
 import { authFilesApi } from '@/services/api/authFiles';
 import { oauthApi } from '@/services/api/oauth';
@@ -67,22 +68,26 @@ describe('v8 management API contracts', () => {
 
   test('OAuth configuration reads direct maps and writes direct provider lists', async () => {
     const get = mock('get', {
-      codex: [{ name: 'source', alias: 'alias', 'force-mapping': false }],
+      oauth: { 'model-alias': { codex: [{ name: 'source', alias: 'alias', 'force-mapping': false }] } },
     });
     const put = mock('put');
     expect(await authFilesApi.getOauthModelAlias()).toEqual({
       codex: [{ name: 'source', alias: 'alias', forceMapping: false }],
     });
-    expect(get).toHaveBeenLastCalledWith('/config/oauth/model-alias');
+    expect(get).toHaveBeenLastCalledWith('/config');
+    get.mockResolvedValue({
+      codex: [{ name: 'source', alias: 'alias', 'force-mapping': false }],
+    });
     await authFilesApi.saveOauthModelAlias('codex', [
       { name: 'source', alias: 'alias', forceMapping: false },
     ]);
     expect(put).toHaveBeenLastCalledWith('/config/oauth/model-alias', {
       codex: [{ name: 'source', alias: 'alias', 'force-mapping': false }],
     });
-    get.mockResolvedValue({ codex: ['blocked'] });
+    get.mockResolvedValue({ oauth: { 'excluded-models': { codex: ['blocked'] } } });
     expect(await authFilesApi.getOauthExcludedModels()).toEqual({ codex: ['blocked'] });
-    expect(get).toHaveBeenLastCalledWith('/config/oauth/excluded-models');
+    expect(get).toHaveBeenLastCalledWith('/config');
+    get.mockResolvedValue({ codex: ['blocked'] });
     await authFilesApi.saveOauthExcludedModels('codex', ['blocked']);
     expect(put).toHaveBeenLastCalledWith('/config/oauth/excluded-models', { codex: ['blocked'] });
     await authFilesApi.deleteOauthModelAlias('codex');
@@ -210,12 +215,7 @@ describe('v8 management API contracts', () => {
 
   test('only missing persisted config fields default; auth/network/route failures propagate', async () => {
     const get = mock('get');
-    const readers = [
-      apiKeysApi.list,
-      authFilesApi.getOauthExcludedModels,
-      authFilesApi.getOauthModelAlias,
-      () => pluginsApi.getConfig('example'),
-    ];
+    const readers = [apiKeysApi.list, () => pluginsApi.getConfig('example')];
     for (const reader of readers) {
       get.mockRejectedValue({ status: 404, apiCode: 'not_found' });
       expect(await reader()).toEqual(reader === apiKeysApi.list ? [] : {});
@@ -224,6 +224,13 @@ describe('v8 management API contracts', () => {
         await expect(reader()).rejects.toBe(error);
       }
     }
+    for (const reader of [authFilesApi.getOauthExcludedModels, authFilesApi.getOauthModelAlias]) {
+      get.mockResolvedValue({});
+      expect(await reader()).toEqual({});
+      const error = { status: 401 };
+      get.mockRejectedValue(error);
+      await expect(reader()).rejects.toBe(error);
+    }
     const put = mock('put');
     get.mockRejectedValue({ status: 404, apiCode: 'not_found' });
     await authFilesApi.deleteOauthModelAlias('codex');
@@ -231,6 +238,16 @@ describe('v8 management API contracts', () => {
     get.mockRejectedValue({ status: 405 });
     await expect(authFilesApi.deleteOauthModelAlias('codex')).rejects.toEqual({ status: 405 });
     expect(put).toHaveBeenCalledTimes(1);
+  });
+
+  test('views loading together share one config read, each with its own copy', async () => {
+    const get = mock('get', { oauth: { 'model-alias': {} } });
+    const [first, second] = await Promise.all([readConfigDocument(), readConfigDocument()]);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
+    await readConfigDocument();
+    expect(get).toHaveBeenCalledTimes(2);
   });
 
   test('OAuth maps UI anthropic to claude and plugins use the shared login route', async () => {

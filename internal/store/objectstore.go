@@ -3,7 +3,7 @@ package store
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +18,7 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -210,7 +211,7 @@ func (s *ObjectTokenStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (s
 			}
 		case auth.Metadata != nil:
 			auth.Metadata["disabled"] = auth.Disabled
-			raw, errMarshal := json.Marshal(auth.Metadata)
+			raw, errMarshal := json.Marshal(auth.Metadata, jsoncompat.Encode)
 			if errMarshal != nil {
 				return "", fmt.Errorf("object store: marshal metadata: %w", errMarshal)
 			}
@@ -599,7 +600,7 @@ func (s *ObjectTokenStore) readAuthFile(path, baseDir string) (*cliproxyauth.Aut
 		return nil, nil
 	}
 	metadata := make(map[string]any)
-	if err = json.Unmarshal(data, &metadata); err != nil {
+	if err = json.Unmarshal(data, &metadata, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("unmarshal auth json: %w", err)
 	}
 	cliproxyauth.NormalizeCredentialMetadata(metadata)

@@ -2,7 +2,7 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"sort"
 	"strings"
 	"sync"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
@@ -88,7 +89,7 @@ func CacheCodexReasoningReplayItemsBestEffort(ctx context.Context, modelName, se
 			log.Errorf("home kv best-effort codex reasoning replay set failed prefix=cpa:codex:*: %v", errClient)
 			return false
 		}
-		raw, errMarshal := json.Marshal(normalized)
+		raw, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 		if errMarshal != nil {
 			log.Errorf("home kv best-effort codex reasoning replay set failed prefix=cpa:codex:*: %v", errMarshal)
 			return false
@@ -146,13 +147,13 @@ func AppendCodexReasoningReplayItemsBestEffort(ctx context.Context, modelName, s
 			}
 			var existing [][]byte
 			if found {
-				if errUnmarshal := json.Unmarshal(existingRaw, &existing); errUnmarshal != nil {
+				if errUnmarshal := json.Unmarshal(existingRaw, &existing, jsoncompat.Decode); errUnmarshal != nil {
 					log.Errorf("home kv best-effort codex reasoning replay append failed prefix=cpa:codex:*: %v", errUnmarshal)
 					return false
 				}
 			}
 			combined := appendCodexReasoningReplayTurn(existing, normalized)
-			raw, errMarshal := json.Marshal(combined)
+			raw, errMarshal := json.Marshal(combined, jsoncompat.Encode)
 			if errMarshal != nil {
 				log.Errorf("home kv best-effort codex reasoning replay append failed prefix=cpa:codex:*: %v", errMarshal)
 				return false
@@ -268,7 +269,7 @@ func GetCodexReasoningReplayItemsRequired(ctx context.Context, modelName, sessio
 			return nil, false, errGet
 		}
 		var homeItems [][]byte
-		if errUnmarshal := json.Unmarshal(raw, &homeItems); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &homeItems, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, false, errUnmarshal
 		}
 		if _, errExpire := client.KVExpire(ctx, codexReasoningReplayKVKey(modelName, sessionKey), CodexReasoningReplayCacheTTL); errExpire != nil {

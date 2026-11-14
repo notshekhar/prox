@@ -2,7 +2,7 @@ package devin
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -67,7 +67,7 @@ func TestCreateAuthRecordSafeFallbackFilename(t *testing.T) {
 		t.Run(userName, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path == "/v3/self" {
-					_ = json.NewEncoder(w).Encode(map[string]string{"user_name": userName})
+					_ = json.MarshalWrite(w, map[string]string{"user_name": userName})
 					return
 				}
 				w.WriteHeader(http.StatusServiceUnavailable)

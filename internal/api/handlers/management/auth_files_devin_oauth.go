@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/devin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -149,7 +150,7 @@ func waitDevinOAuthCallback(ctx context.Context, path, state string) (*oauthCall
 		data, errRead := os.ReadFile(path)
 		if errRead == nil {
 			var result oauthCallbackFilePayload
-			if errDecode := json.Unmarshal(data, &result); errDecode != nil {
+			if errDecode := json.Unmarshal(data, &result, jsoncompat.Decode); errDecode != nil {
 				return nil, errors.New("Invalid OAuth callback")
 			}
 			return &result, nil

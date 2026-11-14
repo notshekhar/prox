@@ -21,21 +21,24 @@ func fakeReleases(t *testing.T, s sandbox, latestTag, installerBody string) stri
 		http.Redirect(w, r, "/tag/"+latestTag, http.StatusFound)
 	})
 	mux.HandleFunc("/tag/", func(http.ResponseWriter, *http.Request) {})
-	mux.HandleFunc("/install.sh", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(strings.ReplaceAll(installerBody, "RECORD", record)))
+	mux.HandleFunc("/raw/{ref}/install.sh", func(w http.ResponseWriter, r *http.Request) {
+		body := strings.ReplaceAll(installerBody, "RECORD", record)
+		_, _ = w.Write([]byte(strings.ReplaceAll(body, "REF", r.PathValue("ref"))))
 	})
 	server := httptest.NewServer(mux)
 	t.Cleanup(server.Close)
 
-	oldLatest, oldInstaller, oldVersion := latestReleaseURL, installerURL, buildinfo.Version
-	t.Cleanup(func() { latestReleaseURL, installerURL, buildinfo.Version = oldLatest, oldInstaller, oldVersion })
-	latestReleaseURL, installerURL = server.URL+"/latest", server.URL+"/install.sh"
+	oldLatest, oldInstaller, oldVersion := latestReleaseURL, installerURLTemplate, buildinfo.Version
+	t.Cleanup(func() {
+		latestReleaseURL, installerURLTemplate, buildinfo.Version = oldLatest, oldInstaller, oldVersion
+	})
+	latestReleaseURL, installerURLTemplate = server.URL+"/latest", server.URL+"/raw/%s/install.sh"
 	return record
 }
 
-const recordingInstaller = `echo "force=$PROX_FORCE path=$PROX_NO_MODIFY_PATH" > RECORD`
+const recordingInstaller = `echo "force=$PROX_FORCE path=$PROX_NO_MODIFY_PATH ref=REF version=$PROX_VERSION" > RECORD`
 
-func TestUpgradeRunsTheInstallerForANewerRelease(t *testing.T) {
+func TestUpgradeRunsTheInstallerThatShippedWithTheRelease(t *testing.T) {
 	s := newSandbox(t)
 	s.configureStoppedProxy(t)
 	record := fakeReleases(t, s, "v0.4.0", recordingInstaller)
@@ -48,7 +51,7 @@ func TestUpgradeRunsTheInstallerForANewerRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("installer did not run: %v", err)
 	}
-	if strings.TrimSpace(string(got)) != "force= path=1" {
+	if strings.TrimSpace(string(got)) != "force= path=1 ref=v0.4.0 version=v0.4.0" {
 		t.Fatalf("installer env = %q", got)
 	}
 }
@@ -110,8 +113,12 @@ func TestUpgradeStillRunsTheInstallerWhenTheLookupFails(t *testing.T) {
 	buildinfo.Version = "v0.3.0"
 
 	run("upgrade")
-	if _, err := os.Stat(record); err != nil {
+	got, err := os.ReadFile(record)
+	if err != nil {
 		t.Fatalf("installer did not run: %v", err)
+	}
+	if !strings.Contains(string(got), "ref=main version=\n") {
+		t.Fatalf("installer env = %q", got)
 	}
 }
 

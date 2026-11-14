@@ -2,7 +2,8 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -13,6 +14,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // CooldownStateRecord is a persisted runtime cooldown snapshot for one auth/model pair.
@@ -25,15 +28,15 @@ type CooldownStateRecord struct {
 	NextRetryAfter time.Time  `json:"next_retry_after"`
 	Reason         string     `json:"reason,omitempty"`
 	Quota          QuotaState `json:"quota,omitempty"`
-	LastError      *Error     `json:"last_error,omitempty"`
+	LastError      *Error     `json:"last_error,omitzero"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 	// IndependentState preserves a model's own cooldown beneath an
 	// auth-level credential-quota layer so a restart cannot lose the
 	// distinction and quota restoration keeps reinstate-exactly semantics.
-	IndependentState *ModelState `json:"independent_state,omitempty"`
+	IndependentState *ModelState `json:"independent_state,omitzero"`
 	// CredentialQuotaPropagated preserves wrap provenance for models that
 	// carry no independent layer (e.g. the reporting model itself).
-	CredentialQuotaPropagated bool `json:"credential_quota_propagated,omitempty"`
+	CredentialQuotaPropagated bool `json:"credential_quota_propagated,omitzero"`
 }
 
 // CooldownStateStore persists runtime cooldown state independently from auth tokens.
@@ -133,7 +136,7 @@ func readCooldownStateFile(ctx context.Context, path string) ([]CooldownStateRec
 		return nil, nil
 	}
 	var envelope cooldownStateFile
-	if errUnmarshal := json.Unmarshal(data, &envelope); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("parse cooldown state %s: %w", path, errUnmarshal)
 	}
 	return envelope.Records, nil
@@ -200,7 +203,7 @@ func writeCooldownStateGroup(ctx context.Context, path string, records []Cooldow
 		envelope.AuthID = records[0].AuthID
 		envelope.Provider = records[0].Provider
 	}
-	data, errMarshal := json.MarshalIndent(envelope, "", "  ")
+	data, errMarshal := json.Marshal(envelope, jsoncompat.Encode, jsontext.WithIndent("  "))
 	if errMarshal != nil {
 		return fmt.Errorf("marshal cooldown state: %w", errMarshal)
 	}

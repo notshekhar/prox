@@ -4,7 +4,7 @@
 package codex
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
@@ -78,7 +79,7 @@ func WriteJSONFileAtomic(authFilePath string, data map[string]any) error {
 		_ = tmpFile.Close()
 		return fmt.Errorf("failed to chmod temp credential file: %w", errChmod)
 	}
-	raw, errMarshal := json.Marshal(data)
+	raw, errMarshal := json.Marshal(data, jsoncompat.Encode)
 	if errMarshal != nil {
 		_ = tmpFile.Close()
 		return fmt.Errorf("failed to marshal token data: %w", errMarshal)
@@ -247,7 +248,7 @@ type CodexTokenStorage struct {
 	// PlanType indicates the ChatGPT subscription plan type, defaults to "free" if not present.
 	PlanType string `json:"plan_type,omitempty"`
 	// UseSIWC controls whether API requests use the Sign in with ChatGPT (SIWC) credential section.
-	UseSIWC *bool `json:"use_siwc,omitempty"`
+	UseSIWC *bool `json:"use_siwc,omitzero"`
 	// SIWC holds the Sign in with ChatGPT OAuth credential fields.
 	SIWC map[string]any `json:"siwc,omitempty"`
 
@@ -285,7 +286,7 @@ func (ts *CodexTokenStorage) SaveTokenToFile(authFilePath string) error {
 		}
 		if errRead == nil {
 			var diskMap map[string]any
-			if errUnmarshal := json.Unmarshal(existingBytes, &diskMap); errUnmarshal != nil || diskMap == nil {
+			if errUnmarshal := json.Unmarshal(existingBytes, &diskMap, jsoncompat.Decode); errUnmarshal != nil || diskMap == nil {
 				return fmt.Errorf("invalid existing credential JSON")
 			}
 			if ts.RefreshPatch != nil {

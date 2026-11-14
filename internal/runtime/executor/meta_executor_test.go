@@ -3,7 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -21,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	metaauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
 	sdkauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
@@ -146,7 +147,7 @@ func TestMetaExecutor_ExecuteSuccessAndRateLimit(t *testing.T) {
 			}
 			// Simulate 429 rate limit
 			w.WriteHeader(http.StatusTooManyRequests)
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			_ = json.MarshalWrite(w, map[string]any{
 				"error": map[string]any{
 					"code":      "rate_limit_exceeded",
 					"message":   "Subscription quota exhausted. Your usage window resets soon.",
@@ -205,7 +206,7 @@ func TestMetaExecutor_ExecuteSuccessAndRateLimit(t *testing.T) {
 }
 
 func mapToJSON(m map[string]any) string {
-	b, _ := json.Marshal(m)
+	b, _ := json.Marshal(m, jsoncompat.Encode)
 	return string(b)
 }
 
@@ -233,7 +234,7 @@ func writeMetaResponsesOK(w http.ResponseWriter, text string) {
 				"total_tokens":  2,
 			},
 		},
-	})
+	}, jsoncompat.Encode)
 	_, _ = w.Write([]byte("data: "))
 	_, _ = w.Write(payload)
 	_, _ = w.Write([]byte("\n\n"))
@@ -250,7 +251,7 @@ func TestMetaExecutor_Refresh_RequiresManagerAcceptance(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/key" {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			_ = json.MarshalWrite(w, map[string]string{
 				"api_key":        "LLM|persisted-minted-key",
 				"user_email":     "engineer@meta.com",
 				"user_full_name": "Meta Engineer",
@@ -346,14 +347,14 @@ func TestMetaExecutor_PrepareConcurrentAccounts(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/key" {
 			var req map[string]string
-			_ = json.NewDecoder(r.Body).Decode(&req)
+			_ = json.UnmarshalRead(r.Body, &req)
 			dca := req["dca_token"]
 			w.Header().Set("Content-Type", "application/json")
 			if dca == "dca:acct1" {
 				atomic.AddInt64(&count1, 1)
 				startOnce.Do(func() { close(serverStarted) })
 				<-releaseServer
-				_ = json.NewEncoder(w).Encode(map[string]string{
+				_ = json.MarshalWrite(w, map[string]string{
 					"api_key":    "LLM|key-acct1",
 					"user_email": "acct1@meta.com",
 				})
@@ -361,7 +362,7 @@ func TestMetaExecutor_PrepareConcurrentAccounts(t *testing.T) {
 			}
 			if dca == "dca:acct2" {
 				atomic.AddInt64(&count2, 1)
-				_ = json.NewEncoder(w).Encode(map[string]string{
+				_ = json.MarshalWrite(w, map[string]string{
 					"api_key":    "LLM|key-acct2",
 					"user_email": "acct2@meta.com",
 				})
@@ -447,7 +448,7 @@ func TestMetaExecutor_Execute_DCARecovery(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/key" {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			_ = json.MarshalWrite(w, map[string]string{
 				"api_key": "LLM|auto-recovered-key",
 			})
 			return
@@ -543,7 +544,7 @@ func TestMetaExecutorRefreshUsesMintedBaseURL(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				_ = json.NewEncoder(w).Encode(map[string]string{"api_key": "LLM|replacement", "base_url": tc.minted})
+				_ = json.MarshalWrite(w, map[string]string{"api_key": "LLM|replacement", "base_url": tc.minted})
 			}))
 			defer server.Close()
 			t.Setenv("META_MINT_URL", server.URL)
@@ -1134,7 +1135,7 @@ func TestMetaExecutor_Execute_SendsClientIdHeader_Issue6117(t *testing.T) {
 func TestMetaExecutor_Refresh_PreservesSubscriptionMetadata_Issue6117(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"api_key":            "LLM|minted-sub",
 			"subs_tier_name":     "High Usage",
 			"subs_tier_id":       "high_usage",
@@ -1174,7 +1175,7 @@ func TestMetaExecutor_Refresh_PreservesSubscriptionMetadata_Issue6117(t *testing
 func TestMetaExecutor_Refresh_ClearsStaleSubscriptionMetadata_Issue6117(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"api_key":            "LLM|minted-sub",
 			"subs_tier_name":     "",
 			"subs_tier_id":       "",

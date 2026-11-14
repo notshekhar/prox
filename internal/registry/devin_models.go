@@ -3,13 +3,14 @@ package registry
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -175,7 +176,7 @@ func ValidateDevinModelsJSON(data []byte) ([]*ModelInfo, error) {
 
 	// 1. Try envelope {"devin": [...]} or {"models": [...]}
 	var payload devinModelsFilePayload
-	if err := json.Unmarshal(data, &payload); err == nil {
+	if err := json.Unmarshal(data, &payload, jsoncompat.Decode); err == nil {
 		candidates := payload.Devin
 		if len(candidates) == 0 {
 			candidates = payload.Models
@@ -187,7 +188,7 @@ func ValidateDevinModelsJSON(data []byte) ([]*ModelInfo, error) {
 
 	// 2. Try raw array []*ModelInfo
 	var rawList []*ModelInfo
-	if err := json.Unmarshal(data, &rawList); err == nil && len(rawList) > 0 {
+	if err := json.Unmarshal(data, &rawList, jsoncompat.Decode); err == nil && len(rawList) > 0 {
 		return sanitizeAndValidateDevinModels(rawList)
 	}
 

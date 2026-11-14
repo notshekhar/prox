@@ -1,11 +1,11 @@
 package common
 
 import (
-	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strconv"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func GeminiTokenCountJSON(count int64) []byte {
@@ -123,13 +123,10 @@ func AppendSSEEventBytes(out []byte, event string, payload []byte, trailingNewli
 // containing quotes or special characters to encoding/json.Marshal, which unconditionally
 // escapes <, >, & to \u003c, \u003e, \u0026.
 func SetStringWithoutHTMLEscape(data []byte, path, value string) ([]byte, error) {
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	if errEncode := enc.Encode(value); errEncode != nil {
+	raw, errEncode := json.Marshal(value, jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return ojson.SetBytes(data, path, value)
 	}
-	raw := bytes.TrimRight(buf.Bytes(), "\n")
 	return ojson.SetRawBytes(data, path, raw)
 }
 
@@ -139,12 +136,9 @@ func SetStringWithoutHTMLEscapeDoc(doc *ojson.Doc, path, value string) error {
 	if doc == nil {
 		return nil
 	}
-	buf := &bytes.Buffer{}
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	if errEncode := enc.Encode(value); errEncode != nil {
+	raw, errEncode := json.Marshal(value, jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return doc.Set(path, value)
 	}
-	raw := bytes.TrimRight(buf.Bytes(), "\n")
 	return doc.SetRawBytes(path, raw)
 }

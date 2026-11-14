@@ -2,7 +2,8 @@ package live
 
 import (
 	"crypto/rand"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"github.com/MoeForge/moego/base64"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -39,7 +41,7 @@ type ClientSecretAuthorization struct {
 	Principal       string
 	IssuerPrincipal string
 	IssuerProvider  string
-	Session         json.RawMessage
+	Session         jsontext.Value
 }
 
 type clientSecretEntry struct {
@@ -54,17 +56,17 @@ type clientSecretStore struct {
 }
 
 type clientSecretCreateRequest struct {
-	Session      json.RawMessage `json:"session"`
+	Session      jsontext.Value `json:"session"`
 	ExpiresAfter *struct {
 		Anchor  string `json:"anchor"`
 		Seconds int64  `json:"seconds"`
-	} `json:"expires_after,omitempty"`
+	} `json:"expires_after,omitzero"`
 }
 
 type clientSecretCreateResponse struct {
-	Value     string          `json:"value"`
-	ExpiresAt int64           `json:"expires_at"`
-	Session   json.RawMessage `json:"session"`
+	Value     string         `json:"value"`
+	ExpiresAt int64          `json:"expires_at"`
+	Session   jsontext.Value `json:"session"`
 }
 
 func newClientSecretStore() *clientSecretStore {
@@ -74,7 +76,7 @@ func newClientSecretStore() *clientSecretStore {
 	}
 }
 
-func (s *clientSecretStore) create(session json.RawMessage, lifetime time.Duration, issuerPrincipal, issuerProvider string) (string, ClientSecretAuthorization, time.Time, error) {
+func (s *clientSecretStore) create(session jsontext.Value, lifetime time.Duration, issuerPrincipal, issuerProvider string) (string, ClientSecretAuthorization, time.Time, error) {
 	if s == nil {
 		return "", ClientSecretAuthorization{}, time.Time{}, errors.New("Realtime client secret store unavailable")
 	}
@@ -90,7 +92,7 @@ func (s *clientSecretStore) create(session json.RawMessage, lifetime time.Durati
 		Principal:       sessionID,
 		IssuerPrincipal: strings.TrimSpace(issuerPrincipal),
 		IssuerProvider:  strings.TrimSpace(issuerProvider),
-		Session:         append(json.RawMessage(nil), session...),
+		Session:         append(jsontext.Value(nil), session...),
 	}
 	now := s.currentTime()
 	expiresAt := now.Add(lifetime)
@@ -130,7 +132,7 @@ func (s *clientSecretStore) authenticate(token string) (ClientSecretAuthorizatio
 		return ClientSecretAuthorization{}, errInvalidClientSecret
 	}
 	s.mu.Unlock()
-	entry.authorization.Session = append(json.RawMessage(nil), entry.authorization.Session...)
+	entry.authorization.Session = append(jsontext.Value(nil), entry.authorization.Session...)
 	return entry.authorization, nil
 }
 
@@ -222,7 +224,7 @@ func (h *Handler) CreateClientSecret(c *gin.Context) {
 	}
 	var request clientSecretCreateRequest
 	if len(strings.TrimSpace(string(body))) > 0 {
-		if errUnmarshal := json.Unmarshal(body, &request); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(body, &request, jsoncompat.Decode); errUnmarshal != nil {
 			writeRealtimeError(c, http.StatusBadRequest, "Invalid Realtime client secret request", "invalid_request_error", "invalid_request")
 			return
 		}
@@ -245,10 +247,10 @@ func (h *Handler) CreateLegacySession(c *gin.Context) {
 		writeRealtimeError(c, status, errRead.Error(), "invalid_request_error", "invalid_request")
 		return
 	}
-	h.createClientSecret(c, json.RawMessage(body), nil, true)
+	h.createClientSecret(c, jsontext.Value(body), nil, true)
 }
 
-func (h *Handler) createClientSecret(c *gin.Context, session json.RawMessage, expiresAfter *struct {
+func (h *Handler) createClientSecret(c *gin.Context, session jsontext.Value, expiresAfter *struct {
 	Anchor  string `json:"anchor"`
 	Seconds int64  `json:"seconds"`
 }, legacy bool) {
@@ -288,7 +290,7 @@ func (h *Handler) createClientSecret(c *gin.Context, session json.RawMessage, ex
 	c.Header("Cache-Control", "no-store")
 	if legacy {
 		var response map[string]any
-		if errUnmarshal := json.Unmarshal(responseSession, &response); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(responseSession, &response, jsoncompat.Decode); errUnmarshal != nil {
 			writeRealtimeError(c, http.StatusInternalServerError, "Failed to encode Realtime session", "server_error", "realtime_session_failed")
 			return
 		}
@@ -321,13 +323,13 @@ func clientSecretLifetime(expiresAfter *struct {
 	return time.Duration(expiresAfter.Seconds) * time.Second, nil
 }
 
-func normalizeClientSecretSession(session json.RawMessage) (json.RawMessage, json.RawMessage, error) {
+func normalizeClientSecretSession(session jsontext.Value) (jsontext.Value, jsontext.Value, error) {
 	trimmedSession := strings.TrimSpace(string(session))
 	if trimmedSession == "" || trimmedSession == "null" {
-		session = json.RawMessage(`{"type":"realtime","model":"gpt-realtime"}`)
+		session = jsontext.Value(`{"type":"realtime","model":"gpt-realtime"}`)
 	}
 	var clientSession map[string]any
-	if errUnmarshal := json.Unmarshal(session, &clientSession); errUnmarshal != nil || clientSession == nil {
+	if errUnmarshal := json.Unmarshal(session, &clientSession, jsoncompat.Decode); errUnmarshal != nil || clientSession == nil {
 		return nil, nil, errors.New("session must be a valid JSON object")
 	}
 	sessionType, _ := clientSession["type"].(string)
@@ -343,27 +345,27 @@ func normalizeClientSecretSession(session json.RawMessage) (json.RawMessage, jso
 		model = "gpt-realtime"
 		clientSession["model"] = model
 	}
-	clientEncoded, errMarshal := json.Marshal(clientSession)
+	clientEncoded, errMarshal := json.Marshal(clientSession, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, nil, fmt.Errorf("encode Realtime session: %w", errMarshal)
 	}
 	clientSession["model"] = codexRealtimeModel(model)
-	upstreamEncoded, errMarshal := json.Marshal(clientSession)
+	upstreamEncoded, errMarshal := json.Marshal(clientSession, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, nil, fmt.Errorf("encode Codex Realtime session: %w", errMarshal)
 	}
 	return clientEncoded, upstreamEncoded, nil
 }
 
-func realtimeSessionResponse(session json.RawMessage, sessionID string, expiresAt time.Time) (json.RawMessage, error) {
+func realtimeSessionResponse(session jsontext.Value, sessionID string, expiresAt time.Time) (jsontext.Value, error) {
 	var response map[string]any
-	if errUnmarshal := json.Unmarshal(session, &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(session, &response, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	response["id"] = sessionID
 	response["object"] = "realtime.session"
 	response["expires_at"] = expiresAt.Unix()
-	return json.Marshal(response)
+	return json.Marshal(response, jsoncompat.Encode)
 }
 
 func codexRealtimeModel(model string) string {
@@ -398,7 +400,7 @@ func requestOwner(c *gin.Context) (string, string) {
 	return strings.TrimSpace(principal), strings.TrimSpace(provider)
 }
 
-func clientSecretSession(c *gin.Context) json.RawMessage {
+func clientSecretSession(c *gin.Context) jsontext.Value {
 	if c == nil {
 		return nil
 	}
@@ -406,8 +408,8 @@ func clientSecretSession(c *gin.Context) json.RawMessage {
 	if !ok {
 		return nil
 	}
-	session, _ := value.(json.RawMessage)
-	return append(json.RawMessage(nil), session...)
+	session, _ := value.(jsontext.Value)
+	return append(jsontext.Value(nil), session...)
 }
 
 func writeRealtimeError(c *gin.Context, status int, message, errorType, code string) {

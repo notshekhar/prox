@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type openAIResponsesStreamErrorChunk struct {
@@ -81,9 +84,7 @@ func openAIResponsesStreamErrorType(status int) string {
 }
 
 func unmarshalJSONWithNumber(data []byte, v any) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	return dec.Decode(v)
+	return json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(data)), v, jsoncompat.DecodeUseNumber)
 }
 
 // BuildOpenAIResponsesStreamErrorChunk builds an OpenAI Responses streaming error chunk.
@@ -104,12 +105,12 @@ func BuildOpenAIResponsesStreamErrorChunk(status int, errText string, sequenceNu
 	code := openAIResponsesStreamErrorCode(status)
 
 	trimmed := strings.TrimSpace(errText)
-	if trimmed != "" && json.Valid([]byte(trimmed)) {
+	if trimmed != "" && jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 		var payload map[string]any
 		if errUnmarshal := unmarshalJSONWithNumber([]byte(trimmed), &payload); errUnmarshal == nil {
 			if v, ok := payload["sequence_number"]; ok {
 				switch n := v.(type) {
-				case json.Number:
+				case jsoncompat.Number:
 					if seqInt, err := n.Int64(); err == nil {
 						sequenceNumber = int(seqInt)
 					}
@@ -130,7 +131,7 @@ func BuildOpenAIResponsesStreamErrorChunk(status int, errText string, sequenceNu
 		Type:           "error",
 		Error:          errorDetail,
 		SequenceNumber: sequenceNumber,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal == nil {
 		return data
 	}
@@ -146,7 +147,7 @@ func BuildOpenAIResponsesStreamErrorChunk(status int, errText string, sequenceNu
 		Type:           "error",
 		Error:          fallbackDetail,
 		SequenceNumber: sequenceNumber,
-	})
+	}, jsoncompat.Encode)
 	if len(data) > 0 {
 		return data
 	}
@@ -167,7 +168,7 @@ func applyOpenAIResponsesNestedErrorCode(errorDetail map[string]any) map[string]
 func openAIResponsesStreamErrorDetail(status int, errText, code, message string) map[string]any {
 	var payload map[string]any
 	trimmed := strings.TrimSpace(errText)
-	if trimmed != "" && json.Valid([]byte(trimmed)) {
+	if trimmed != "" && jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 		if errUnmarshal := unmarshalJSONWithNumber([]byte(trimmed), &payload); errUnmarshal == nil {
 			if errorDetail, ok := payload["error"].(map[string]any); ok {
 				return applyOpenAIResponsesNestedErrorCode(errorDetail)
@@ -244,7 +245,7 @@ func BuildOpenAIResponsesStreamFailedChunk(status int, errText string, sequenceN
 			Status: "failed",
 			Error:  errorDetail,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal == nil {
 		return data
 	}

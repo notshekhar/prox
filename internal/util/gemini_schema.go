@@ -2,8 +2,8 @@
 package util
 
 import (
-	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"reflect"
 	"sort"
@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 var gjsonPathKeyReplacer = strings.NewReplacer(".", "\\.", "*", "\\*", "?", "\\?")
@@ -401,10 +402,8 @@ func normalizeMalformedSchemaObjects(jsonStr string) string {
 		return jsonStr
 	}
 
-	decoder := json.NewDecoder(strings.NewReader(jsonStr))
-	decoder.UseNumber()
 	var root any
-	if err := decoder.Decode(&root); err != nil {
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(jsonStr)), &root, jsoncompat.DecodeUseNumber); err != nil {
 		return jsonStr
 	}
 
@@ -451,17 +450,7 @@ func normalizeMalformedSchemaObjects(jsonStr string) string {
 }
 
 func marshalJSONNoHTMLEscape(v any) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
-		return nil, err
-	}
-	b := buf.Bytes()
-	if len(b) > 0 && b[len(b)-1] == '\n' {
-		b = b[:len(b)-1]
-	}
-	return b, nil
+	return json.Marshal(v, jsoncompat.EncodeNoHTMLEscape)
 }
 
 func isKnownSchemaKeywordOrExtension(key string) bool {
@@ -823,10 +812,8 @@ func inlineLocalRefsForClean(jsonStr string) string {
 		return jsonStr
 	}
 
-	decoder := json.NewDecoder(strings.NewReader(jsonStr))
-	decoder.UseNumber()
 	var root any
-	if err := decoder.Decode(&root); err != nil {
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(jsonStr)), &root, jsoncompat.DecodeUseNumber); err != nil {
 		return jsonStr
 	}
 
@@ -844,7 +831,7 @@ func inlineLocalRefsForClean(jsonStr string) string {
 
 	state := newRefResolveState()
 	resolved := resolveSchemaRoot(resolveRoot, state, true)
-	out, err := json.Marshal(map[string]any{"schema": resolved})
+	out, err := json.Marshal(map[string]any{"schema": resolved}, jsoncompat.Encode)
 	if err != nil {
 		return jsonStr
 	}
@@ -858,16 +845,14 @@ func inlineLocalRefsRooted(jsonStr string, parsedRoot any, forClean bool) string
 
 	root := parsedRoot
 	if root == nil {
-		decoder := json.NewDecoder(strings.NewReader(jsonStr))
-		decoder.UseNumber()
-		if err := decoder.Decode(&root); err != nil {
+		if err := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(jsonStr)), &root, jsoncompat.DecodeUseNumber); err != nil {
 			return jsonStr
 		}
 	}
 
 	state := newRefResolveState()
 	resolved := resolveSchemaRoot(root, state, forClean)
-	out, err := json.Marshal(resolved)
+	out, err := json.Marshal(resolved, jsoncompat.Encode)
 	if err != nil {
 		return jsonStr
 	}
@@ -979,7 +964,7 @@ func cleanExpansionSize(value any, inNameMap bool) int {
 		return 4
 	case bool:
 		return 5
-	case json.Number:
+	case jsoncompat.Number:
 		return len(node.String())
 	case string:
 		return jsonStringEncodedSize(node)
@@ -1033,7 +1018,7 @@ func jsonValueSize(value any) int {
 		return 4
 	case bool:
 		return 5
-	case json.Number:
+	case jsoncompat.Number:
 		return len(node.String())
 	case string:
 		return jsonStringEncodedSize(node)
@@ -2001,9 +1986,9 @@ func flattenAnyOfOneOf(jsonStr string, preserveOneOf, flattenMultiBranch bool) s
 			targetPath := joinPath(parentPath, targetKey)
 
 			if targetKey != key || hasNull || hasFilteredBranch {
-				rawBranches := make([]json.RawMessage, 0, len(nonNullItems))
+				rawBranches := make([]jsontext.Value, 0, len(nonNullItems))
 				for _, item := range nonNullItems {
-					rawBranches = append(rawBranches, json.RawMessage(item.Raw))
+					rawBranches = append(rawBranches, jsontext.Value(item.Raw))
 				}
 				if doc.Set(targetPath, rawBranches) == nil {
 					modified = true

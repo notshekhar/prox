@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"reflect"
 	"sync"
@@ -12,6 +12,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	internalhome "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -137,7 +138,7 @@ func (d *accountedAliasTargetDispatcher) RPopAuth(_ context.Context, model strin
 			CredentialID: "non-force-alias-auth",
 			Model:        target,
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*accountedAliasTargetDispatcher) AbortAmbiguousDispatch() {}
@@ -197,7 +198,7 @@ func (d *authSelectionAliasDispatcher) RPopAuth(_ context.Context, model string,
 			},
 		},
 		"concurrency": homeConcurrencyTuple{Accounted: true, CredentialID: "auth-selection-route-auth", Model: "target-model"},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*authSelectionAliasDispatcher) AbortAmbiguousDispatch() {}
@@ -291,7 +292,7 @@ func (d *forceMappingAliasChangeDispatcher) RPopAuth(_ context.Context, _ string
 			CredentialID: "force-mapping-auth",
 			Model:        "upstream-a",
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*forceMappingAliasChangeDispatcher) AbortAmbiguousDispatch() {}
@@ -415,7 +416,7 @@ func (d *ackOrderedRouteDispatcher) RPopAuth(_ context.Context, model string, _ 
 			},
 		},
 		"concurrency": homeConcurrencyTuple{Accounted: true, CredentialID: "retained-route-auth", Model: target},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*ackOrderedRouteDispatcher) AbortAmbiguousDispatch() {}
@@ -524,7 +525,7 @@ func (d *prefixedRetainedRouteDispatcher) RPopAuth(_ context.Context, model stri
 			},
 		},
 		"concurrency": homeConcurrencyTuple{Accounted: true, CredentialID: "prefixed-retained-route-auth", Model: "target-a"},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*prefixedRetainedRouteDispatcher) AbortAmbiguousDispatch() {}

@@ -1,13 +1,14 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestGetOpenAICompatIncludesDisableCooling(t *testing.T) {
@@ -49,7 +50,7 @@ func TestGetOpenAICompatIncludesDisableCooling(t *testing.T) {
 			RequestRetry          *int  `json:"request-retry"`
 		} `json:"openai-compatibility"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 	if len(body.OpenAICompatibility) != 1 {

@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -112,7 +113,7 @@ func parseQueuedUsagePayload(t *testing.T, payload []byte) (queuedUsagePayload, 
 	if len(payload) == 0 {
 		return parsed, false
 	}
-	if err := json.Unmarshal(payload, &parsed); err != nil {
+	if err := json.Unmarshal(payload, &parsed, jsoncompat.Decode); err != nil {
 		return parsed, false
 	}
 	if parsed.Provider == "" || parsed.Model == "" {

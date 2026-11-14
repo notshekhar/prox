@@ -2,7 +2,7 @@ package helps
 
 import (
 	cryptorand "crypto/rand"
-	"encoding/json"
+	json "encoding/json/v2"
 	"math"
 	"math/big"
 	"net/http"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -176,7 +177,7 @@ func claudeBodyIsExplicitPerMinuteRateLimit(body []byte) bool {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &envelope); errUnmarshal != nil || envelope.Error.Type != "rate_limit_error" {
+	if errUnmarshal := json.Unmarshal(body, &envelope, jsoncompat.Decode); errUnmarshal != nil || envelope.Error.Type != "rate_limit_error" {
 		return false
 	}
 	switch strings.ToLower(strings.TrimSpace(envelope.Error.Message)) {

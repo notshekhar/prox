@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	log "github.com/sirupsen/logrus"
@@ -296,7 +296,7 @@ func parseDurationValue(val any) time.Duration {
 			return 0
 		}
 		return time.Duration(v * float64(time.Second))
-	case json.Number:
+	case jsoncompat.Number:
 		if i, err := v.Int64(); err == nil {
 			if i <= 0 {
 				return 0
@@ -1530,6 +1530,9 @@ func (m *Manager) refreshAuthForRequestAtEpoch(ctx context.Context, id, failedAc
 				}
 				shouldUnschedule = true
 			} else if !hasValidAccessToken || accessTokenRejected {
+				if !current.Unavailable {
+					log.Warnf("credential refresh failed for %s (%s): %s; access token expired, account unavailable", current.Provider, current.ID, sanitizedRefreshErr.Message)
+				}
 				current.Unavailable = true
 				current.Status = StatusError
 				if unauthorized || terminalRefresh {
@@ -1707,6 +1710,20 @@ type ForceRefreshResult struct {
 
 // ForceRefreshAll triggers an immediate refresh for all credentials that have refresh tokens or custom refresh evaluators.
 func (m *Manager) ForceRefreshAll(ctx context.Context) []ForceRefreshResult {
+	return m.refreshMatching(ctx, func(*Auth) bool { return true })
+}
+
+// RefreshDue refreshes only the credentials that need it. Providers such as
+// Claude replace the refresh token every time, so refreshing a healthy login
+// needlessly invalidates any other machine holding the same one.
+func (m *Manager) RefreshDue(ctx context.Context) []ForceRefreshResult {
+	now := time.Now()
+	return m.refreshMatching(ctx, func(auth *Auth) bool {
+		return !auth.HasValidAccessToken(now) || m.shouldRefresh(auth, now)
+	})
+}
+
+func (m *Manager) refreshMatching(ctx context.Context, wanted func(*Auth) bool) []ForceRefreshResult {
 	if m == nil {
 		return nil
 	}
@@ -1714,13 +1731,20 @@ func (m *Manager) ForceRefreshAll(ctx context.Context) []ForceRefreshResult {
 		ctx = context.Background()
 	}
 	m.mu.RLock()
-	ids := make([]string, 0, len(m.auths))
-	for id, auth := range m.auths {
+	eligible := make([]*Auth, 0, len(m.auths))
+	for _, auth := range m.auths {
 		if auth != nil && !auth.Disabled && (authHasRefreshCredential(auth) || auth.Runtime != nil) {
-			ids = append(ids, id)
+			eligible = append(eligible, auth.Clone())
 		}
 	}
 	m.mu.RUnlock()
+
+	ids := make([]string, 0, len(eligible))
+	for _, auth := range eligible {
+		if wanted(auth) {
+			ids = append(ids, auth.ID)
+		}
+	}
 
 	results := make([]ForceRefreshResult, len(ids))
 	if len(ids) == 0 {

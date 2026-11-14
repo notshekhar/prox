@@ -2,7 +2,7 @@ package openai
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net"
@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
@@ -1383,7 +1384,7 @@ func (d *authHeaderCheckingHomeDispatcher) RPopAuthWithConstraints(_ context.Con
 			Attributes: map[string]string{
 				"websockets": "true",
 			},
-		})
+		}, jsoncompat.Encode)
 	}
 	return []byte(`{"error":{"code":"auth_not_found","message":"no more auths"}}`), nil
 }
@@ -1513,7 +1514,7 @@ func (d *websocketTwoAuthHomeDispatcher) RPopAuthWithConstraints(_ context.Conte
 			ID:       id,
 			Provider: "codex",
 			Status:   coreauth.StatusActive,
-		})
+		}, jsoncompat.Encode)
 	}
 	return []byte(`{"error":{"code":"request_retry_exceeded","message":"no more auths"}}`), nil
 }

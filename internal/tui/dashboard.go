@@ -1,13 +1,13 @@
 package tui
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // dashboardModel displays server info, stats cards, and config overview.
@@ -19,11 +19,6 @@ type dashboardModel struct {
 	width    int
 	height   int
 	ready    bool
-
-	// Cached data for re-rendering on locale change
-	lastConfig    map[string]any
-	lastAuthFiles []map[string]any
-	lastAPIKeys   []string
 }
 
 type dashboardDataMsg struct {
@@ -60,24 +55,12 @@ func (m dashboardModel) fetchData() tea.Msg {
 
 func (m dashboardModel) Update(msg tea.Msg) (dashboardModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		// Re-render immediately with cached data using new locale
-		m.content = m.renderDashboard(m.lastConfig, m.lastAuthFiles, m.lastAPIKeys)
-		m.viewport.SetContent(m.content)
-		// Also fetch fresh data in background
-		return m, m.fetchData
-
 	case dashboardDataMsg:
 		if msg.err != nil {
 			m.err = msg.err
 			m.content = errorStyle.Render("⚠ Error: " + msg.err.Error())
 		} else {
 			m.err = nil
-			// Cache data for locale switching
-			m.lastConfig = msg.config
-			m.lastAuthFiles = msg.authFiles
-			m.lastAPIKeys = msg.apiKeys
-
 			m.content = m.renderDashboard(msg.config, msg.authFiles, msg.apiKeys)
 		}
 		m.viewport.SetContent(m.content)
@@ -248,7 +231,7 @@ func getFloat(m map[string]any, key string) float64 {
 		switch n := v.(type) {
 		case float64:
 			return n
-		case json.Number:
+		case jsoncompat.Number:
 			f, _ := n.Float64()
 			return f
 		}

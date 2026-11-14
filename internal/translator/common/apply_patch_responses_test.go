@@ -1,19 +1,23 @@
 package common
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
 	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
 var patchResponsesRequest = []byte(`{"tools":[{"type":"custom","name":"apply_patch"}]}`)
 
-func patchJSON(value any) string { raw, _ := json.Marshal(value); return string(raw) }
+func patchJSON(value any) string {
+	raw, _ := json.Marshal(value, jsoncompat.Encode)
+	return string(raw)
+}
 func patchItem(kind, id, call, name, args string) string {
 	return fmt.Sprintf(`{"type":%s,"id":%s,"call_id":%s,"name":%s,"arguments":%s}`, patchJSON(kind), patchJSON(id), patchJSON(call), patchJSON(name), patchJSON(args))
 }

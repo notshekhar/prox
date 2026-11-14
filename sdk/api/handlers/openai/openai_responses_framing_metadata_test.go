@@ -2,7 +2,8 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
@@ -315,7 +316,7 @@ func TestSSEFrameAccumulatorKeepsEmptyCommentInMultilineData(t *testing.T) {
 		t.Fatalf("frames = %q, want one", frames)
 	}
 	payload, ok := responsesSSEDataPayload(frames[0])
-	if !ok || !json.Valid(payload) || ojson.GetBytesNoCopy(payload, "type").String() != "response.completed" {
+	if !ok || !jsontext.Value(payload).IsValid() || ojson.GetBytesNoCopy(payload, "type").String() != "response.completed" {
 		t.Fatalf("empty comment corrupted image data: %q", frames[0])
 	}
 }

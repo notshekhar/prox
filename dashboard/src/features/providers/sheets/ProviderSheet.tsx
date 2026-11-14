@@ -241,18 +241,8 @@ export function ProviderSheet({
       description={t('providersPage.table.description', {
         route:
           state.brand === 'openaiCompatibility'
-            ? '/api-keys/openai'
-            : state.brand === 'apikeyFun'
-              ? '/quick-start'
-              : state.brand === 'fennoAI'
-                ? '/api-keys/fennoai'
-                : state.brand === 'qiniuCloud'
-                  ? '/api-keys/qiniu'
-                  : state.brand === 'aiCodeMirror'
-                    ? '/api-keys/aicodemirror'
-                    : state.brand === 'kimi'
-                      ? '/api-keys/kimi'
-                      : `/api-keys/${state.brand}`,
+            ? '/provider-keys/openai'
+            : `/provider-keys/${state.brand}`,
       })}
       footer={footer}
       closeDisabled={submitting}

@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	internalhome "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -676,7 +677,7 @@ func (d websocketHomeDispatcher) RPopAuth(context.Context, string, string, http.
 		"attributes": map[string]string{
 			"api_key": "home-key",
 		},
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (websocketHomeDispatcher) AbortAmbiguousDispatch() {}
@@ -720,7 +721,7 @@ func (d *accountedWebsocketHomeDispatcher) RPopAuth(_ context.Context, model str
 			"credential_id": "accounted-websocket-auth",
 			"model":         upstreamModel,
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*accountedWebsocketHomeDispatcher) AbortAmbiguousDispatch() {}
@@ -946,7 +947,7 @@ func (d *codex426RetryDispatcher) RPopAuth(_ context.Context, model string, _ st
 			"credential_id": credentialID,
 			"model":         model,
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*codex426RetryDispatcher) AbortAmbiguousDispatch() {}

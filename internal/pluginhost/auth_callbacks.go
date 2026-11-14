@@ -3,7 +3,8 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -27,10 +29,10 @@ type rpcHostAuthListResponse struct {
 }
 
 type rpcHostAuthGetResponse struct {
-	AuthIndex string          `json:"auth_index"`
-	Name      string          `json:"name,omitempty"`
-	Path      string          `json:"path,omitempty"`
-	JSON      json.RawMessage `json:"json"`
+	AuthIndex string         `json:"auth_index"`
+	Name      string         `json:"name,omitempty"`
+	Path      string         `json:"path,omitempty"`
+	JSON      jsontext.Value `json:"json"`
 }
 
 func (h *Host) SetAuthManager(manager *coreauth.Manager) {
@@ -56,7 +58,7 @@ func (h *Host) callHostAuthList(ctx context.Context, request []byte) ([]byte, er
 	_ = ctx
 	if len(bytesTrimSpace(request)) > 0 {
 		var req map[string]any
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, fmt.Errorf("decode host auth list request: %w", errUnmarshal)
 		}
 	}
@@ -70,7 +72,7 @@ func (h *Host) callHostAuthList(ctx context.Context, request []byte) ([]byte, er
 func (h *Host) callHostAuthGet(ctx context.Context, request []byte) ([]byte, error) {
 	_ = ctx
 	var req rpcHostAuthGetRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host auth get request: %w", errUnmarshal)
 	}
 	authIndex := strings.TrimSpace(req.AuthIndex)
@@ -90,14 +92,14 @@ func (h *Host) callHostAuthGet(ctx context.Context, request []byte) ([]byte, err
 		AuthIndex: authIndex,
 		Name:      name,
 		Path:      path,
-		JSON:      json.RawMessage(rawJSON),
+		JSON:      jsontext.Value(rawJSON),
 	})
 }
 
 func (h *Host) callHostAuthGetRuntime(ctx context.Context, request []byte) ([]byte, error) {
 	_ = ctx
 	var req rpcHostAuthGetRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host auth get runtime request: %w", errUnmarshal)
 	}
 	authIndex := strings.TrimSpace(req.AuthIndex)
@@ -117,7 +119,7 @@ func (h *Host) callHostAuthGetRuntime(ctx context.Context, request []byte) ([]by
 
 func (h *Host) callHostAuthSave(ctx context.Context, request []byte) ([]byte, error) {
 	var req pluginapi.HostAuthSaveRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host auth save request: %w", errUnmarshal)
 	}
 	name, rawJSON, errValidate := validateHostAuthSaveRequest(req)
@@ -138,7 +140,7 @@ func (h *Host) callHostAuthModels(ctx context.Context, request []byte) ([]byte, 
 	_ = ctx
 	var req pluginapi.HostAuthModelsRequest
 	if len(bytesTrimSpace(request)) > 0 {
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, fmt.Errorf("decode host auth models request: %w", errUnmarshal)
 		}
 	}
@@ -254,7 +256,7 @@ func (h *Host) listAuthFilesFromDisk() ([]pluginapi.HostAuthFileEntry, error) {
 		}
 		if data, errRead := os.ReadFile(full); errRead == nil {
 			var metadata map[string]any
-			if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal == nil {
+			if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal == nil {
 				if provider, ok := metadata["type"].(string); ok {
 					fileEntry.Type = strings.TrimSpace(provider)
 					fileEntry.Provider = fileEntry.Type
@@ -336,7 +338,7 @@ func (h *Host) authPhysicalJSONByIndex(authIndex string) (*coreauth.Auth, []byte
 		return nil, nil, fmt.Errorf("auth file is empty for auth_index %s", authIndex)
 	}
 	var metadata map[string]any
-	if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, nil, fmt.Errorf("invalid auth file for auth_index %s: %w", authIndex, errUnmarshal)
 	}
 	return auth, data, nil
@@ -355,7 +357,7 @@ func validateHostAuthSaveRequest(req pluginapi.HostAuthSaveRequest) (string, []b
 		return "", nil, fmt.Errorf("json is required")
 	}
 	var metadata map[string]any
-	if errUnmarshal := json.Unmarshal(rawJSON, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rawJSON, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		return "", nil, fmt.Errorf("invalid auth json: %w", errUnmarshal)
 	}
 	return filepath.Base(name), rawJSON, nil
@@ -397,7 +399,7 @@ func (h *Host) buildAuthsFromFileData(ctx context.Context, path string, data []b
 		}
 	}
 	metadata := make(map[string]any)
-	if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("invalid auth file: %w", errUnmarshal)
 	}
 	coreauth.NormalizeCredentialMetadata(metadata)

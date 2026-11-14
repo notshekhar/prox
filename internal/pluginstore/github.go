@@ -2,7 +2,7 @@ package pluginstore
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/httpfetch"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -78,7 +79,7 @@ func (c Client) FetchLatestRelease(ctx context.Context, plugin Plugin) (Release,
 		return Release{}, errDownload
 	}
 	var release Release
-	if errDecode := json.Unmarshal(data, &release); errDecode != nil {
+	if errDecode := json.Unmarshal(data, &release, jsoncompat.Decode); errDecode != nil {
 		return Release{}, fmt.Errorf("decode release: %w", errDecode)
 	}
 	return release, nil
@@ -105,7 +106,7 @@ func (c Client) FetchReleaseByTag(ctx context.Context, plugin Plugin, tag string
 		return Release{}, errDownload
 	}
 	var release Release
-	if errDecode := json.Unmarshal(data, &release); errDecode != nil {
+	if errDecode := json.Unmarshal(data, &release, jsoncompat.Decode); errDecode != nil {
 		return Release{}, fmt.Errorf("decode release: %w", errDecode)
 	}
 	return release, nil

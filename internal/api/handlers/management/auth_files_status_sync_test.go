@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -266,7 +267,7 @@ func TestPatchAuthFileStatusRestoresModelsViaSyncHook(t *testing.T) {
 	var resp struct {
 		Models []map[string]any `json:"models"`
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) != 1 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) != 1 {
 		t.Fatalf("expected 1 initial model, got: %s", rec.Body.String())
 	}
 
@@ -286,7 +287,7 @@ func TestPatchAuthFileStatusRestoresModelsViaSyncHook(t *testing.T) {
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/v0/management/auth-files/models?name="+fileName, nil)
 	h.GetAuthFileModels(ctx)
 	resp.Models = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) != 0 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) != 0 {
 		t.Fatalf("expected 0 models after disable, got: %s", rec.Body.String())
 	}
 
@@ -307,7 +308,7 @@ func TestPatchAuthFileStatusRestoresModelsViaSyncHook(t *testing.T) {
 	ctx.Request = httptest.NewRequest(http.MethodGet, "/v0/management/auth-files/models?name="+fileName, nil)
 	h.GetAuthFileModels(ctx)
 	resp.Models = nil
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil || len(resp.Models) != 1 {
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); err != nil || len(resp.Models) != 1 {
 		t.Fatalf("expected 1 model after re-enable, got: %s", rec.Body.String())
 	}
 }

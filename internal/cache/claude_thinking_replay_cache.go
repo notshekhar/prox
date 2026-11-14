@@ -3,7 +3,8 @@ package cache
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/google/uuid"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -53,9 +55,9 @@ type claudeThinkingReplayEntry struct {
 type ClaudeThinkingReplaySnapshot = KimiThinkingReplaySnapshot
 
 type claudeThinkingReplayHomeValue struct {
-	Generation string            `json:"generation"`
-	Deleted    bool              `json:"deleted,omitempty"`
-	Contents   []json.RawMessage `json:"contents,omitempty"`
+	Generation string           `json:"generation"`
+	Deleted    bool             `json:"deleted,omitzero"`
+	Contents   []jsontext.Value `json:"contents,omitempty"`
 }
 
 var (
@@ -313,12 +315,12 @@ func readOrReserveClaudeThinkingReplayHomeValue(ctx context.Context, client kimi
 func marshalClaudeThinkingReplayHomeValue(generation string, deleted bool, contents [][]byte) ([]byte, error) {
 	value := claudeThinkingReplayHomeValue{Generation: generation, Deleted: deleted}
 	if !deleted {
-		value.Contents = make([]json.RawMessage, 0, len(contents))
+		value.Contents = make([]jsontext.Value, 0, len(contents))
 		for _, content := range contents {
-			value.Contents = append(value.Contents, json.RawMessage(append([]byte(nil), content...)))
+			value.Contents = append(value.Contents, jsontext.Value(append([]byte(nil), content...)))
 		}
 	}
-	return json.Marshal(value)
+	return json.Marshal(value, jsoncompat.Encode)
 }
 
 func decodeClaudeThinkingReplayHomeValue(raw []byte) ([][]byte, string, bool, bool) {
@@ -326,7 +328,7 @@ func decodeClaudeThinkingReplayHomeValue(raw []byte) ([][]byte, string, bool, bo
 		return nil, "", false, false
 	}
 	var value claudeThinkingReplayHomeValue
-	if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal != nil || strings.TrimSpace(value.Generation) == "" {
+	if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal != nil || strings.TrimSpace(value.Generation) == "" {
 		return nil, "", false, false
 	}
 	if value.Deleted {
@@ -426,13 +428,11 @@ func claudeThinkingReplayJSONEqual(left, right []byte) bool {
 }
 
 func claudeThinkingReplayCanonicalJSON(raw []byte) ([]byte, bool) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
 	var value any
-	if errDecode := decoder.Decode(&value); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &value, jsoncompat.DecodeUseNumber); errDecode != nil {
 		return nil, false
 	}
-	canonical, errMarshal := json.Marshal(value)
+	canonical, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	return canonical, errMarshal == nil
 }
 

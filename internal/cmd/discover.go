@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +16,7 @@ import (
 	"unicode"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/discovery"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -150,7 +152,7 @@ func runDiscoverWithOptions(opts DiscoverOptions, stdout, stderr io.Writer, newB
 	browser, errBrowser := newBrowser()
 	if errBrowser != nil {
 		if jsonOutput {
-			out, _ := json.MarshalIndent(map[string]any{"error": errBrowser.Error(), "gateways": []any{}}, "", "  ")
+			out, _ := json.Marshal(map[string]any{"error": errBrowser.Error(), "gateways": []any{}}, jsoncompat.Encode, jsontext.WithIndent("  "))
 			fmt.Fprintln(stdout, string(out))
 		} else {
 			fmt.Fprintf(stderr, "Error scanning LAN: %v\n", errBrowser)
@@ -160,7 +162,7 @@ func runDiscoverWithOptions(opts DiscoverOptions, stdout, stderr io.Writer, newB
 	gateways, err := browser.BrowseWithFallbackServiceType(ctx, serviceType)
 	if err != nil {
 		if jsonOutput {
-			out, _ := json.MarshalIndent(map[string]any{"error": err.Error(), "gateways": []any{}}, "", "  ")
+			out, _ := json.Marshal(map[string]any{"error": err.Error(), "gateways": []any{}}, jsoncompat.Encode, jsontext.WithIndent("  "))
 			fmt.Fprintln(stdout, string(out))
 		} else {
 			fmt.Fprintf(stderr, "Error scanning LAN: %v\n", err)
@@ -173,7 +175,7 @@ func runDiscoverWithOptions(opts DiscoverOptions, stdout, stderr io.Writer, newB
 	}
 
 	if jsonOutput {
-		out, errMarshal := json.MarshalIndent(gateways, "", "  ")
+		out, errMarshal := json.Marshal(gateways, jsoncompat.Encode, jsontext.WithIndent("  "))
 		if errMarshal != nil {
 			fmt.Fprintf(stderr, "failed to marshal results: %v\n", errMarshal)
 			return 1

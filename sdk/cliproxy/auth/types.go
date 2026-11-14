@@ -5,9 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
-	"github.com/MoeForge/moego/base64"
-	"io"
+	json "encoding/json/v2"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,9 +15,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MoeForge/moego/base64"
+
 	"github.com/gin-gonic/gin"
 	baseauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // PostAuthHook defines a function that is called after an Auth record is created
@@ -54,11 +55,11 @@ type Auth struct {
 	// ID uniquely identifies the auth record across restarts.
 	ID string `json:"id"`
 	// RegistrationEpoch tracks monotonic registration cycles across unregister/re-register.
-	RegistrationEpoch uint64 `json:"registration_epoch,omitempty"`
+	RegistrationEpoch uint64 `json:"registration_epoch,omitzero"`
 	// CredentialVersion tracks monotonic credential replacements for secret material.
-	CredentialVersion uint64 `json:"credential_version,omitempty"`
+	CredentialVersion uint64 `json:"credential_version,omitzero"`
 	// Generation tracks monotonic mutations to resolve scheduler/reconcile snapshot races.
-	Generation uint64 `json:"generation,omitempty"`
+	Generation uint64 `json:"generation,omitzero"`
 	// Index is a stable runtime identifier derived from auth metadata (not persisted).
 	Index string `json:"-"`
 	// Provider is the upstream provider key (e.g. "gemini", "claude").
@@ -86,7 +87,7 @@ type Auth struct {
 	// ProxyConnectionPool carries the connection-pool block of this api-key
 	// credential. Nil means no pooling, which is the default. Pools are per
 	// credential, so an override here never shares connections with another auth.
-	ProxyConnectionPool *ProxyConnectionPoolOverride `json:"proxy_connection_pool,omitempty"`
+	ProxyConnectionPool *ProxyConnectionPoolOverride `json:"proxy_connection_pool,omitzero"`
 	// Attributes stores provider specific metadata needed by executors (immutable configuration).
 	Attributes map[string]string `json:"attributes,omitempty"`
 	// Metadata stores runtime mutable provider state (e.g. tokens, cookies).
@@ -94,7 +95,7 @@ type Auth struct {
 	// Quota captures recent quota information for load balancers.
 	Quota QuotaState `json:"quota"`
 	// LastError stores the last failure encountered while executing or refreshing.
-	LastError *Error `json:"last_error,omitempty"`
+	LastError *Error `json:"last_error,omitzero"`
 	// CreatedAt is the creation timestamp in UTC.
 	CreatedAt time.Time `json:"created_at"`
 	// UpdatedAt is the last modification timestamp in UTC.
@@ -170,16 +171,11 @@ func canonicalAuthFileDigest(data []byte) string {
 	if len(trimmed) == 0 {
 		return ""
 	}
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
-	decoder.UseNumber()
 	var parsed any
-	if errDecode := decoder.Decode(&parsed); errDecode == nil {
-		var trailing any
-		if errTrailing := decoder.Decode(&trailing); errTrailing == io.EOF {
-			if canonical, errMarshal := json.Marshal(parsed); errMarshal == nil {
-				sum := sha256.Sum256(canonical)
-				return hex.EncodeToString(sum[:])
-			}
+	if errDecode := json.Unmarshal(trimmed, &parsed, jsoncompat.DecodeUseNumber); errDecode == nil {
+		if canonical, errMarshal := json.Marshal(parsed, jsoncompat.Encode); errMarshal == nil {
+			sum := sha256.Sum256(canonical)
+			return hex.EncodeToString(sum[:])
 		}
 	}
 	sum := sha256.Sum256(trimmed)
@@ -345,7 +341,7 @@ type QuotaState struct {
 	// NextRecoverAt is when the credential may become available again.
 	NextRecoverAt time.Time `json:"next_recover_at"`
 	// BackoffLevel stores the progressive cooldown exponent used for rate limits.
-	BackoffLevel int `json:"backoff_level,omitempty"`
+	BackoffLevel int `json:"backoff_level,omitzero"`
 	// ObservedAt is the time the current Signals snapshot was observed.
 	ObservedAt time.Time `json:"observed_at,omitempty"`
 	// Signals stores bounded, provider-specific quota watermark values observed
@@ -380,7 +376,7 @@ type ModelState struct {
 	// NextRetryAfter defines the per-model retry time.
 	NextRetryAfter time.Time `json:"next_retry_after"`
 	// LastError records the latest error observed for this model.
-	LastError *Error `json:"last_error,omitempty"`
+	LastError *Error `json:"last_error,omitzero"`
 	// Quota retains quota information if this model hit rate limits.
 	Quota QuotaState `json:"quota"`
 	// UpdatedAt tracks the last update timestamp for this model state.
@@ -513,9 +509,9 @@ func (a *Auth) Clone() *Auth {
 // ProxyConnectionPoolOverride holds the per-api-key connection-pool settings.
 // Omitted fields fall back to the pool defaults (300s idle, 2 idle per host).
 type ProxyConnectionPoolOverride struct {
-	Enabled             *bool  `json:"enabled,omitempty"`
+	Enabled             *bool  `json:"enabled,omitzero"`
 	IdleConnTimeout     string `json:"idle-conn-timeout,omitempty"`
-	MaxIdleConnsPerHost *int   `json:"max-idle-conns-per-host,omitempty"`
+	MaxIdleConnsPerHost *int   `json:"max-idle-conns-per-host,omitzero"`
 }
 
 // Clone deep copies the override so auth snapshots never share mutable state.
@@ -876,7 +872,7 @@ func parseBoolAny(val any) (bool, bool) {
 		return parsed, true
 	case float64:
 		return typed != 0, true
-	case json.Number:
+	case jsoncompat.Number:
 		parsed, err := typed.Int64()
 		if err != nil {
 			return false, false
@@ -897,7 +893,7 @@ func parseIntAny(val any) (int, bool) {
 		return int(typed), true
 	case float64:
 		return int(typed), true
-	case json.Number:
+	case jsoncompat.Number:
 		parsed, err := typed.Int64()
 		if err != nil {
 			return 0, false
@@ -1578,7 +1574,7 @@ func parseJWTExp(token string) (time.Time, bool) {
 	var claims struct {
 		Exp any `json:"exp"`
 	}
-	if errJSON := json.Unmarshal(payloadBytes, &claims); errJSON != nil {
+	if errJSON := json.Unmarshal(payloadBytes, &claims, jsoncompat.Decode); errJSON != nil {
 		return time.Time{}, false
 	}
 	if claims.Exp == nil {
@@ -1682,7 +1678,7 @@ func parseTimeValue(v any) (time.Time, bool) {
 		return normaliseUnix(int64(value)), true
 	case int64:
 		return normaliseUnix(value), true
-	case json.Number:
+	case jsoncompat.Number:
 		if i, err := value.Int64(); err == nil {
 			return normaliseUnix(i), true
 		}

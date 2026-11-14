@@ -3,7 +3,7 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"maps"
@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
@@ -187,7 +188,7 @@ func (homeInterruptDispatcher) RPopAuth(context.Context, string, string, http.He
 		Attributes: map[string]string{
 			"websockets": "true",
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (homeInterruptDispatcher) AbortAmbiguousDispatch() {}

@@ -1,7 +1,8 @@
 package auth
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
@@ -180,8 +182,8 @@ func decodeHomeDispatchConcurrencyEnvelope(raw []byte) (homeDispatchConcurrencyE
 		return homeDispatchConcurrencyEnvelope{}, errors.New("Home response is not valid UTF-8")
 	}
 
-	var fields map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(raw, &fields); errUnmarshal != nil || fields == nil {
+	var fields map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(raw, &fields, jsoncompat.Decode); errUnmarshal != nil || fields == nil {
 		return homeDispatchConcurrencyEnvelope{}, errors.New("Home response is not a JSON object")
 	}
 
@@ -191,7 +193,7 @@ func decodeHomeDispatchConcurrencyEnvelope(raw []byte) (homeDispatchConcurrencyE
 		return envelope, nil
 	}
 	envelope.Present = true
-	if errUnmarshal := json.Unmarshal(rawTuple, &envelope.Tuple); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rawTuple, &envelope.Tuple, jsoncompat.Decode); errUnmarshal != nil {
 		return envelope, errUnmarshal
 	}
 	if errValidate := validateAccountedHomeConcurrencyTuple(envelope.Tuple); errValidate != nil {
@@ -208,8 +210,8 @@ func canonicalHomeDispatchModel(responseModel, requestedModel string) string {
 }
 
 func decodeHomeDispatchError(raw []byte) error {
-	var fields map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(raw, &fields); errUnmarshal != nil || fields == nil {
+	var fields map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(raw, &fields, jsoncompat.Decode); errUnmarshal != nil || fields == nil {
 		return nil
 	}
 	rawError, present := fields["error"]
@@ -218,7 +220,7 @@ func decodeHomeDispatchError(raw []byte) error {
 	}
 
 	var detail *homeErrorDetail
-	if errUnmarshal := json.Unmarshal(rawError, &detail); errUnmarshal != nil || detail == nil {
+	if errUnmarshal := json.Unmarshal(rawError, &detail, jsoncompat.Decode); errUnmarshal != nil || detail == nil {
 		return &Error{Code: "invalid_auth", Message: "home returned malformed error payload", HTTPStatus: http.StatusBadGateway}
 	}
 	code := strings.TrimSpace(detail.Type)

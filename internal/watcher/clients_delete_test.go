@@ -2,12 +2,13 @@ package watcher
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -130,7 +131,7 @@ func (p *fileDeleteTestParser) ParseAuths(_ context.Context, req pluginapi.AuthP
 	var payload struct {
 		IDs []string `json:"ids"`
 	}
-	if errUnmarshal := json.Unmarshal(req.RawJSON, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(req.RawJSON, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, true, errUnmarshal
 	}
 	auths := make([]*coreauth.Auth, 0, len(payload.IDs))

@@ -66,9 +66,6 @@ func (m configTabModel) fetchConfig() tea.Msg {
 
 func (m configTabModel) Update(msg tea.Msg) (configTabModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		m.viewport.SetContent(m.renderContent())
-		return m, nil
 	case configDataMsg:
 		if msg.err != nil {
 			m.err = msg.err

@@ -2,7 +2,7 @@ package devin
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -159,7 +159,7 @@ func TestExchangeCodeForTokenAndFetchSelf(t *testing.T) {
 				return
 			}
 			var body map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := json.UnmarshalRead(r.Body, &body); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

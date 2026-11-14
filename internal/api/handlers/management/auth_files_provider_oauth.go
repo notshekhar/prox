@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -22,6 +22,7 @@ import (
 	metaauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -171,7 +172,7 @@ func (h *Handler) RequestAnthropicToken(c *gin.Context) {
 				data, errRead := os.ReadFile(path)
 				if errRead == nil {
 					var m map[string]string
-					_ = json.Unmarshal(data, &m)
+					_ = json.Unmarshal(data, &m, jsoncompat.Decode)
 					_ = os.Remove(path)
 					return m, nil
 				}
@@ -333,7 +334,7 @@ func (h *Handler) RequestCodexToken(c *gin.Context) {
 			}
 			if data, errR := os.ReadFile(waitFile); errR == nil {
 				var m map[string]string
-				_ = json.Unmarshal(data, &m)
+				_ = json.Unmarshal(data, &m, jsoncompat.Decode)
 				_ = os.Remove(waitFile)
 				if errStr := m["error"]; errStr != "" {
 					oauthErr := codex.NewOAuthError(errStr, "", http.StatusBadRequest)
@@ -700,7 +701,7 @@ func authGrantFingerprint(auth *coreauth.Auth) string {
 		if rawer, ok := auth.Storage.(interface{ RawJSON() []byte }); ok {
 			if raw := rawer.RawJSON(); len(raw) > 0 {
 				var rawMap map[string]any
-				if json.Unmarshal(raw, &rawMap) == nil {
+				if json.Unmarshal(raw, &rawMap, jsoncompat.Decode) == nil {
 					if accessToken == "" {
 						accessToken, _ = rawMap["access_token"].(string)
 					}
@@ -786,7 +787,7 @@ func (h *Handler) RequestAntigravityToken(c *gin.Context) {
 			}
 			if data, errReadFile := os.ReadFile(waitFile); errReadFile == nil {
 				var payload map[string]string
-				_ = json.Unmarshal(data, &payload)
+				_ = json.Unmarshal(data, &payload, jsoncompat.Decode)
 				_ = os.Remove(waitFile)
 				if errStr := strings.TrimSpace(payload["error"]); errStr != "" {
 					log.Errorf("Authentication failed: %s", errStr)
@@ -1671,7 +1672,7 @@ func authIdentityEmailAndAccountID(auth *coreauth.Auth) (email string, accountID
 		if rawer, ok := auth.Storage.(interface{ RawJSON() []byte }); ok {
 			if raw := rawer.RawJSON(); len(raw) > 0 {
 				var rawMap map[string]any
-				if json.Unmarshal(raw, &rawMap) == nil {
+				if json.Unmarshal(raw, &rawMap, jsoncompat.Decode) == nil {
 					if accountID == "" {
 						for _, key := range authIdentityAccountIDKeys {
 							if rawAcc, okAcc := rawMap[key].(string); okAcc {
@@ -1718,7 +1719,7 @@ func authIdentityOrganizationID(auth *coreauth.Auth) string {
 		if rawer, ok := auth.Storage.(interface{ RawJSON() []byte }); ok {
 			if raw := rawer.RawJSON(); len(raw) > 0 {
 				var rawMap map[string]any
-				if json.Unmarshal(raw, &rawMap) == nil {
+				if json.Unmarshal(raw, &rawMap, jsoncompat.Decode) == nil {
 					if rawOrg, okOrg := rawMap["organization_uuid"].(string); okOrg {
 						if trimmed := strings.TrimSpace(rawOrg); trimmed != "" {
 							return trimmed
@@ -1853,7 +1854,7 @@ func jsonPayloadsEqualOrBytesEqual(left, right []byte) bool {
 		return true
 	}
 	var leftVal, rightVal any
-	if json.Unmarshal(left, &leftVal) != nil || json.Unmarshal(right, &rightVal) != nil {
+	if json.Unmarshal(left, &leftVal, jsoncompat.Decode) != nil || json.Unmarshal(right, &rightVal, jsoncompat.Decode) != nil {
 		return false
 	}
 	return reflect.DeepEqual(leftVal, rightVal)
@@ -1879,7 +1880,7 @@ func (h *Handler) restoreOverwrittenPluginRecord(ctx context.Context, rb savedPl
 	}
 	var diskMeta map[string]any
 	if len(rb.prevDiskBytes) > 0 {
-		_ = json.Unmarshal(rb.prevDiskBytes, &diskMeta)
+		_ = json.Unmarshal(rb.prevDiskBytes, &diskMeta, jsoncompat.Decode)
 	}
 	var restoreRecord *coreauth.Auth
 	if rb.prevAuth != nil {

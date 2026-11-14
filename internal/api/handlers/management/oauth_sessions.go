@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
 	log "github.com/sirupsen/logrus"
 )
@@ -729,7 +730,7 @@ func writeOAuthCallbackFile(authDir, canonicalProvider, state, code, errorMessag
 		State: strings.TrimSpace(state),
 		Error: strings.TrimSpace(errorMessage),
 	}
-	data, err := json.Marshal(payload)
+	data, err := json.Marshal(payload, jsoncompat.Encode)
 	if err != nil {
 		return "", fmt.Errorf("marshal oauth callback payload: %w", err)
 	}

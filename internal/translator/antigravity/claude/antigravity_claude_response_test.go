@@ -3,13 +3,14 @@ package claude
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
@@ -424,7 +425,7 @@ func testAntigravityGroundingResponse() []byte {
 			},
 		},
 	}
-	raw, _ := json.Marshal(resp)
+	raw, _ := json.Marshal(resp, jsoncompat.Encode)
 	return raw
 }
 

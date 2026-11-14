@@ -2,7 +2,8 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestCatalogFetcherSources(t *testing.T) {
@@ -279,7 +282,7 @@ func TestRefreshModelCatalogsOnDemand(t *testing.T) {
 		}
 	}
 
-	var rawGeneral map[string]json.RawMessage
+	var rawGeneral map[string]jsontext.Value
 	if err := json.Unmarshal(embeddedModelsJSON, &rawGeneral); err != nil {
 		t.Fatal(err)
 	}
@@ -291,12 +294,12 @@ func TestRefreshModelCatalogsOnDemand(t *testing.T) {
 		"id":           "claude-on-demand-7039",
 		"display_name": "Claude On-Demand 7039",
 	})
-	updatedClaudeBytes, err := json.Marshal(claudeSection)
+	updatedClaudeBytes, err := json.Marshal(claudeSection, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}
 	rawGeneral["claude"] = updatedClaudeBytes
-	mutatedGeneralBytes, err := json.Marshal(rawGeneral)
+	mutatedGeneralBytes, err := json.Marshal(rawGeneral, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}

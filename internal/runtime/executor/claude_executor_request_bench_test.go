@@ -1,10 +1,12 @@
 package executor
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type claudeOAuthRemapBenchmarkBody struct {
@@ -90,13 +92,13 @@ func buildClaudeOAuthRemapBenchmarkBody(tb testing.TB, targetSize, references in
 		ToolChoice: claudeOAuthRemapBenchmarkChoice{Type: "tool", Name: tools[0].Name},
 		Messages:   []claudeOAuthRemapBenchmarkMessage{{Role: "assistant", Content: content}},
 	}
-	body, errMarshal := json.Marshal(request)
+	body, errMarshal := json.Marshal(request, jsoncompat.Encode)
 	if errMarshal != nil {
 		tb.Fatalf("marshal benchmark request: %v", errMarshal)
 	}
 	if remaining := targetSize - len(body); remaining > 0 {
 		request.Padding = strings.Repeat("x", remaining)
-		body, errMarshal = json.Marshal(request)
+		body, errMarshal = json.Marshal(request, jsoncompat.Encode)
 		if errMarshal != nil {
 			tb.Fatalf("marshal padded benchmark request: %v", errMarshal)
 		}

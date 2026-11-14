@@ -3,7 +3,8 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -261,7 +263,7 @@ func (s *PostgresStore) Save(ctx context.Context, auth *cliproxyauth.Auth) (stri
 			}
 		case auth.Metadata != nil:
 			auth.Metadata["disabled"] = auth.Disabled
-			raw, errMarshal := json.Marshal(auth.Metadata)
+			raw, errMarshal := json.Marshal(auth.Metadata, jsoncompat.Encode)
 			if errMarshal != nil {
 				return "", fmt.Errorf("postgres store: marshal metadata: %w", errMarshal)
 			}
@@ -331,7 +333,7 @@ func (s *PostgresStore) List(ctx context.Context) ([]*cliproxyauth.Auth, error) 
 			continue
 		}
 		metadata := make(map[string]any)
-		if err = json.Unmarshal([]byte(payload), &metadata); err != nil {
+		if err = json.Unmarshal([]byte(payload), &metadata, jsoncompat.Decode); err != nil {
 			log.WithError(err).Warnf("postgres store: skipping auth %s with invalid json", id)
 			continue
 		}
@@ -572,7 +574,7 @@ func (s *PostgresStore) persistAuth(ctx context.Context, relID string, data []by
 	if s.db == nil {
 		return fmt.Errorf("postgres store: database not configured")
 	}
-	jsonPayload := json.RawMessage(data)
+	jsonPayload := jsontext.Value(data)
 	query := fmt.Sprintf(`
 		INSERT INTO %s (id, content, created_at, updated_at)
 		VALUES ($1, $2, NOW(), NOW())

@@ -2,11 +2,12 @@ package logging
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +36,7 @@ func TestHomeRebalanceLogPreservesPlanAndAddressesLocallyAndWhenForwarded(t *tes
 		t.Fatal("rebalance log was not forwarded to Home")
 	}
 	var forwarded homeAppLogPayload
-	if errJSON := json.Unmarshal(stub.pushedAt(0), &forwarded); errJSON != nil {
+	if errJSON := json.Unmarshal(stub.pushedAt(0), &forwarded, jsoncompat.Decode); errJSON != nil {
 		t.Fatal(errJSON)
 	}
 	for destination, line := range map[string]string{"local": local.String(), "Home": forwarded.Line} {

@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 )
 
@@ -17,7 +18,7 @@ type errorEvent struct {
 	StatusCode int                  `json:"status_code"`
 	Body       string               `json:"body"`
 	Code       string               `json:"code,omitempty"`
-	Retryable  bool                 `json:"retryable,omitempty"`
+	Retryable  bool                 `json:"retryable,omitzero"`
 	AuthStatus errorEventAuthStatus `json:"auth_status"`
 }
 
@@ -27,15 +28,15 @@ type errorEventAuthStatus struct {
 	Disabled       bool                   `json:"disabled"`
 	Unavailable    bool                   `json:"unavailable"`
 	NextRetryAfter *time.Time             `json:"next_retry_after,omitempty"`
-	Quota          *errorEventQuotaStatus `json:"quota,omitempty"`
-	Model          *errorEventModelStatus `json:"model,omitempty"`
+	Quota          *errorEventQuotaStatus `json:"quota,omitzero"`
+	Model          *errorEventModelStatus `json:"model,omitzero"`
 }
 
 type errorEventQuotaStatus struct {
 	Exceeded      bool       `json:"exceeded"`
 	Reason        string     `json:"reason,omitempty"`
 	NextRecoverAt *time.Time `json:"next_recover_at,omitempty"`
-	BackoffLevel  int        `json:"backoff_level,omitempty"`
+	BackoffLevel  int        `json:"backoff_level,omitzero"`
 }
 
 type errorEventModelStatus struct {
@@ -44,7 +45,7 @@ type errorEventModelStatus struct {
 	StatusMessage  string                 `json:"status_message,omitempty"`
 	Unavailable    bool                   `json:"unavailable"`
 	NextRetryAfter *time.Time             `json:"next_retry_after,omitempty"`
-	Quota          *errorEventQuotaStatus `json:"quota,omitempty"`
+	Quota          *errorEventQuotaStatus `json:"quota,omitzero"`
 }
 
 func (m *Manager) publishErrorEvent(result Result, authSnapshot *Auth) {
@@ -77,7 +78,7 @@ func buildErrorEventPayload(result Result, authSnapshot *Auth) ([]byte, bool) {
 		event.Code = strings.TrimSpace(result.Error.Code)
 		event.Retryable = result.Error.Retryable
 	}
-	payload, errMarshal := json.Marshal(event)
+	payload, errMarshal := json.Marshal(event, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, false
 	}

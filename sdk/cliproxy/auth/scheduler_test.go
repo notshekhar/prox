@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"testing"
@@ -10,6 +10,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -110,7 +111,7 @@ func (d *authKindHomeDispatcher) RPopAuth(_ context.Context, _ string, _ string,
 	if count < 1 || count > len(d.auths) {
 		return nil, home.ErrAuthNotFound
 	}
-	return json.Marshal(homeAuthDispatchResponse{Auth: d.auths[count-1]})
+	return json.Marshal(homeAuthDispatchResponse{Auth: d.auths[count-1]}, jsoncompat.Encode)
 }
 
 func (d *authKindHomeDispatcher) RPopAuthWithPolicy(ctx context.Context, model string, sessionID string, headers http.Header, count int, policy string) ([]byte, error) {

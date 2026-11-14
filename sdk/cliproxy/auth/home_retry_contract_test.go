@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +14,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -63,7 +64,7 @@ func (d *legacyRepeatedStreamDispatcher) RPopAuth(context.Context, string, strin
 		ID:       "home-retry-a",
 		Provider: "home-retry-contract",
 		Status:   StatusActive,
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*legacyRepeatedStreamDispatcher) AbortAmbiguousDispatch() {}
@@ -82,7 +83,7 @@ func (d *retryRoundStartCooldownDispatcher) RPopAuthWithConstraints(_ context.Co
 		ID:       "home-retry-a",
 		Provider: "home-retry-contract",
 		Status:   StatusActive,
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*retryRoundStartCooldownDispatcher) AbortAmbiguousDispatch() {}
@@ -101,7 +102,7 @@ func (d *retryRoundRepeatedCooldownDispatcher) RPopAuthWithConstraints(_ context
 		ID:       "home-retry-a",
 		Provider: "home-retry-contract",
 		Status:   StatusActive,
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*retryRoundRepeatedCooldownDispatcher) AbortAmbiguousDispatch() {}
@@ -120,7 +121,7 @@ func (d *retryRoundLimitDownshiftDispatcher) RPopAuthWithConstraints(_ context.C
 			ID:       "home-retry-a",
 			Provider: "home-retry-contract",
 			Status:   StatusActive,
-		}})
+		}}, jsoncompat.Encode)
 	case 2:
 		return []byte(`{"error":{"type":"model_cooldown","message":"remaining credentials are cooling down","retryable":true,"retry_after_ms":1,"request_retry":0}}`), nil
 	default:
@@ -128,7 +129,7 @@ func (d *retryRoundLimitDownshiftDispatcher) RPopAuthWithConstraints(_ context.C
 			ID:       "home-retry-b",
 			Provider: "home-retry-contract",
 			Status:   StatusActive,
-		}})
+		}}, jsoncompat.Encode)
 	}
 }
 
@@ -149,7 +150,7 @@ func (d *retryRoundSelectionFailureDispatcher) RPopAuthWithRetryRoundConstraints
 			ID:       "home-retry-a",
 			Provider: "home-retry-contract",
 			Status:   StatusActive,
-		}})
+		}}, jsoncompat.Encode)
 	}
 	if len(d.selectionPayload) > 0 {
 		return append([]byte(nil), d.selectionPayload...), nil
@@ -181,7 +182,7 @@ func (d *aggregateRetryHomeDispatcher) RPopAuthWithConstraints(_ context.Context
 			Status:   StatusActive,
 			Metadata: map[string]any{"request_retry": override},
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*aggregateRetryHomeDispatcher) AbortAmbiguousDispatch() {}
@@ -220,7 +221,7 @@ func (d *retryContractHomeDispatcher) RPopAuthWithConstraints(_ context.Context,
 				Metadata:   d.metadata,
 				Attributes: attributes,
 			},
-		})
+		}, jsoncompat.Encode)
 	}
 	if len(d.exhaustedPayload) > 0 {
 		return append([]byte(nil), d.exhaustedPayload...), nil

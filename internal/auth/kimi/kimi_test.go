@@ -2,7 +2,7 @@ package kimi
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"os"

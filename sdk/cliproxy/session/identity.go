@@ -4,13 +4,14 @@ package session
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -494,7 +495,7 @@ func DeriveID(format sdktranslator.Format, payload []byte, callerScope string) s
 		return ""
 	}
 	var body map[string]any
-	if errUnmarshal := json.Unmarshal(payload, &body); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(payload, &body, jsoncompat.Decode); errUnmarshal != nil {
 		return ""
 	}
 
@@ -746,12 +747,12 @@ func appendCanonicalParts(parts *[]canonicalPart, value any) {
 			return
 		}
 		normalized := normalizeJSONValue(typed)
-		encoded, errMarshal := json.Marshal(normalized)
+		encoded, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 		if errMarshal == nil && len(encoded) > 0 {
 			*parts = append(*parts, canonicalPart{Kind: "json", Value: string(encoded)})
 		}
 	default:
-		encoded, errMarshal := json.Marshal(typed)
+		encoded, errMarshal := json.Marshal(typed, jsoncompat.Encode)
 		if errMarshal == nil && len(encoded) > 0 {
 			*parts = append(*parts, canonicalPart{Kind: "json", Value: string(encoded)})
 		}
@@ -822,7 +823,7 @@ func normalizeJSONValue(value any) any {
 }
 
 func hashRoot(root canonicalRoot) string {
-	encoded, errMarshal := json.Marshal(root)
+	encoded, errMarshal := json.Marshal(root, jsoncompat.Encode)
 	if errMarshal != nil {
 		return ""
 	}

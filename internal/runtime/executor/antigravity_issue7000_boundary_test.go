@@ -2,7 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -37,7 +39,7 @@ func assertIssue7000PromptSchema(t *testing.T, instruction ojson.Result, schemaJ
 			continue
 		}
 		var got any
-		if errDecode := json.NewDecoder(strings.NewReader(prompt.String()[offset:])).Decode(&got); errDecode == nil && reflect.DeepEqual(got, want) {
+		if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(prompt.String()[offset:])), &got); errDecode == nil && reflect.DeepEqual(got, want) {
 			return
 		}
 	}
@@ -66,7 +68,7 @@ func TestIssue7000AntigravityAliasesPreserveOtherFieldsAndToolChoice(t *testing.
 					}
 					payload := payloadDoc.Bytes()
 					body := buildRequestBodyFromRawPayload(t, "claude-opus-5-5-high", payload)
-					encoded, errMarshal := json.Marshal(body)
+					encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}
@@ -128,7 +130,7 @@ func TestIssue7000AntigravityModelAndPlainRequestBoundaries(t *testing.T) {
 		t.Run(tc.model, func(t *testing.T) {
 			payload := []byte(`{"request":{"generationConfig":{"responseSchema":{"type":"object","properties":{"title":{"type":"string"}}},"responseMimeType":"application/json"}}}`)
 			body := buildRequestBodyFromRawPayload(t, tc.model, payload)
-			encoded, errMarshal := json.Marshal(body)
+			encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
@@ -144,7 +146,7 @@ func TestIssue7000AntigravityModelAndPlainRequestBoundaries(t *testing.T) {
 		t.Run("plain/"+configJSON, func(t *testing.T) {
 			payload := []byte(`{"request":{"generationConfig":` + configJSON + `,"systemInstruction":{"parts":[{"text":"unchanged"}]},"toolConfig":{"functionCallingConfig":{"mode":"ANY","allowedFunctionNames":["lookup"]}}}}`)
 			body := buildRequestBodyFromRawPayload(t, "claude-opus-5-5-high", payload)
-			encoded, errMarshal := json.Marshal(body)
+			encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}

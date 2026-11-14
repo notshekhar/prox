@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -73,7 +74,7 @@ func TestOpenAICompatibilityUseMaxCompletionTokensJSONDecoding(t *testing.T) {
 	}`
 
 	var cfg Config
-	if errDecode := json.Unmarshal([]byte(jsonConfig), &cfg); errDecode != nil {
+	if errDecode := json.Unmarshal([]byte(jsonConfig), &cfg, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("json decode error: %v", errDecode)
 	}
 

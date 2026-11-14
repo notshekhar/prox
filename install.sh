@@ -252,6 +252,15 @@ resolve_bin_dir() {
   printf "%s" "$fallback"
 }
 
+# other_install_link is true for a link to a prox that is still there but isn't
+# this one. A test or a second PROX_HOME must not take over the real command.
+other_install_link() {
+  [ -L "$1" ] || return 1
+  local target
+  target="$(readlink "$1")"
+  [ "$target" != "$PROX_BIN_HOME/prox" ] && [ -e "$target" ]
+}
+
 uninstall() {
   bold "▶ Uninstalling prox"
   if [ -x "$PROX_BIN_HOME/prox" ]; then
@@ -260,6 +269,7 @@ uninstall() {
   for link in "$HOME/.local/bin/prox" "/usr/local/bin/prox" "/opt/homebrew/bin/prox" \
               "${PROX_BIN_DIR:+$PROX_BIN_DIR/prox}"; do
     [ -n "$link" ] || continue
+    other_install_link "$link" && continue
     if [ -L "$link" ] || [ -f "$link" ]; then
       rm -f "$link" 2>/dev/null && dim "  removed $link" || true
     fi
@@ -420,11 +430,18 @@ link_globally() {
   # copy earlier on PATH keeps winning and the update looks like it did
   # nothing.
   for stale in "$HOME/.local/bin/prox" "/usr/local/bin/prox" "/opt/homebrew/bin/prox"; do
+    other_install_link "$stale" && continue
     if [ -L "$stale" ] || [ -f "$stale" ]; then rm -f "$stale" 2>/dev/null || true; fi
   done
 
   local bin_dir
   bin_dir="$(resolve_bin_dir)"
+  if other_install_link "$bin_dir/prox"; then
+    dim "  $bin_dir/prox belongs to another install, so it was left alone."
+    dim "  Run this one with: $PROX_BIN_HOME/prox, or set PROX_BIN_DIR."
+    PROX_LINK_DIR="$PROX_BIN_HOME"
+    return
+  fi
   ln -sf "$PROX_BIN_HOME/prox" "$bin_dir/prox"
   hash -r 2>/dev/null || true
 

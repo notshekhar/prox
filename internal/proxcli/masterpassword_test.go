@@ -221,8 +221,8 @@ func TestServiceOnRefusesTheWrongPassword(t *testing.T) {
 	}
 }
 
-func TestQuoteForSecurity(t *testing.T) {
-	if got := quoteForSecurity(`a"b\c`); got != `"a\"b\\c"` {
+func TestDoubleQuoted(t *testing.T) {
+	if got := doubleQuoted(`a"b\c`); got != `"a\"b\\c"` {
 		t.Fatalf("got %s", got)
 	}
 }

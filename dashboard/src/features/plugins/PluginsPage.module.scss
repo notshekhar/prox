@@ -60,11 +60,7 @@
 .statusBar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 3px;
-  border: 1px solid color-mix(in srgb, var(--border-color) 60%, transparent);
-  background: color-mix(in srgb, var(--bg-secondary) 60%, transparent);
+  gap: 8px 24px;
   flex-wrap: wrap;
 }
 
@@ -74,12 +70,7 @@
   max-width: 100%;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
-  border-radius: $radius-full;
-  border: 1px solid color-mix(in srgb, var(--border-color) 50%, transparent);
-  background: color-mix(in srgb, var(--bg-primary) 56%, transparent);
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 12.5px;
   white-space: nowrap;
 }
 
@@ -92,7 +83,6 @@
 
 .statusDotOn {
   background: $success-color;
-  box-shadow: 0 0 6px rgba($success-color, 0.5);
 }
 
 .statusDotOff {
@@ -105,7 +95,6 @@
 
 .statusValue {
   color: var(--text-primary);
-  font-weight: 600;
 }
 
 .statusPathValue {
@@ -115,17 +104,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.statusDivider {
-  width: 1px;
-  height: 20px;
-  background: color-mix(in srgb, var(--border-color) 60%, transparent);
-  flex-shrink: 0;
-
-  @include mobile {
-    display: none;
-  }
 }
 
 // ─── Toolbar ────────────────────────────────────────────

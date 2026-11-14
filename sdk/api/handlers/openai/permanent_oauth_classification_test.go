@@ -2,7 +2,7 @@ package openai
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -100,7 +101,7 @@ func TestReproPermanentOAuthFailureClassification(t *testing.T) {
 						Retryable           *bool `json:"retryable"`
 					} `json:"error"`
 				}
-				if errUnmarshal := json.Unmarshal(got.Body.Bytes(), &payload); errUnmarshal != nil {
+				if errUnmarshal := json.Unmarshal(got.Body.Bytes(), &payload, jsoncompat.Decode); errUnmarshal != nil {
 					t.Fatalf("decode HTTP %d body %q: %v", got.Code, got.Body.String(), errUnmarshal)
 				}
 				t.Logf("attempt=%d HTTP=%d code=%q type=%q retryable=%v executor_calls=%d body=%s", attempt,

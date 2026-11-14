@@ -1,12 +1,13 @@
 package codex
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // JWTClaims represents the claims section of a JSON Web Token (JWT).
@@ -69,7 +70,7 @@ func ParseJWTToken(token string) (*JWTClaims, error) {
 	}
 
 	var claims JWTClaims
-	if err = json.Unmarshal(claimsData, &claims); err != nil {
+	if err = json.Unmarshal(claimsData, &claims, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JWT claims: %w", err)
 	}
 

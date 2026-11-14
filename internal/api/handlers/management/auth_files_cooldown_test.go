@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -31,7 +33,7 @@ type authFilesCooldownResponse struct {
 		StatusMessage  string                    `json:"status_message"`
 		Unavailable    bool                      `json:"unavailable"`
 		NextRetryAfter time.Time                 `json:"next_retry_after"`
-		Cooldowns      json.RawMessage           `json:"cooldowns"`
+		Cooldowns      jsontext.Value            `json:"cooldowns"`
 		Quota          map[string]any            `json:"quota"`
 		ModelQuotas    map[string]map[string]any `json:"model_quotas"`
 	} `json:"files"`
@@ -47,7 +49,7 @@ func requestAuthFilesCooldowns(t *testing.T, h *Handler, query string) authFiles
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
 	var payload authFilesCooldownResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatal(errDecode)
 	}
 	if payload.ObservedAt.IsZero() || payload.ObservedAt.Location() != time.UTC {
@@ -91,7 +93,7 @@ func TestListAuthFilesCooldownsSnapshot(t *testing.T) {
 				t.Fatalf("existing state changed: %+v", file)
 			}
 			var views []coreauth.CooldownView
-			if errDecode := json.Unmarshal(file.Cooldowns, &views); errDecode != nil {
+			if errDecode := json.Unmarshal(file.Cooldowns, &views, jsoncompat.Decode); errDecode != nil {
 				t.Fatal(errDecode)
 			}
 			if len(views) != 1 || views[0].Scope != "model" || views[0].ModelKey != "model-a" || views[0].Reason != "quota" || views[0].HTTPStatus != 429 || views[0].BackoffLevel == nil || *views[0].BackoffLevel != 6 {
@@ -832,7 +834,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 	var resp struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal response: %v", errUnmarshal)
 	}
 	if len(resp.Files) != 1 {
@@ -930,7 +932,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 	var diffStartResp struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(wDiffStart.Body.Bytes(), &diffStartResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wDiffStart.Body.Bytes(), &diffStartResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal diffStartResp: %v", errUnmarshal)
 	}
 	diffStatus := pollOAuthStatusUntilDone(t, router, diffStartResp.State)
@@ -963,7 +965,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 		var missingStartResp struct {
 			State string `json:"state"`
 		}
-		if errUnmarshal := json.Unmarshal(wMissing.Body.Bytes(), &missingStartResp); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(wMissing.Body.Bytes(), &missingStartResp, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal missingStartResp (%s): %v", missingCase.name, errUnmarshal)
 		}
 		missingStatus := pollOAuthStatusUntilDone(t, router, missingStartResp.State)
@@ -992,7 +994,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 	var unadoptedStartResp struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(wUnadoptedStart.Body.Bytes(), &unadoptedStartResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wUnadoptedStart.Body.Bytes(), &unadoptedStartResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal unadoptedStartResp: %v", errUnmarshal)
 	}
 	unadoptedStatus := pollOAuthStatusUntilDone(t, router, unadoptedStartResp.State)
@@ -1038,7 +1040,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 	var matchStartResp struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(wMatchStart.Body.Bytes(), &matchStartResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wMatchStart.Body.Bytes(), &matchStartResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal matchStartResp: %v", errUnmarshal)
 	}
 	matchStatus := pollOAuthStatusUntilDone(t, router, matchStartResp.State)
@@ -1175,7 +1177,7 @@ func TestListAuthFiles_V8CodexTerminalRenewalRecoveryWorkflow_Issue5783(t *testi
 	var verifyOptInStartResp struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(wVerifyOptIn.Body.Bytes(), &verifyOptInStartResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wVerifyOptIn.Body.Bytes(), &verifyOptInStartResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal verifyOptInStartResp: %v", errUnmarshal)
 	}
 	optInStatus := pollOAuthStatusUntilDone(t, router, verifyOptInStartResp.State)
@@ -1201,7 +1203,7 @@ type targetedRecoveryTestCodexOAuthService struct {
 
 func (s *targetedRecoveryTestCodexOAuthService) GenerateAuthURL(state string, _ *codex.PKCECodes) (string, error) {
 	waitFile := filepath.Join(s.authDir, fmt.Sprintf(".oauth-codex-%s.oauth", state))
-	payload, _ := json.Marshal(map[string]string{"state": state, "code": "code-" + state})
+	payload, _ := json.Marshal(map[string]string{"state": state, "code": "code-" + state}, jsoncompat.Encode)
 	_ = os.WriteFile(waitFile, payload, 0o600)
 	return "https://auth.example.test/authorize?state=" + state, nil
 }
@@ -1372,7 +1374,7 @@ func TestRefreshAuthFilesV8_SignInRequiredAndRedaction_Issue7135(t *testing.T) {
 	var listResp struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errUnmarshal := json.Unmarshal(wList.Body.Bytes(), &listResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wList.Body.Bytes(), &listResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal list: %v", errUnmarshal)
 	}
 	if len(listResp.Files) != 1 {

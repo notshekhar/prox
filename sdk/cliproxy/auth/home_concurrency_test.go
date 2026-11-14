@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -284,7 +285,7 @@ func TestConcurrencyDispatchFixture(t *testing.T) {
 			} `json:"auth"`
 			Concurrency homeConcurrencyTuple `json:"concurrency"`
 		}
-		if errUnmarshal := json.Unmarshal(raw, &fixture); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &fixture, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("Unmarshal(accounted fixture) error = %v", errUnmarshal)
 		}
 		wantTuple := homeConcurrencyTuple{Accounted: true, CredentialID: "cred-1", Model: "gpt"}
@@ -343,7 +344,7 @@ func TestConcurrencyDispatchFixture(t *testing.T) {
 				RetryAfterMS int64  `json:"retry_after_ms"`
 			} `json:"error"`
 		}
-		if errUnmarshal := json.Unmarshal(raw, &fixture); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &fixture, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("Unmarshal(busy fixture) error = %v", errUnmarshal)
 		}
 		if fixture.Error == nil {

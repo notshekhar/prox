@@ -3,7 +3,7 @@ package management
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"github.com/MoeForge/moego/base64"
 	"net/http"
@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/devin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -78,7 +79,7 @@ func TestDevinRemoteOAuthFlow(t *testing.T) {
 		t.Fatalf("start: %d %s", w.Code, w.Body.String())
 	}
 	var start struct{ State, URL, Status string }
-	if errDecode := json.Unmarshal(w.Body.Bytes(), &start); errDecode != nil {
+	if errDecode := json.Unmarshal(w.Body.Bytes(), &start, jsoncompat.Decode); errDecode != nil {
 		t.Fatal(errDecode)
 	}
 	t.Cleanup(func() { CancelOAuthSession(start.State) })
@@ -107,7 +108,7 @@ func TestDevinRemoteOAuthFlow(t *testing.T) {
 	}
 
 	redirect := query.Get("redirect_uri") + "?code=remote-code&state=" + start.State
-	body, errMarshal := json.Marshal(map[string]string{"provider": "cognition", "redirect_url": redirect})
+	body, errMarshal := json.Marshal(map[string]string{"provider": "cognition", "redirect_url": redirect}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}

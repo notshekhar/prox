@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"testing"
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 )
 
@@ -71,7 +72,7 @@ func TestManagerMarkResultPublishesErrorEventAfterAuthStateUpdate(t *testing.T) 
 			} `json:"model"`
 		} `json:"auth_status"`
 	}
-	if errUnmarshal := json.Unmarshal(payload, &event); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(payload, &event, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error event: %v body=%s", errUnmarshal, string(payload))
 	}
 	if event.Provider != "codex" || event.Model != "gpt-5" || event.AuthID != auth.ID {

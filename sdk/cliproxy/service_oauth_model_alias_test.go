@@ -2,12 +2,13 @@ package cliproxy
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers/gemini"
@@ -380,7 +381,7 @@ func TestApplyModelPrefixes_RewritesModelInfoNameForGeminiEndpoints(t *testing.T
 			DisplayName string `json:"displayName"`
 		} `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(listRec.Body.Bytes(), &listResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(listRec.Body.Bytes(), &listResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode model list response: %v", errUnmarshal)
 	}
 	foundPrefixed := false
@@ -404,7 +405,7 @@ func TestApplyModelPrefixes_RewritesModelInfoNameForGeminiEndpoints(t *testing.T
 		Name        string `json:"name"`
 		DisplayName string `json:"displayName"`
 	}
-	if errUnmarshal := json.Unmarshal(getRec.Body.Bytes(), &getResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(getRec.Body.Bytes(), &getResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode model detail response: %v", errUnmarshal)
 	}
 	if getResp.Name != "models/gcp/gemini-4-argon" {

@@ -24,9 +24,9 @@ type SessionInfo struct {
 	Provider        string         `json:"provider,omitempty"`
 	Model           string         `json:"model,omitempty"`
 	NodeKind        string         `json:"node_kind,omitempty"`
-	IsFork          bool           `json:"is_fork,omitempty"`
-	IsCompaction    bool           `json:"is_compaction,omitempty"`
-	IsSubagent      bool           `json:"is_subagent,omitempty"`
+	IsFork          bool           `json:"is_fork,omitzero"`
+	IsCompaction    bool           `json:"is_compaction,omitzero"`
+	IsSubagent      bool           `json:"is_subagent,omitzero"`
 	Metadata        map[string]any `json:"metadata,omitempty"`
 }
 

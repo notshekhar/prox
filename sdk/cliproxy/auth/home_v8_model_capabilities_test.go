@@ -1,10 +1,12 @@
 package auth
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"testing"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -22,7 +24,7 @@ func TestHomeV8ModelCapabilitiesAndLegacyPayload(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var wire homeDispatchModelInfo
-			if err := json.Unmarshal([]byte(tc.raw), &wire); err != nil {
+			if err := json.Unmarshal([]byte(tc.raw), &wire, jsoncompat.Decode); err != nil {
 				t.Fatal(err)
 			}
 			auth := &Auth{}
@@ -84,7 +86,7 @@ func TestHomeCompatUsesCredentialModelOptions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			auth := &Auth{Prefix: "tenant", Attributes: map[string]string{homeUpstreamModelAttributeKey: tc.upstream}}
 			if tc.options != "" {
-				auth.Metadata = map[string]any{"credential_options": json.RawMessage(tc.options)}
+				auth.Metadata = map[string]any{"credential_options": jsontext.Value(tc.options)}
 			}
 			localModel := tc.localModel
 			if localModel == "" {
@@ -124,7 +126,7 @@ func TestHomeCompatCredentialOptionsExecutionPaths(t *testing.T) {
 					}}}
 					payload, errMarshal := json.Marshal(homeAuthDispatchResponse{
 						Model: "upstream(high)", Auth: *auth, ModelInfo: &homeDispatchModelInfo{ID: "upstream"},
-					})
+					}, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}
@@ -185,11 +187,11 @@ func TestHomeCompatDoesNotInheritLocalModelExecutionPaths(t *testing.T) {
 				auth.Provider = "codex"
 				auth.Attributes[AttributeSource] = "config:codex[0]"
 				if tc.options != "" {
-					auth.Metadata = map[string]any{"credential_options": json.RawMessage(tc.options)}
+					auth.Metadata = map[string]any{"credential_options": jsontext.Value(tc.options)}
 				}
 				payload, errMarshal := json.Marshal(homeAuthDispatchResponse{
 					Model: "upstream(high)", Auth: *auth, ModelInfo: &homeDispatchModelInfo{ID: "upstream"},
-				})
+				}, jsoncompat.Encode)
 				if errMarshal != nil {
 					t.Fatal(errMarshal)
 				}

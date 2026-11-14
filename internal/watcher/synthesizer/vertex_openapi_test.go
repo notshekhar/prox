@@ -1,12 +1,13 @@
 package synthesizer
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -15,7 +16,7 @@ import (
 func TestSynthesizeVertexOpenAPICredentialSettings(t *testing.T) {
 	for _, raw := range []any{true, false, "true", "false", "1", "0"} {
 		for _, locationKey := range []string{"openapi_location", "openapi-location"} {
-			data, errMarshal := json.Marshal(map[string]any{"type": "vertex", "openapi": raw, locationKey: " global "})
+			data, errMarshal := json.Marshal(map[string]any{"type": "vertex", "openapi": raw, locationKey: " global "}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
@@ -58,7 +59,7 @@ func TestSynthesizeVertexOpenAPIModelSettingsPreservedWithoutMetadata(t *testing
 						rule["alias"] = "public-model"
 						requested = "public-model"
 					}
-					data, errMarshal := json.Marshal(map[string]any{"type": "vertex", "openapi": !enabled, key: []any{"unrelated-model", rule}})
+					data, errMarshal := json.Marshal(map[string]any{"type": "vertex", "openapi": !enabled, key: []any{"unrelated-model", rule}}, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}

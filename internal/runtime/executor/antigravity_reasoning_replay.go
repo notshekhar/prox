@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"hash"
@@ -17,6 +18,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -252,11 +254,11 @@ func antigravityClaudeReplaySystemLane(payload []byte) string {
 		return ""
 	}
 	var value any
-	if errUnmarshal := json.Unmarshal([]byte(system.Raw), &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(system.Raw), &value, jsoncompat.Decode); errUnmarshal != nil {
 		return ""
 	}
 	value = antigravityClaudeReplayNormalizeSystem(value)
-	normalized, errMarshal := json.Marshal(value)
+	normalized, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return ""
 	}
@@ -1888,7 +1890,7 @@ func antigravityReplayToolSchemasFromRequests(rawRequests ...[]byte) map[string]
 					continue
 				}
 				var schemaValue any
-				if json.Unmarshal([]byte(schema.Raw), &schemaValue) != nil {
+				if json.Unmarshal([]byte(schema.Raw), &schemaValue, jsoncompat.Decode) != nil {
 					continue
 				}
 				for _, schemaName := range []string{name, util.MapSanitizedFunctionName(nameMap, name)} {
@@ -1911,7 +1913,7 @@ func antigravityReplayJSONValue(result ojson.Result) (any, bool) {
 		raw = result.String()
 	}
 	var value any
-	if strings.TrimSpace(raw) == "" || json.Unmarshal([]byte(raw), &value) != nil {
+	if strings.TrimSpace(raw) == "" || json.Unmarshal([]byte(raw), &value, jsoncompat.Decode) != nil {
 		return nil, false
 	}
 	return value, true
@@ -2168,10 +2170,10 @@ func antigravityRepairUnsignedFirstFunctionCallsDoc(doc *ojson.Doc) bool {
 
 func antigravityCanonicalReplayJSON(raw []byte) []byte {
 	var value any
-	if json.Unmarshal(raw, &value) != nil {
+	if json.Unmarshal(raw, &value, jsoncompat.Decode) != nil {
 		return bytes.TrimSpace(raw)
 	}
-	canonical, errMarshal := json.Marshal(value)
+	canonical, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return bytes.TrimSpace(raw)
 	}
@@ -2466,7 +2468,7 @@ func mergeAntigravityFunctionCallPartReplayWithSchemas(index *antigravityReplayR
 			fc["args"] = args.String()
 		} else {
 			var parsed any
-			if json.Unmarshal([]byte(args.Raw), &parsed) == nil {
+			if json.Unmarshal([]byte(args.Raw), &parsed, jsoncompat.Decode) == nil {
 				fc["args"] = parsed
 			}
 		}
@@ -2509,7 +2511,7 @@ func mergeAntigravityFunctionCallPartReplayWithSchemas(index *antigravityReplayR
 			fc["args"] = args.String()
 		} else {
 			var parsed any
-			if json.Unmarshal([]byte(args.Raw), &parsed) == nil {
+			if json.Unmarshal([]byte(args.Raw), &parsed, jsoncompat.Decode) == nil {
 				fc["args"] = parsed
 			}
 		}
@@ -2931,13 +2933,13 @@ func buildAntigravityFunctionCallPartItem(contentIndex, partIndex, targetOccurre
 		if args.Type == ojson.String {
 			item["args"] = args.String()
 		} else {
-			item["args"] = json.RawMessage(args.Raw)
+			item["args"] = jsontext.Value(args.Raw)
 		}
 	}
 	if signature != "" {
 		item["thoughtSignature"] = signature
 	}
-	raw, err := json.Marshal(item)
+	raw, err := json.Marshal(item, jsoncompat.Encode)
 	if err != nil {
 		return nil
 	}

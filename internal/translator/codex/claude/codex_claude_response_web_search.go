@@ -1,11 +1,12 @@
 package claude
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 )
 
@@ -36,7 +37,7 @@ func appendCodexWebSearchServerToolUse(output []byte, params *ConvertCodexRespon
 	}
 
 	if query != "" {
-		partialJSON, _ := json.Marshal(map[string]string{"query": query})
+		partialJSON, _ := json.Marshal(map[string]string{"query": query}, jsoncompat.Encode)
 		deltaDoc := ojson.NewDocString(`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":""}}`)
 		_ = deltaDoc.Set("index", params.BlockIndex)
 		_ = deltaDoc.Set("delta.partial_json", string(partialJSON))
@@ -184,7 +185,7 @@ func appendCodexWebSearchNonStreamBlocks(contentBlocks [][]byte, item ojson.Resu
 	useBlockDoc := ojson.NewDocString(`{"type":"server_tool_use","id":"","name":"web_search","input":{}}`)
 	_ = useBlockDoc.Set("id", id)
 	if query != "" {
-		input, _ := json.Marshal(map[string]string{"query": query})
+		input, _ := json.Marshal(map[string]string{"query": query}, jsoncompat.Encode)
 		_ = useBlockDoc.SetRawBytes("input", input)
 	}
 	contentBlocks = append(contentBlocks, useBlockDoc.Bytes())

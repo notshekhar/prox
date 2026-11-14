@@ -1,13 +1,14 @@
 package responses
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"net/url"
 	"path/filepath"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
@@ -41,7 +42,7 @@ func convertOpenAIResponsesRequestToGemini(modelName string, inputRawJSON []byte
 	if HasResponsesWebSearchTool(root) && ModelSupportsWebSearch(modelName) && AllowsResponsesWebSearchToolChoice(root) {
 		googleSearchBlock := []byte(`{"googleSearch":{}}`)
 		if allowedDomains := ExtractResponsesWebSearchAllowedDomains(root); len(allowedDomains) > 0 {
-			if domainsJSON, errMarshal := json.Marshal(allowedDomains); errMarshal == nil {
+			if domainsJSON, errMarshal := json.Marshal(allowedDomains, jsoncompat.Encode); errMarshal == nil {
 				googleSearchBlock, _ = ojson.SetRawBytes(googleSearchBlock, "googleSearch.includedDomains", domainsJSON)
 			}
 		}

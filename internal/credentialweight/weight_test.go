@@ -1,8 +1,9 @@
 package credentialweight
 
 import (
-	"encoding/json"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestParseValueValidation(t *testing.T) {
@@ -13,11 +14,11 @@ func TestParseValueValidation(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "default string", value: "", want: Default},
-		{name: "negative excluded", value: json.Number("-5"), want: 0},
-		{name: "fraction rejected", value: json.Number("1.5"), wantErr: true},
-		{name: "maximum", value: json.Number("1000000"), want: Max},
-		{name: "above maximum", value: json.Number("1000001"), wantErr: true},
-		{name: "int64 overflow", value: json.Number("9223372036854775808"), wantErr: true},
+		{name: "negative excluded", value: jsoncompat.Number("-5"), want: 0},
+		{name: "fraction rejected", value: jsoncompat.Number("1.5"), wantErr: true},
+		{name: "maximum", value: jsoncompat.Number("1000000"), want: Max},
+		{name: "above maximum", value: jsoncompat.Number("1000001"), wantErr: true},
+		{name: "int64 overflow", value: jsoncompat.Number("9223372036854775808"), wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

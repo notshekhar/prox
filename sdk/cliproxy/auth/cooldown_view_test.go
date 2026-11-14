@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"

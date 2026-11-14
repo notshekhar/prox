@@ -5,7 +5,8 @@ package claude
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/singleflight"
 )
@@ -268,7 +270,7 @@ func (o *ClaudeAuth) FetchOAuthProfile(ctx context.Context, accessToken string) 
 		return nil, errFetch
 	}
 	var profile OAuthProfile
-	if errUnmarshal := json.Unmarshal(body, &profile); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &profile, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("parse Claude OAuth profile response: %w", errUnmarshal)
 	}
 	if strings.TrimSpace(profile.Account.UUID) == "" {
@@ -281,15 +283,15 @@ func (o *ClaudeAuth) FetchOAuthProfile(ctx context.Context, accessToken string) 
 // alongside the profile query after a token exchange. Only the request shape is
 // covered by captured evidence, so the payload stays opaque and is returned raw
 // instead of being decoded into a guessed structure.
-func (o *ClaudeAuth) FetchOAuthRoles(ctx context.Context, accessToken string) (json.RawMessage, error) {
+func (o *ClaudeAuth) FetchOAuthRoles(ctx context.Context, accessToken string) (jsontext.Value, error) {
 	body, errFetch := o.fetchOAuthControlPlaneJSON(ctx, RolesURL, accessToken, "claude_cli roles")
 	if errFetch != nil {
 		return nil, errFetch
 	}
-	if !json.Valid(body) {
+	if !jsontext.Value(body).IsValid(jsoncompat.Decode) {
 		return nil, fmt.Errorf("parse Claude OAuth claude_cli roles response: body is not valid JSON")
 	}
-	return json.RawMessage(body), nil
+	return jsontext.Value(body), nil
 }
 
 // inspectOAuthAccount replays the login companion control-plane calls the native
@@ -394,7 +396,7 @@ func (o *ClaudeAuth) ExchangeCodeForTokens(ctx context.Context, code, state stri
 		reqBody.State = newState
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
+	jsonBody, err := json.Marshal(reqBody, jsoncompat.Encode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -429,7 +431,7 @@ func (o *ClaudeAuth) ExchangeCodeForTokens(ctx context.Context, code, state stri
 	// log.Debugf("Token response: %s", string(body))
 
 	var tokenResp tokenResponse
-	if err = json.Unmarshal(body, &tokenResp); err != nil {
+	if err = json.Unmarshal(body, &tokenResp, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 
@@ -534,7 +536,7 @@ func (o *ClaudeAuth) refreshTokensSingleFlight(ctx context.Context, refreshToken
 		"scope":         ClaudeOAuthScope,
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
+	jsonBody, err := json.Marshal(reqBody, jsoncompat.Encode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
@@ -575,7 +577,7 @@ func (o *ClaudeAuth) refreshTokensSingleFlight(ctx context.Context, refreshToken
 	// log.Debugf("Token response: %s", string(body))
 
 	var tokenResp tokenResponse
-	if err = json.Unmarshal(body, &tokenResp); err != nil {
+	if err = json.Unmarshal(body, &tokenResp, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 

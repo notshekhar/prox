@@ -1,7 +1,7 @@
 package api
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -70,7 +71,7 @@ func TestModelsMultiAgentClientConfigAndReload(t *testing.T) {
 					var response struct {
 						Models []map[string]any `json:"models"`
 					}
-					if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+					if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 						t.Fatalf("decode catalog: %v", errUnmarshal)
 					}
 					for _, entry := range response.Models {

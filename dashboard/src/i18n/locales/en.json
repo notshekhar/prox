@@ -103,7 +103,7 @@
   },
   "nav": {
     "dashboard": "Dashboard",
-    "ai_providers": "API keys",
+    "ai_providers": "Provider keys",
     "auth_files": "Accounts",
     "oauth": "Add account",
     "routing": "Routing",
@@ -170,9 +170,14 @@
     "activity_label": "Requests for {{account}}",
     "setup_title": "Setup",
     "setup_models": "Models available",
-    "setup_api_keys": "API keys",
+    "setup_api_keys": "Provider keys",
     "window_fallback": "few hours",
-    "activity_none": "No requests yet"
+    "activity_none": "No requests yet",
+    "connect_title": "Connect a tool",
+    "connect_note": "prox claude does this for you. For anything else, set these two values. The token is your client key, not your master password.",
+    "connect_copy": "Copy",
+    "connect_copied": "Copied",
+    "connect_no_key": "No client key yet. Add one under Settings, Access & authentication."
   },
   "basic_settings": {
     "debug_enable": "Enable debug mode",
@@ -185,7 +190,8 @@
     "ws_auth_enable": "Require auth for /ws/*",
     "routing_strategy_round_robin": "round-robin (cycle)",
     "routing_strategy_weighted_round_robin": "weighted-round-robin (weighted cycle)",
-    "routing_strategy_fill_first": "fill-first (prioritize)"
+    "routing_strategy_fill_first": "fill-first (prioritize)",
+    "routing_strategy_least_used": "least-used (most quota left)"
   },
   "auth_files": {
     "title": "Accounts",
@@ -247,10 +253,10 @@
     "health_status_disabled": "Disabled",
     "download_button": "Download",
     "refresh_all_button": "Refresh all credentials",
-    "refresh_all_confirm": "Refresh all eligible credentials on the server, not just the current filtered results. The backend skips disabled or ineligible credentials. This does not reload the list or reset quotas and may take several minutes. Continue?",
+    "refresh_all_confirm": "Refresh every account whose token is expired or close to expiring. Healthy accounts are skipped, because refreshing replaces the login and can sign out another machine using the same account. Continue?",
     "refresh_all_results": "Credential refresh results",
     "refresh_all_summary": "{{success}} refreshed, {{failed}} failed.",
-    "refresh_all_empty": "No credentials were eligible for refresh.",
+    "refresh_all_empty": "Every account is still fresh, so nothing needed refreshing.",
     "refresh_all_failed": "Could not obtain complete refresh results: {{message}}. Some credentials may already have refreshed. Check the list before retrying.",
     "refresh_result_success": "Refreshed",
     "refresh_result_failed": "Refresh failed",
@@ -1425,7 +1431,8 @@
           "disable_cooling_desc": "Globally disable auth/model cooldown windows after failures",
           "session_affinity": "Session affinity routing",
           "ws_auth": "WebSocket authentication",
-          "ws_auth_desc": "Require authentication for AI Studio WebSocket connections (oauth.providers.aistudio.ws-auth)"
+          "ws_auth_desc": "Require authentication for AI Studio WebSocket connections (oauth.providers.aistudio.ws-auth)",
+          "strategy_least_used": "Least used"
         },
         "streaming": {
           "title": "Streaming configuration",
@@ -1454,11 +1461,11 @@
         }
       },
       "api_keys": {
-        "label": "Client API keys (access.api-keys)",
+        "label": "Client keys (access.api-keys)",
         "add": "Add API key",
         "generate": "Generate",
         "empty": "No API keys",
-        "hint": "Each entry represents an API key (consistent with 'API Key Management' page style)",
+        "hint": "Tools send one of these keys to use prox. This is the value for ANTHROPIC_AUTH_TOKEN, not your master password.",
         "edit_title": "Edit API key",
         "add_title": "Add API key",
         "input_label": "API key",
@@ -1566,7 +1573,7 @@
     "search_clear": "Clear search",
     "title": "Usage limits",
     "description": "Monitor OAuth quota status for Antigravity, Codex, Claude, Kimi, and xAI credentials.",
-    "refresh_all_credentials": "Refresh all credentials",
+    "refresh_all_credentials": "Refresh usage",
     "sort_label": "Sort",
     "sort_default": "Default",
     "sort_soonest": "Soonest recovery",
@@ -1697,7 +1704,9 @@
     "unsaved_cancel": "Stay",
     "duration_seconds": "{{count}}s",
     "duration_minutes": "{{count}}m",
-    "duration_hours": "{{count}}h"
+    "duration_hours": "{{count}}h",
+    "strategy_least_used": "Least used",
+    "strategy_least_used_desc": "New conversations go to the account with the most quota left. A conversation moves before its account runs out."
   },
   "plugin_management": {
     "title": "Plugin management",
@@ -2006,7 +2015,7 @@
       }
     },
     "header": {
-      "title": "API keys",
+      "title": "Provider keys",
       "activeResources": "{{active}}/{{total}} active resources",
       "providerFamilies": "{{count}} provider families",
       "updatedAt": "Updated {{time}}"
@@ -2027,11 +2036,9 @@
     "categories": {
       "inUse": "In use",
       "available": "Available",
-      "quickFill": "Quick fill",
       "activeCount": "{{active}}/{{total}} active"
     },
     "providerNames": {
-      "aiCodeMirror": "AIcodemirror",
       "meta": "Muse (Meta)",
       "gemini": "Gemini",
       "interactions": "Interactions API",
@@ -2040,9 +2047,6 @@
       "claude": "Claude",
       "vertex": "Vertex",
       "openaiCompatibility": "OpenAI compatible",
-      "apikeyFun": "APIKEY.FUN",
-      "fennoAI": "FennoAI",
-      "qiniuCloud": "Qiniu Cloud",
       "kimi": "Kimi"
     },
     "table": {
@@ -2067,17 +2071,7 @@
     "sponsor": {
       "protocolSummary": "Anthropic / OpenAI / Gemini / Codex API (Responses)",
       "detailHint": "{{provider}} is persisted into the matching API key configs by protocol; this view manages them together.",
-      "dashboardLink": "Dashboard",
-      "emptyRegisterHint": "No configuration yet.",
       "apiKeyHint": "This key is only written to the selected group/protocol config.",
-      "usageCheck": "Check usage",
-      "usageChecking": "Checking",
-      "usageRemaining": "Remaining: {{amount}} {{unit}}",
-      "usageBreakdown": "Used {{used}} / Limit {{limit}}",
-      "usageStatus": "Status: {{status}}",
-      "usageInvalid": "Invalid key",
-      "usageEmpty": "The endpoint returned no usage data.",
-      "usageApiKeyRequired": "API key is required",
       "aggregationConflict": "This grouped provider contains multiple backend configs or OpenAI keys. Edit it in the source configuration to avoid data loss.",
       "partialMutationWarning": "The operation failed after one or more protocols may have been updated. The latest configuration was reloaded; review it before retrying.",
       "groupedKeysTitle": "Grouped keys",
@@ -2091,8 +2085,6 @@
       "urlMode": "{{provider}} URL",
       "urlHint": "All URLs use the same API conventions. Saving writes only the endpoint for the current grouped protocol.",
       "urlOptions": {
-        "aiCodeMirrorGlobal": "Global high-protection route",
-        "aiCodeMirrorDomestic": "Mainland china optimized route",
         "standard": "Standard URL",
         "direct": "Direct URL",
         "domestic": "China mainland route",
@@ -2101,8 +2093,6 @@
         "global": "Global"
       },
       "urlOptionDescriptions": {
-        "aiCodeMirrorGlobal": "A high-protection route for global access.",
-        "aiCodeMirrorDomestic": "A route optimized for mainland China networks.",
         "domestic": "For users and workloads in mainland China; usually lower latency in mainland networks.",
         "overseas": "For overseas deployments, cross-border access, or workloads that need overseas models.",
         "mainlandChinaRecommended": "Recommended for users and workloads on mainland China networks.",

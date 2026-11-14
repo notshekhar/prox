@@ -3,7 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/websocket"
 	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	auth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	core "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	translator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -203,8 +204,8 @@ func TestCodexDuplexLaterInvalidSignatureClearsReplay(t *testing.T) {
 				credential := &auth.Auth{ID: "replay-account", Provider: "codex", Attributes: map[string]string{"api_key": "test", "base_url": upstream.URL, "websockets": "true"}}
 				model := "gpt-6-astra"
 				request := func(session string) []byte {
-					metadata, _ := json.Marshal(map[string]string{"session_id": session})
-					p, _ := json.Marshal(map[string]any{"type": "response.create", "model": model, "metadata": map[string]string{"user_id": string(metadata)}, "messages": []map[string]string{{"role": "user", "content": "continue"}}})
+					metadata, _ := json.Marshal(map[string]string{"session_id": session}, jsoncompat.Encode)
+					p, _ := json.Marshal(map[string]any{"type": "response.create", "model": model, "metadata": map[string]string{"user_id": string(metadata)}, "messages": []map[string]string{{"role": "user", "content": "continue"}}}, jsoncompat.Encode)
 					return p
 				}
 				first, rejected := request("first"), request("rejected")

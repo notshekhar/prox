@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestPatchClaudeKeyFingerprintProfile(t *testing.T) {
@@ -850,7 +851,7 @@ func TestPatchClaudeKeyPriority(t *testing.T) {
 	var resp struct {
 		ClaudeKey []config.ClaudeKey `json:"claude-api-key"`
 	}
-	if errJSON := json.Unmarshal(getRec.Body.Bytes(), &resp); errJSON != nil {
+	if errJSON := json.Unmarshal(getRec.Body.Bytes(), &resp, jsoncompat.Decode); errJSON != nil {
 		t.Fatalf("unmarshal GET response: %v", errJSON)
 	}
 	if len(resp.ClaudeKey) != 2 {

@@ -3,7 +3,7 @@ package home
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
@@ -24,7 +25,7 @@ func concurrencyReleaseFrameFromFixture(t *testing.T) ConcurrencyReleaseFrame {
 	}
 
 	var frame ConcurrencyReleaseFrame
-	if errUnmarshal := json.Unmarshal(raw, &frame); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &frame, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatal(errUnmarshal)
 	}
 	return frame

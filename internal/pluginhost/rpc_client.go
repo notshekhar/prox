@@ -3,7 +3,8 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 	log "github.com/sirupsen/logrus"
@@ -245,7 +247,7 @@ func registerRPCPlugin(ctx context.Context, host *Host, id string, client plugin
 
 func callPlugin[T any](ctx context.Context, client pluginClient, method string, request any) (T, error) {
 	var zero T
-	rawRequest, errMarshal := json.Marshal(sanitizePluginRequest(request))
+	rawRequest, errMarshal := json.Marshal(sanitizePluginRequest(request), jsoncompat.Encode)
 	if errMarshal != nil {
 		return zero, fmt.Errorf("marshal plugin request %s: %w", method, errMarshal)
 	}
@@ -259,7 +261,7 @@ func callPluginRaw[T any](ctx context.Context, client pluginClient, method strin
 		return zero, errCall
 	}
 	var envelope pluginabi.Envelope
-	if errUnmarshal := json.Unmarshal(rawResp, &envelope); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rawResp, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 		return zero, fmt.Errorf("decode plugin envelope %s: %w", method, errUnmarshal)
 	}
 	out, errDecode := decodeEnvelopeResult[T](envelope)
@@ -394,12 +396,12 @@ func sanitizePluginMetadataValue(value any) (any, bool) {
 		return out, true
 	default:
 		// RPC metadata crosses a JSON envelope, so unsupported Go values are normalized to JSON-compatible shapes.
-		raw, errMarshal := json.Marshal(value)
+		raw, errMarshal := json.Marshal(value, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, false
 		}
 		var decoded any
-		if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, false
 		}
 		return decoded, true
@@ -409,7 +411,7 @@ func sanitizePluginMetadataValue(value any) (any, bool) {
 func decodeRPCEnvelope[T any](raw []byte) (T, error) {
 	var zero T
 	var envelope pluginabi.Envelope
-	if errUnmarshal := json.Unmarshal(raw, &envelope); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 		return zero, errUnmarshal
 	}
 	return decodeEnvelopeResult[T](envelope)
@@ -417,7 +419,7 @@ func decodeRPCEnvelope[T any](raw []byte) (T, error) {
 
 func isPluginErrorEnvelope(raw []byte) bool {
 	var envelope pluginabi.Envelope
-	if errUnmarshal := json.Unmarshal(raw, &envelope); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 		return false
 	}
 	return !envelope.OK && envelope.Error != nil
@@ -444,17 +446,17 @@ func decodeEnvelopeResult[T any](envelope pluginabi.Envelope) (T, error) {
 		return zero, nil
 	}
 	var out T
-	if errDecode := json.Unmarshal(envelope.Result, &out); errDecode != nil {
+	if errDecode := json.Unmarshal(envelope.Result, &out, jsoncompat.Decode); errDecode != nil {
 		return zero, errDecode
 	}
 	return out, nil
 }
 
-func marshalRPCEnvelope(result json.RawMessage) ([]byte, error) {
+func marshalRPCEnvelope(result jsontext.Value) ([]byte, error) {
 	if result == nil {
-		result = json.RawMessage(`{}`)
+		result = jsontext.Value(`{}`)
 	}
-	return json.Marshal(pluginabi.Envelope{OK: true, Result: result})
+	return json.Marshal(pluginabi.Envelope{OK: true, Result: result}, jsoncompat.Encode)
 }
 
 func marshalRPCError(code, message string, httpStatus ...int) []byte {

@@ -3,7 +3,7 @@ package cliproxy
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
@@ -165,7 +166,7 @@ func (s *rebalanceAdmissionHome) serve(conn net.Conn) {
 				if errPort != nil {
 					return
 				}
-				payload, errJSON := json.Marshal(map[string]any{"id": "admission-plan", "term": 1, "target": map[string]any{"ip": host, "port": port}})
+				payload, errJSON := json.Marshal(map[string]any{"id": "admission-plan", "term": 1, "target": map[string]any{"ip": host, "port": port}}, jsoncompat.Encode)
 				if errJSON != nil {
 					return
 				}

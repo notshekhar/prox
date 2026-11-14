@@ -3,7 +3,7 @@ package management
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"html"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 	"gopkg.in/yaml.v3"
@@ -128,7 +129,7 @@ func TestListPluginsIncludesScannedAndConfiguredPlugins(t *testing.T) {
 			Menus            []any  `json:"menus"`
 		} `json:"plugins"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.PluginsEnabled {
@@ -211,7 +212,7 @@ func TestListPluginsUsesConfiguredStoreVersionWhenFilesCoexist(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v; body=%s", errDecode, rec.Body.String())
 	}
 	for _, entry := range body.Plugins {
@@ -268,7 +269,7 @@ options:
 		AllowedModels []string       `json:"allowed_models"`
 		Options       map[string]any `json:"options"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.Enabled || body.Priority != 7 || body.Mode != "safe" {

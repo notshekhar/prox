@@ -2,11 +2,12 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -14,7 +15,7 @@ import (
 func (h *Host) callHostAffinityLookup(ctx context.Context, request []byte) ([]byte, error) {
 	_ = ctx
 	var req pluginapi.HostAffinityLookupRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host affinity lookup request: %w", errUnmarshal)
 	}
 	req.Provider = strings.TrimSpace(req.Provider)

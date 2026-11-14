@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -27,7 +29,7 @@ type AntigravityInteractionsState struct {
 }
 
 func interactionsDigest(value any) string {
-	encoded, errMarshal := json.Marshal(value)
+	encoded, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return ""
 	}
@@ -85,18 +87,16 @@ func prepareAntigravityInteractionsDoc(auth *cliproxyauth.Auth, req cliproxyexec
 		}
 		// Decode JSON objects before hashing, so whitespace and key order do not
 		// split a conversation. Tool rounds after the last user are excluded.
-		prefix := make([]json.RawMessage, 0, lastUser+1)
+		prefix := make([]jsontext.Value, 0, lastUser+1)
 		for _, step := range input[:lastUser+1] {
-			prefix = append(prefix, json.RawMessage(step.Raw))
+			prefix = append(prefix, jsontext.Value(step.Raw))
 		}
-		raw, errMarshal := json.Marshal(map[string]any{"input": prefix, "system_instruction": doc.Get("system_instruction").Value()})
+		raw, errMarshal := json.Marshal(map[string]any{"input": prefix, "system_instruction": doc.Get("system_instruction").Value()}, jsoncompat.Encode)
 		if errMarshal != nil {
 			return state, false
 		}
-		decoder := json.NewDecoder(bytes.NewReader(raw))
-		decoder.UseNumber()
 		var canonical any
-		if errDecode := decoder.Decode(&canonical); errDecode != nil {
+		if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &canonical, jsoncompat.DecodeUseNumber); errDecode != nil {
 			return state, false
 		}
 		identity = interactionsDigest(canonical)
@@ -123,9 +123,9 @@ func prepareAntigravityInteractionsDoc(auth *cliproxyauth.Auth, req cliproxyexec
 	if !doc.Get("environment_id").Exists() && cached.Environment != "" {
 		_ = doc.Set("environment_id", cached.Environment)
 	}
-	results := make([]json.RawMessage, 0, len(input)-start)
+	results := make([]jsontext.Value, 0, len(input)-start)
 	for _, step := range input[start:] {
-		results = append(results, json.RawMessage(step.Raw))
+		results = append(results, jsontext.Value(step.Raw))
 	}
 	_ = doc.Set("input", results)
 	return state, true

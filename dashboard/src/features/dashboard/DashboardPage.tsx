@@ -6,6 +6,7 @@ import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { formatPercent } from '@/utils/format';
 import { countReady } from './accounts';
 import { AccountBoard } from './components/AccountBoard';
+import { ConnectTool } from './components/ConnectTool';
 import { ThroughputChart } from './components/ThroughputChart';
 import { useDashboardOverview } from './hooks/useDashboardOverview';
 import { splitWindowMinutes } from './utils';
@@ -91,6 +92,8 @@ export function DashboardPage() {
         </p>
         <ThroughputChart traffic={traffic} />
       </section>
+
+      <ConnectTool clientKey={config?.apiKeys?.[0]} />
 
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>{t('dashboard.setup_title')}</h2>

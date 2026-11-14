@@ -1,7 +1,7 @@
 package proxcli
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net"
@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // reachTimeout is short because the proxy is local: it answers at once or not at all.
@@ -37,24 +39,42 @@ func authDir(p Paths, cfg settings) (string, error) {
 	return dir, nil
 }
 
+// loginFile is one readable file in the auth folder.
+type loginFile struct {
+	path string
+	raw  []byte
+}
+
+// readLoginFiles skips a file it can't read instead of failing, so one broken
+// login doesn't hide every other account.
+func readLoginFiles(dir string) ([]loginFile, error) {
+	paths, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("list accounts: %w", err)
+	}
+	logins := make([]loginFile, 0, len(paths))
+	for _, path := range paths {
+		if raw, errRead := os.ReadFile(path); errRead == nil {
+			logins = append(logins, loginFile{path: path, raw: raw})
+		}
+	}
+	return logins, nil
+}
+
 func listAccounts(p Paths, cfg settings) ([]account, error) {
 	dir, err := authDir(p, cfg)
 	if err != nil {
 		return nil, err
 	}
-	files, err := filepath.Glob(filepath.Join(dir, "*.json"))
+	logins, err := readLoginFiles(dir)
 	if err != nil {
-		return nil, fmt.Errorf("list accounts: %w", err)
+		return nil, err
 	}
-	accounts := make([]account, 0, len(files))
-	for _, file := range files {
-		raw, errRead := os.ReadFile(file)
-		if errRead != nil {
-			return nil, fmt.Errorf("read account: %w", errRead)
-		}
+	accounts := make([]account, 0, len(logins))
+	for _, login := range logins {
 		var acc account
 		// A file that isn't a login is skipped rather than failing the whole list.
-		if json.Unmarshal(raw, &acc) != nil || acc.Provider == "" {
+		if json.Unmarshal(login.raw, &acc, jsoncompat.Decode) != nil || acc.Provider == "" {
 			continue
 		}
 		accounts = append(accounts, acc)

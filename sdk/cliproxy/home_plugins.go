@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"sort"
@@ -14,6 +14,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -143,7 +144,7 @@ func (s *Service) pushHomePluginStatusWithClient(ctx context.Context, cfg *confi
 	}
 	report.NodeID = nodeID
 	report.UpdatedAt = time.Now().UTC()
-	raw, errMarshal := json.Marshal(report)
+	raw, errMarshal := json.Marshal(report, jsoncompat.Encode)
 	if errMarshal != nil {
 		return fmt.Errorf("marshal home plugin status: %w", errMarshal)
 	}

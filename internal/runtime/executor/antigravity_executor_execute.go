@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -544,7 +545,7 @@ func (e *AntigravityExecutor) convertStreamChunksToNonStream(chunks [][]byte) []
 				pendingThoughtSig = ""
 				return
 			}
-			encoded, _ := json.Marshal(map[string]any{"text": text})
+			encoded, _ := json.Marshal(map[string]any{"text": text}, jsoncompat.Encode)
 			parts = append(parts, string(encoded))
 		case "thought":
 			if strings.TrimSpace(text) == "" && pendingThoughtSig == "" {
@@ -557,7 +558,7 @@ func (e *AntigravityExecutor) convertStreamChunksToNonStream(chunks [][]byte) []
 			if pendingThoughtSig != "" {
 				part["thoughtSignature"] = pendingThoughtSig
 			}
-			encoded, _ := json.Marshal(part)
+			encoded, _ := json.Marshal(part, jsoncompat.Encode)
 			parts = append(parts, string(encoded))
 		}
 		pendingKind = ""
@@ -777,7 +778,7 @@ func (e *AntigravityExecutor) convertStreamChunksToNonStream(chunks [][]byte) []
 		partsTotalLen += len(p)
 	}
 
-	traceJSON, _ := json.Marshal(traceID)
+	traceJSON, _ := json.Marshal(traceID, jsoncompat.Encode)
 	placeholder := ojson.GetBytesNoCopy(templateBytes, "candidates.0.content.parts")
 	placeholderIdx := placeholder.Index
 	if placeholder.Raw != antigravityPartsPlaceholder || placeholderIdx <= 0 {

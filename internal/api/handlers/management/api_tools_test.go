@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -53,7 +54,7 @@ func TestAPICallUsesRequestProxyURL(t *testing.T) {
 	}
 
 	var response apiCallResponse
-	if errDecode := json.NewDecoder(recorder.Body).Decode(&response); errDecode != nil {
+	if errDecode := json.UnmarshalRead(recorder.Body, &response, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v", errDecode)
 	}
 	if response.StatusCode != http.StatusCreated {
@@ -384,7 +385,7 @@ func TestAPICallReplacesTokenInBodyData(t *testing.T) {
 		},
 		"data": `{"metadata":{"apiKey":"$TOKEN$","ideName":"chisel"}}`,
 	}
-	reqBytes, _ := json.Marshal(reqPayload)
+	reqBytes, _ := json.Marshal(reqPayload, jsoncompat.Encode)
 
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(string(reqBytes)))
@@ -404,7 +405,7 @@ func TestAPICallResolvesMetaToken(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/key" {
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			_ = json.MarshalWrite(w, map[string]string{
 				"api_key": "LLM|api-call-minted-key",
 			})
 			return
@@ -412,7 +413,7 @@ func TestAPICallResolvesMetaToken(t *testing.T) {
 		if r.URL.Path == "/test" {
 			authHeader := r.Header.Get("Authorization")
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			_ = json.MarshalWrite(w, map[string]string{
 				"auth_header": authHeader,
 			})
 			return
@@ -455,7 +456,7 @@ func TestAPICallResolvesMetaToken(t *testing.T) {
 	}
 
 	var response apiCallResponse
-	if errDecode := json.NewDecoder(recorder.Body).Decode(&response); errDecode != nil {
+	if errDecode := json.UnmarshalRead(recorder.Body, &response, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v", errDecode)
 	}
 
@@ -472,7 +473,7 @@ func TestResolveMetaTokenUpdatesManagerAndStore(t *testing.T) {
 	mints := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mints++
-		_ = json.NewEncoder(w).Encode(map[string]string{"api_key": "LLM|minted", "base_url": " https://regional.meta.example/v1 "})
+		_ = json.MarshalWrite(w, map[string]string{"api_key": "LLM|minted", "base_url": " https://regional.meta.example/v1 "})
 	}))
 	defer server.Close()
 	t.Setenv("META_MINT_URL", server.URL)
@@ -556,7 +557,7 @@ func TestResolveMetaToken_ConcurrentSingleflight(t *testing.T) {
 		atomic.AddInt64(&mints, 1)
 		startOnce.Do(func() { close(serverStarted) })
 		<-releaseServer
-		_ = json.NewEncoder(w).Encode(map[string]string{
+		_ = json.MarshalWrite(w, map[string]string{
 			"api_key":  "LLM|minted-concurrent",
 			"base_url": "https://regional.meta.example/v1",
 		})
@@ -717,7 +718,7 @@ func TestAPICallRejectsUnresolvedTokenPlaceholder(t *testing.T) {
 				payload[k] = v
 			}
 			payload["url"] = upstream.URL + "/test"
-			bodyBytes, errMarshal := json.Marshal(payload)
+			bodyBytes, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
 			}
@@ -817,7 +818,7 @@ func TestAPICallRefreshesExpiredXAIOAuthToken(t *testing.T) {
 		refreshGrantType = r.PostForm.Get("grant_type")
 		refreshToken = r.PostForm.Get("refresh_token")
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "xai-access-fresh",
 			"refresh_token": "xai-refresh-new",
 			"token_type":    "Bearer",
@@ -1090,7 +1091,7 @@ func TestAPICallEndToEndWithAuthFilesList(t *testing.T) {
 	var listData struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errDecode := json.Unmarshal(recList.Body.Bytes(), &listData); errDecode != nil {
+	if errDecode := json.Unmarshal(recList.Body.Bytes(), &listData, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode auth-files: %v", errDecode)
 	}
 	if len(listData.Files) == 0 {
@@ -1120,7 +1121,7 @@ func TestAPICallEndToEndWithAuthFilesList(t *testing.T) {
 			"x-xai-token-auth": "xai-grok-cli",
 		},
 	}
-	callBytes, _ := json.Marshal(callPayload)
+	callBytes, _ := json.Marshal(callPayload, jsoncompat.Encode)
 
 	recCall := httptest.NewRecorder()
 	reqCall := httptest.NewRequest(http.MethodPost, "/v0/management/api-call", strings.NewReader(string(callBytes)))
@@ -1212,7 +1213,7 @@ func TestAPICallConcurrentXAITokenRefresh(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		refreshCount.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "xai-fresh-concurrent",
 			"refresh_token": "xai-new-refresh",
 			"token_type":    "Bearer",
@@ -1289,7 +1290,7 @@ func TestAPICallConcurrentXAITokenRefresh(t *testing.T) {
 				return
 			}
 			var resp apiCallResponse
-			if errDecode := json.Unmarshal(rec.Body.Bytes(), &resp); errDecode != nil {
+			if errDecode := json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode); errDecode != nil {
 				errCh <- fmt.Errorf("decode response: %w", errDecode)
 				return
 			}
@@ -1372,7 +1373,7 @@ func TestAPICallRefreshesWhenOnlyIDTokenPresentWithRefreshToken(t *testing.T) {
 	tokenServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		refreshCalls.Add(1)
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "xai-from-id-refresh",
 			"refresh_token": "xai-new-refresh-token",
 			"token_type":    "Bearer",

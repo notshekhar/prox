@@ -10,7 +10,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 )
 
-// RefreshAuthFiles triggers active refresh for a single auth file or all auth files.
+// RefreshAuthFiles force-refreshes one auth file, or refreshes every auth file that is due.
 // Accepts query parameters (?all=true, ?name=file.json) or JSON body ({"all": true, "name": "file.json"}).
 func (h *Handler) RefreshAuthFiles(c *gin.Context) {
 	if h.authManager == nil {
@@ -42,7 +42,7 @@ func (h *Handler) RefreshAuthFiles(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	if req.All {
-		results := h.authManager.ForceRefreshAll(ctx)
+		results := h.authManager.RefreshDue(ctx)
 		c.JSON(http.StatusOK, gin.H{
 			"ok":      true,
 			"results": results,

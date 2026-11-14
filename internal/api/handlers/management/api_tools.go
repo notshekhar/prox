@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
@@ -180,8 +182,8 @@ func (h *Handler) APICall(c *gin.Context) {
 			return
 		}
 		replacement := token
-		if json.Valid([]byte(body.Data)) && strings.ContainsAny(token, "\"\\\r\n\t") {
-			if b, errMarshal := json.Marshal(token); errMarshal == nil && len(b) >= 2 {
+		if jsontext.Value(body.Data).IsValid(jsoncompat.Decode) && strings.ContainsAny(token, "\"\\\r\n\t") {
+			if b, errMarshal := json.Marshal(token, jsoncompat.Encode); errMarshal == nil && len(b) >= 2 {
 				replacement = string(b[1 : len(b)-1])
 			}
 		}
@@ -594,7 +596,7 @@ func (h *Handler) refreshAntigravityOAuthAccessToken(ctx context.Context, auth *
 		ExpiresIn    int64  `json:"expires_in"`
 		TokenType    string `json:"token_type"`
 	}
-	if errUnmarshal := json.Unmarshal(bodyBytes, &tokenResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(bodyBytes, &tokenResp, jsoncompat.Decode); errUnmarshal != nil {
 		return "", errUnmarshal
 	}
 
@@ -742,13 +744,13 @@ func int64Value(raw any) int64 {
 		return int64(typed)
 	case float64:
 		return int64(typed)
-	case json.Number:
+	case jsoncompat.Number:
 		if i, errParse := typed.Int64(); errParse == nil {
 			return i
 		}
 	case string:
 		if s := strings.TrimSpace(typed); s != "" {
-			if i, errParse := json.Number(s).Int64(); errParse == nil {
+			if i, errParse := jsoncompat.Number(s).Int64(); errParse == nil {
 				return i
 			}
 		}

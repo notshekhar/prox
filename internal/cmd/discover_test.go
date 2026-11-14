@@ -3,7 +3,7 @@ package cmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net"
 	"os"
 	"path/filepath"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/discovery"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type fakeBrowser struct {
@@ -49,7 +50,7 @@ func TestRunDiscoverJSONEmpty(t *testing.T) {
 		t.Fatalf("stderr = %q, want empty", stderr.String())
 	}
 	var got []discovery.DiscoveredService
-	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+	if err := json.Unmarshal(stdout.Bytes(), &got, jsoncompat.Decode); err != nil {
 		t.Fatalf("json: %v\nstdout=%s", err, stdout.String())
 	}
 	if len(got) != 0 {

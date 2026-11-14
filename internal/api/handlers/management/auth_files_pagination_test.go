@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -116,7 +118,7 @@ func TestListAuthFilesPaginationDefaultsAndCompatibility(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d body=%s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
-	var unpaginated map[string]json.RawMessage
+	var unpaginated map[string]jsontext.Value
 	if errDecode := json.Unmarshal(recorder.Body.Bytes(), &unpaginated); errDecode != nil {
 		t.Fatalf("decode unpaginated response: %v", errDecode)
 	}
@@ -188,7 +190,7 @@ func requestAuthFilesPage(t *testing.T, handler *Handler, requestPath string) au
 		t.Fatalf("%s status = %d, want %d body=%s", requestPath, recorder.Code, http.StatusOK, recorder.Body.String())
 	}
 	var payload authFilesPaginationPayload
-	if errDecode := json.Unmarshal(recorder.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(recorder.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode %s response: %v", requestPath, errDecode)
 	}
 	return payload

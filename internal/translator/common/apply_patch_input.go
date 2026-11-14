@@ -1,7 +1,7 @@
 package common
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -9,6 +9,7 @@ import (
 	"unicode/utf8"
 
 	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type applyPatchJSONPhase uint8
@@ -84,7 +85,7 @@ func (d *ApplyPatchInputDecoder) Push(fragment string) (string, error) {
 			}
 			if c == '"' {
 				var key string
-				if errUnmarshal := json.Unmarshal(d.keyRaw, &key); errUnmarshal != nil {
+				if errUnmarshal := json.Unmarshal(d.keyRaw, &key, jsoncompat.Decode); errUnmarshal != nil {
 					return "", d.fail(fmt.Errorf("decode apply_patch input key: %w", errUnmarshal))
 				}
 				if key != "input" {

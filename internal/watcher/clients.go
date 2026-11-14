@@ -6,7 +6,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
@@ -124,7 +126,7 @@ func (w *Watcher) reloadClients(rescanAuth bool, affectedOAuthProviders []string
 						continue
 					}
 					normalizedPath := w.normalizeAuthPath(fullPath)
-					if !json.Valid(data) {
+					if !jsontext.Value(data).IsValid(jsoncompat.Decode) {
 						if incompleteRescanPaths == nil {
 							incompleteRescanPaths = make(map[string]struct{})
 						}
@@ -136,7 +138,7 @@ func (w *Watcher) reloadClients(rescanAuth bool, affectedOAuthProviders []string
 					// Parse and cache auth content for future diff comparisons (debug only).
 					if cacheAuthContents {
 						var auth coreauth.Auth
-						if errParse := json.Unmarshal(data, &auth); errParse == nil {
+						if errParse := json.Unmarshal(data, &auth, jsoncompat.Decode); errParse == nil {
 							newAuthContents[normalizedPath] = &auth
 						}
 					}
@@ -329,7 +331,7 @@ func (w *Watcher) addOrUpdateClientLocked(path string) {
 
 	// Parse new auth content for diff comparison
 	var newAuth coreauth.Auth
-	if errParse := json.Unmarshal(data, &newAuth); errParse != nil {
+	if errParse := json.Unmarshal(data, &newAuth, jsoncompat.Decode); errParse != nil {
 		log.Errorf("failed to parse auth file %s: %v", filepath.Base(path), errParse)
 		return
 	}

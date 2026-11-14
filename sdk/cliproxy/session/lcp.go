@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"regexp"
 	"sort"
 	"strconv"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 )
@@ -44,8 +45,8 @@ type CanonicalPart struct {
 	MIME         string `json:"mime,omitempty"`
 	Value        string `json:"value"`
 	Digest       string `json:"digest,omitempty"`
-	OriginalSize int    `json:"original_size,omitempty"`
-	Sampled      bool   `json:"sampled,omitempty"`
+	OriginalSize int    `json:"original_size,omitzero"`
+	Sampled      bool   `json:"sampled,omitzero"`
 }
 
 // CanonicalTurn is a protocol-independent conversation turn.
@@ -422,8 +423,8 @@ func canonicalJSONPart(kind string, value ojson.Result) CanonicalPart {
 		}
 	}
 	var decoded any
-	if errUnmarshal := json.Unmarshal([]byte(raw), &decoded); errUnmarshal == nil {
-		if encoded, errMarshal := json.Marshal(decoded); errMarshal == nil {
+	if errUnmarshal := json.Unmarshal([]byte(raw), &decoded, jsoncompat.Decode); errUnmarshal == nil {
+		if encoded, errMarshal := json.Marshal(decoded, jsoncompat.Encode); errMarshal == nil {
 			raw = string(encoded)
 			return CanonicalPart{Kind: clonedKind, Value: raw, OriginalSize: len(raw)}
 		}

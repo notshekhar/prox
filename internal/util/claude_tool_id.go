@@ -3,12 +3,14 @@ package util
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"regexp"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const geminiClaudeToolUseIDPrefix = "cpa_gemini_"
@@ -58,8 +60,8 @@ func GeminiClaudeToolUseID(callID, name, argsRaw string) string {
 	}
 	if strings.TrimSpace(argsRaw) != "" {
 		var value any
-		if json.Unmarshal([]byte(argsRaw), &value) == nil {
-			if canonical, errMarshal := json.Marshal(value); errMarshal == nil {
+		if json.Unmarshal([]byte(argsRaw), &value, jsoncompat.Decode) == nil {
+			if canonical, errMarshal := json.Marshal(value, jsoncompat.Encode); errMarshal == nil {
 				argsRaw = string(canonical)
 			}
 		} else {

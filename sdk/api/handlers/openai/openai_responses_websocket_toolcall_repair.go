@@ -2,13 +2,14 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -31,15 +32,15 @@ type websocketToolOutputCache struct {
 
 type websocketToolOutputSession struct {
 	lastSeen time.Time
-	outputs  map[string]json.RawMessage
+	outputs  map[string]jsontext.Value
 	order    []string
 }
 
 type responsesWebsocketToolCacheTurn struct {
 	sessionKey  string
-	outputs     map[string]json.RawMessage
+	outputs     map[string]jsontext.Value
 	outputOrder []string
-	calls       map[string]json.RawMessage
+	calls       map[string]jsontext.Value
 	callOrder   []string
 }
 
@@ -57,7 +58,7 @@ func newWebsocketToolOutputCache(ttl time.Duration, maxPerSession int) *websocke
 	}
 }
 
-func (c *websocketToolOutputCache) record(sessionKey string, callID string, item json.RawMessage) {
+func (c *websocketToolOutputCache) record(sessionKey string, callID string, item jsontext.Value) {
 	sessionKey = strings.TrimSpace(sessionKey)
 	callID = strings.Clone(strings.TrimSpace(callID))
 	if sessionKey == "" || callID == "" || c == nil {
@@ -74,7 +75,7 @@ func (c *websocketToolOutputCache) record(sessionKey string, callID string, item
 	if !ok || session == nil {
 		session = &websocketToolOutputSession{
 			lastSeen: now,
-			outputs:  make(map[string]json.RawMessage),
+			outputs:  make(map[string]jsontext.Value),
 		}
 		c.sessions[sessionKey] = session
 	}
@@ -86,7 +87,7 @@ func (c *websocketToolOutputCache) record(sessionKey string, callID string, item
 	// Do not sanitize here: client-originated items also reach this method
 	// (repair first pass, turn commit) and must round-trip unchanged.
 	// Upstream items are sanitized at their recording entry points.
-	session.outputs[callID] = append(json.RawMessage(nil), item...)
+	session.outputs[callID] = append(jsontext.Value(nil), item...)
 
 	for len(session.order) > c.maxPerSession {
 		evict := session.order[0]
@@ -96,7 +97,7 @@ func (c *websocketToolOutputCache) record(sessionKey string, callID string, item
 	}
 }
 
-func (c *websocketToolOutputCache) get(sessionKey string, callID string) (json.RawMessage, bool) {
+func (c *websocketToolOutputCache) get(sessionKey string, callID string) (jsontext.Value, bool) {
 	sessionKey = strings.TrimSpace(sessionKey)
 	callID = strings.TrimSpace(callID)
 	if sessionKey == "" || callID == "" || c == nil {
@@ -118,7 +119,7 @@ func (c *websocketToolOutputCache) get(sessionKey string, callID string) (json.R
 	if !ok || len(item) == 0 {
 		return nil, false
 	}
-	return append(json.RawMessage(nil), item...), true
+	return append(jsontext.Value(nil), item...), true
 }
 
 func (c *websocketToolOutputCache) cleanupLocked(now time.Time) {
@@ -242,8 +243,8 @@ func newResponsesWebsocketToolCacheTurn(sessionKey string) *responsesWebsocketTo
 	}
 	return &responsesWebsocketToolCacheTurn{
 		sessionKey: sessionKey,
-		outputs:    make(map[string]json.RawMessage),
-		calls:      make(map[string]json.RawMessage),
+		outputs:    make(map[string]jsontext.Value),
+		calls:      make(map[string]jsontext.Value),
 	}
 }
 
@@ -302,7 +303,7 @@ func (t *responsesWebsocketToolCacheTurn) recordRawItem(itemType string, callID 
 	if callID == "" || len(bytes.TrimSpace(rawItem)) == 0 {
 		return
 	}
-	raw := append(json.RawMessage(nil), rawItem...)
+	raw := append(jsontext.Value(nil), rawItem...)
 	if isResponsesToolCallOutputType(itemType) {
 		if _, exists := t.outputs[callID]; !exists {
 			t.outputOrder = append(t.outputOrder, callID)
@@ -414,8 +415,8 @@ func repairResponsesWebsocketToolCallsWithCachesMode(
 	return updated
 }
 
-func parseResponsesWebsocketRepairRequest(payload []byte) (ojson.Result, json.RawMessage, bool) {
-	if !json.Valid(payload) {
+func parseResponsesWebsocketRepairRequest(payload []byte) (ojson.Result, jsontext.Value, bool) {
+	if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return ojson.Result{}, nil, false
 	}
 	root := util.ParseGJSONBytesNoCopy(payload)
@@ -424,7 +425,7 @@ func parseResponsesWebsocketRepairRequest(payload []byte) (ojson.Result, json.Ra
 	}
 
 	var input ojson.Result
-	var previousResponseID json.RawMessage
+	var previousResponseID jsontext.Value
 	inputFound := false
 	valid := true
 	root.ForEach(func(key, value ojson.Result) bool {
@@ -463,9 +464,9 @@ func replaceResponsesWebsocketRawResult(payload []byte, result ojson.Result, rep
 	return updated, true
 }
 
-func parseResponsesWebsocketInputItemsNoCopy(payload []byte, input ojson.Result) ([]responsesWebsocketInputItem, []json.RawMessage, bool) {
+func parseResponsesWebsocketInputItemsNoCopy(payload []byte, input ojson.Result) ([]responsesWebsocketInputItem, []jsontext.Value, bool) {
 	var items []responsesWebsocketInputItem
-	var rawItems []json.RawMessage
+	var rawItems []jsontext.Value
 	valid := true
 	input.ForEach(func(_, itemResult ojson.Result) bool {
 		rawItem, ok := responsesWebsocketRawMessageForResult(payload, itemResult)
@@ -488,7 +489,7 @@ func parseResponsesWebsocketInputItemsNoCopy(payload []byte, input ojson.Result)
 	return items, rawItems, true
 }
 
-func responsesWebsocketRawMessageForResult(payload []byte, result ojson.Result) (json.RawMessage, bool) {
+func responsesWebsocketRawMessageForResult(payload []byte, result ojson.Result) (jsontext.Value, bool) {
 	if result.Index < 0 || result.Index > len(payload) || len(result.Raw) > len(payload)-result.Index {
 		return nil, false
 	}
@@ -614,7 +615,7 @@ func repairResponsesToolCallItems(
 	return dedupeResponsesWebsocketInputItems(filtered), nil
 }
 
-func responsesWebsocketInputItemsEqualRaw(items []responsesWebsocketInputItem, rawItems []json.RawMessage) bool {
+func responsesWebsocketInputItemsEqualRaw(items []responsesWebsocketInputItem, rawItems []jsontext.Value) bool {
 	if len(items) != len(rawItems) {
 		return false
 	}

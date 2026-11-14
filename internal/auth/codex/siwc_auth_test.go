@@ -2,7 +2,7 @@ package codex
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"golang.org/x/sync/singleflight"
 )
@@ -126,7 +127,7 @@ func TestExchangeAndRefreshSIWCTokens(t *testing.T) {
 		_ = r.ParseForm()
 		lastForm = r.PostForm
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(responseBody)
+		_ = json.MarshalWrite(w, responseBody)
 	}))
 	defer ts.Close()
 
@@ -372,7 +373,7 @@ func TestSaveTokenToFileDoesNotOverwriteNewerDiskSIWC(t *testing.T) {
 
 func tokenStorageTestMap(t *testing.T, storage *CodexTokenStorage) map[string]any {
 	t.Helper()
-	raw, errMarshal := json.Marshal(storage)
+	raw, errMarshal := json.Marshal(storage, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}

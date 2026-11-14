@@ -1,8 +1,9 @@
 package auth
 
 import (
-	"encoding/json"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestValidateAuthWeight(t *testing.T) {
@@ -15,11 +16,11 @@ func TestValidateAuthWeight(t *testing.T) {
 	}{
 		{name: "omitted", auth: &Auth{}},
 		{name: "positive attribute", auth: &Auth{Attributes: map[string]string{AttributeWeight: "7"}}},
-		{name: "zero metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: json.Number("0")}}},
+		{name: "zero metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: jsoncompat.Number("0")}}},
 		{name: "negative attribute", auth: &Auth{Attributes: map[string]string{AttributeWeight: "-2"}}},
-		{name: "fraction metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: json.Number("1.5")}}, wantErr: true},
+		{name: "fraction metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: jsoncompat.Number("1.5")}}, wantErr: true},
 		{name: "above maximum attribute", auth: &Auth{Attributes: map[string]string{AttributeWeight: "1000001"}}, wantErr: true},
-		{name: "overflow metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: json.Number("9223372036854775808")}}, wantErr: true},
+		{name: "overflow metadata", auth: &Auth{Metadata: map[string]any{AttributeWeight: jsoncompat.Number("9223372036854775808")}}, wantErr: true},
 		{name: "nonnumeric attribute", auth: &Auth{Attributes: map[string]string{AttributeWeight: "invalid"}}, wantErr: true},
 		{
 			name: "valid attribute does not hide invalid metadata",

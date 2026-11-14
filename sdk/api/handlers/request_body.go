@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/klauspost/compress/zstd"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // MaxRequestBodyBytesContextKey stores the configured request body size limit (in bytes) on the Gin context.
@@ -43,7 +44,7 @@ func ReadRequestBody(c *gin.Context) ([]byte, error) {
 		if errors.As(err, &maxBytesErr) {
 			return nil, err
 		}
-		if json.Valid(raw) {
+		if jsontext.Value(raw).IsValid(jsoncompat.Decode) {
 			return raw, nil
 		}
 		return nil, err

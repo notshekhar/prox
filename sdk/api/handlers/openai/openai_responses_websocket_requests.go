@@ -2,7 +2,8 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"slices"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -316,7 +318,7 @@ func normalizeResponseTranscriptReplacement(rawJSON []byte, lastRequest []byte) 
 }
 
 type responsesWebsocketInputItem struct {
-	raw      json.RawMessage
+	raw      jsontext.Value
 	itemType string
 	id       string
 	callID   string
@@ -343,7 +345,7 @@ const responsesWebsocketReplayPassthroughPath = "internal_chat_message_metadata_
 // escaped spellings. Retained members are rebuilt from raw field slices
 // without reserializing values; invalid items return unchanged.
 func responsesWebsocketReplaySanitizedItem(raw string) string {
-	if !responsesWebsocketReplayMayContainPassthroughKey(raw) || !json.Valid([]byte(raw)) {
+	if !responsesWebsocketReplayMayContainPassthroughKey(raw) || !jsontext.Value(raw).IsValid(jsoncompat.Decode) {
 		return raw
 	}
 	item := ojson.Parse(raw)
@@ -361,7 +363,7 @@ func responsesWebsocketReplaySanitizedItem(raw string) string {
 // cache recording entries. Unchanged items return the caller's slice so the
 // storage layer still performs its single detached ownership copy.
 func responsesWebsocketReplaySanitizedBytes(raw []byte) []byte {
-	if len(raw) == 0 || !json.Valid(raw) {
+	if len(raw) == 0 || !jsontext.Value(raw).IsValid(jsoncompat.Decode) {
 		return raw
 	}
 	item := util.ParseGJSONBytesNoCopy(raw)
@@ -482,7 +484,7 @@ func mergeResponsesWebsocketInput(lastRequest []byte, lastResponseOutput []byte,
 	}
 
 	trimmedResponse := bytes.TrimSpace(lastResponseOutput)
-	if len(trimmedResponse) > 0 && trimmedResponse[0] == '[' && json.Valid(trimmedResponse) {
+	if len(trimmedResponse) > 0 && trimmedResponse[0] == '[' && jsontext.Value(trimmedResponse).IsValid(jsoncompat.Decode) {
 		responseInput := util.ParseGJSONBytesNoCopy(trimmedResponse)
 		if inputContainsFullTranscript(responseInput) {
 			items = slices.DeleteFunc(items, func(item responsesWebsocketMergeInputItem) bool {
@@ -514,7 +516,7 @@ func mergeResponsesWebsocketInput(lastRequest []byte, lastResponseOutput []byte,
 }
 
 func responsesWebsocketPreviousInputNoCopy(lastRequest []byte) (ojson.Result, error) {
-	if !json.Valid(lastRequest) {
+	if !jsontext.Value(lastRequest).IsValid(jsoncompat.Decode) {
 		return ojson.Result{}, responsesWebsocketPreviousInputDecodeError(lastRequest)
 	}
 
@@ -555,9 +557,9 @@ func responsesWebsocketPreviousInputNoCopy(lastRequest []byte) (ojson.Result, er
 
 func responsesWebsocketPreviousInputDecodeError(lastRequest []byte) error {
 	var previousRequest struct {
-		Input []json.RawMessage `json:"input"`
+		Input []jsontext.Value `json:"input"`
 	}
-	return json.Unmarshal(lastRequest, &previousRequest)
+	return json.Unmarshal(lastRequest, &previousRequest, jsoncompat.Decode)
 }
 
 func appendResponsesWebsocketMergeInputItems(items []responsesWebsocketMergeInputItem, rawArray string) ([]responsesWebsocketMergeInputItem, error) {
@@ -570,8 +572,8 @@ func appendResponsesWebsocketMergeInputItems(items []responsesWebsocketMergeInpu
 		return appendResponsesWebsocketMergeInputResult(items, parsed)
 	}
 
-	var rawItems []json.RawMessage
-	if errUnmarshal := json.Unmarshal([]byte(rawArray), &rawItems); errUnmarshal != nil {
+	var rawItems []jsontext.Value
+	if errUnmarshal := json.Unmarshal([]byte(rawArray), &rawItems, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	return items, nil
@@ -582,8 +584,8 @@ func appendResponsesWebsocketMergeInputResult(items []responsesWebsocketMergeInp
 		return items, nil
 	}
 	if !input.IsArray() {
-		var rawItems []json.RawMessage
-		if errUnmarshal := json.Unmarshal([]byte(input.Raw), &rawItems); errUnmarshal != nil {
+		var rawItems []jsontext.Value
+		if errUnmarshal := json.Unmarshal([]byte(input.Raw), &rawItems, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		return items, nil
@@ -698,14 +700,14 @@ func appendResponsesWebsocketInputItems(items []responsesWebsocketInputItem, raw
 	if rawArray == "" {
 		rawArray = "[]"
 	}
-	var rawItems []json.RawMessage
-	if errUnmarshal := json.Unmarshal([]byte(rawArray), &rawItems); errUnmarshal != nil {
+	var rawItems []jsontext.Value
+	if errUnmarshal := json.Unmarshal([]byte(rawArray), &rawItems, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	return appendResponsesWebsocketRawInputItems(items, rawItems)
 }
 
-func appendResponsesWebsocketRawInputItems(items []responsesWebsocketInputItem, rawItems []json.RawMessage) ([]responsesWebsocketInputItem, error) {
+func appendResponsesWebsocketRawInputItems(items []responsesWebsocketInputItem, rawItems []jsontext.Value) ([]responsesWebsocketInputItem, error) {
 	for _, rawItem := range rawItems {
 		item, errItem := parseResponsesWebsocketInputItem(rawItem)
 		if errItem != nil {
@@ -716,18 +718,18 @@ func appendResponsesWebsocketRawInputItems(items []responsesWebsocketInputItem, 
 	return items, nil
 }
 
-func parseResponsesWebsocketInputItem(rawItem json.RawMessage) (responsesWebsocketInputItem, error) {
+func parseResponsesWebsocketInputItem(rawItem jsontext.Value) (responsesWebsocketInputItem, error) {
 	item := responsesWebsocketInputItem{raw: rawItem}
 	trimmed := bytes.TrimSpace(rawItem)
 	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return item, nil
 	}
 	var metadata struct {
-		Type   json.RawMessage `json:"type"`
-		ID     json.RawMessage `json:"id"`
-		CallID json.RawMessage `json:"call_id"`
+		Type   jsontext.Value `json:"type"`
+		ID     jsontext.Value `json:"id"`
+		CallID jsontext.Value `json:"call_id"`
 	}
-	if errUnmarshal := json.Unmarshal(trimmed, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(trimmed, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		return responsesWebsocketInputItem{}, errUnmarshal
 	}
 	item.itemType = responsesWebsocketMetadataString(metadata.Type)
@@ -736,14 +738,14 @@ func parseResponsesWebsocketInputItem(rawItem json.RawMessage) (responsesWebsock
 	return item, nil
 }
 
-func responsesWebsocketMetadataString(raw json.RawMessage) string {
+func responsesWebsocketMetadataString(raw jsontext.Value) string {
 	raw = bytes.TrimSpace(raw)
 	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
 		return ""
 	}
 	if raw[0] == '"' {
 		var value string
-		if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal == nil {
+		if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal == nil {
 			return strings.TrimSpace(value)
 		}
 	}
@@ -751,11 +753,11 @@ func responsesWebsocketMetadataString(raw json.RawMessage) string {
 }
 
 func marshalResponsesWebsocketInputItems(items []responsesWebsocketInputItem) (string, error) {
-	rawItems := make([]json.RawMessage, len(items))
+	rawItems := make([]jsontext.Value, len(items))
 	for index := range items {
 		rawItems[index] = items[index].raw
 	}
-	out, errMarshal := json.Marshal(rawItems)
+	out, errMarshal := json.Marshal(rawItems, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", errMarshal
 	}
@@ -851,7 +853,7 @@ func dedupeInputItemsByID(rawArray string) (string, error) {
 }
 
 func normalizeResponsesWebsocketPassthroughRequest(rawJSON []byte, modelName string) ([]byte, *interfaces.ErrorMessage) {
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		return nil, &interfaces.ErrorMessage{
 			StatusCode: http.StatusBadRequest,
 			Error:      fmt.Errorf("invalid websocket request JSON"),

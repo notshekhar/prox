@@ -1,7 +1,8 @@
 package live
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
@@ -23,7 +25,7 @@ func TestHandleDirectWebsocketRejectsClientSecretModelMismatch(t *testing.T) {
 	handler := NewHandler(auth.NewManager(nil, nil, nil), nil)
 	router := gin.New()
 	router.GET("/v1/realtime", func(c *gin.Context) {
-		c.Set(ClientSecretSessionContextKey, json.RawMessage(`{"type":"realtime","model":"gpt-live-1-codex"}`))
+		c.Set(ClientSecretSessionContextKey, jsontext.Value(`{"type":"realtime","model":"gpt-live-1-codex"}`))
 		c.Set(ClientSecretPrincipalContextKey, "sess_123")
 		c.Next()
 	}, handler.HandleRealtimeWebsocket)
@@ -152,7 +154,7 @@ func TestHandleDirectWebsocketAppliesClientSecretSession(t *testing.T) {
 	handler.sidebandAPIBaseURL = "ws" + strings.TrimPrefix(upstreamServer.URL, "http") + "/v1"
 	router := gin.New()
 	router.GET("/v1/realtime", func(c *gin.Context) {
-		c.Set(ClientSecretSessionContextKey, json.RawMessage(`{"type":"realtime","model":"gpt-live-1-codex","instructions":"help"}`))
+		c.Set(ClientSecretSessionContextKey, jsontext.Value(`{"type":"realtime","model":"gpt-live-1-codex","instructions":"help"}`))
 		c.Set(ClientSecretPrincipalContextKey, "sess_123")
 		c.Next()
 	}, handler.HandleRealtimeWebsocket)
@@ -176,7 +178,7 @@ func TestHandleDirectWebsocketAppliesClientSecretSession(t *testing.T) {
 				Instructions string `json:"instructions"`
 			} `json:"session"`
 		}
-		if errUnmarshal := json.Unmarshal(update, &event); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(update, &event, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal session update: %v", errUnmarshal)
 		}
 		if event.Type != "session.update" || event.Session.Model != "" || event.Session.Instructions != "help" {

@@ -24,7 +24,7 @@ func readKeychainPassword() (string, error) {
 func saveKeychainPassword(password string) error {
 	cmd := exec.Command("security", "-i")
 	cmd.Stdin = strings.NewReader(fmt.Sprintf("add-generic-password -U -a %s -s %s -w %s\n",
-		keychainAccount, serviceLabel, quoteForSecurity(password)))
+		keychainAccount, serviceLabel, doubleQuoted(password)))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("save to Keychain: %w: %s", err, output)
 	}
@@ -39,6 +39,8 @@ func deleteKeychainPassword() {
 	_ = exec.Command("security", "delete-generic-password", "-a", keychainAccount, "-s", serviceLabel).Run()
 }
 
-func quoteForSecurity(value string) string {
+// doubleQuoted suits both `security -i` and a systemd environment file, which
+// read quotes and backslashes the same way.
+func doubleQuoted(value string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value) + `"`
 }

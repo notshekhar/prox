@@ -2,12 +2,13 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const pluginStatusReportTimeout = 10 * time.Second
@@ -29,7 +30,7 @@ func ReportPluginStatus(ctx context.Context, client PluginStatusClient, nodeID s
 	}
 	report.NodeID = nodeID
 	report.UpdatedAt = time.Now().UTC()
-	raw, errMarshal := json.Marshal(report)
+	raw, errMarshal := json.Marshal(report, jsoncompat.Encode)
 	if errMarshal != nil {
 		return errMarshal
 	}

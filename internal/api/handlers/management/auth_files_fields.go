@@ -3,7 +3,8 @@ package management
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -20,6 +21,7 @@ import (
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/credentialweight"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -221,7 +223,7 @@ func setSourceAuthFileDisabled(path string, disabled bool) error {
 	}
 	metadata := make(map[string]any)
 	if len(bytes.TrimSpace(data)) > 0 {
-		if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 			return fmt.Errorf("invalid auth file: %w", errUnmarshal)
 		}
 	}
@@ -230,7 +232,7 @@ func setSourceAuthFileDisabled(path string, disabled bool) error {
 	}
 	coreauth.NormalizeCredentialMetadata(metadata)
 	metadata["disabled"] = disabled
-	raw, errMarshal := json.Marshal(metadata)
+	raw, errMarshal := json.Marshal(metadata, jsoncompat.Encode)
 	if errMarshal != nil {
 		return fmt.Errorf("marshal auth file: %w", errMarshal)
 	}
@@ -266,10 +268,8 @@ func (h *Handler) PatchAuthFileFields(c *gin.Context) {
 		return
 	}
 
-	var req map[string]json.RawMessage
-	decoder := json.NewDecoder(c.Request.Body)
-	decoder.UseNumber()
-	if err := decoder.Decode(&req); err != nil {
+	var req map[string]jsontext.Value
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(c.Request.Body), &req, jsoncompat.DecodeUseNumber); err != nil {
 		c.JSON(clienterror.HTTPStatusFromErrorOr(err, http.StatusBadRequest), gin.H{"error": "invalid request body"})
 		return
 	}
@@ -280,7 +280,7 @@ func (h *Handler) PatchAuthFileFields(c *gin.Context) {
 		return
 	}
 	var nameValue string
-	if err := json.Unmarshal(nameRaw, &nameValue); err != nil {
+	if err := json.Unmarshal(nameRaw, &nameValue, jsoncompat.Decode); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
 		return
 	}
@@ -367,7 +367,7 @@ func (e *authFileFieldPatchError) Error() string {
 	return e.message
 }
 
-func applyAuthFileFieldsPatch(targetAuth *coreauth.Auth, req map[string]json.RawMessage, requestRetryPatch authFileRequestRetryPatch) error {
+func applyAuthFileFieldsPatch(targetAuth *coreauth.Auth, req map[string]jsontext.Value, requestRetryPatch authFileRequestRetryPatch) error {
 	coreauth.NormalizeCredentialMetadata(targetAuth.Metadata)
 
 	changed := false
@@ -407,7 +407,7 @@ func applyAuthFileFieldsPatch(targetAuth *coreauth.Auth, req map[string]json.Raw
 			if value == nil {
 				delete(targetAuth.Metadata, coreauth.AttributeWeight)
 			} else {
-				if _, okNumber := value.(json.Number); !okNumber {
+				if _, okNumber := value.(jsoncompat.Number); !okNumber {
 					return &authFileFieldPatchError{message: "weight must be an integer"}
 				}
 				weight, errWeight := credentialweight.ParseValue(value)
@@ -463,11 +463,9 @@ func applyAuthFileFieldsPatch(targetAuth *coreauth.Auth, req map[string]json.Raw
 	return nil
 }
 
-func decodeAuthFileFieldValue(raw json.RawMessage) (any, error) {
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.UseNumber()
+func decodeAuthFileFieldValue(raw jsontext.Value) (any, error) {
 	var value any
-	if err := decoder.Decode(&value); err != nil {
+	if err := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &value, jsoncompat.DecodeUseNumber); err != nil {
 		return nil, err
 	}
 	return value, nil
@@ -478,8 +476,8 @@ type authFileRequestRetryPatch struct {
 	Value *int
 }
 
-func normalizeAuthFilePatchFields(fields map[string]json.RawMessage) (map[string]json.RawMessage, error) {
-	normalized := make(map[string]json.RawMessage, len(fields))
+func normalizeAuthFilePatchFields(fields map[string]jsontext.Value) (map[string]jsontext.Value, error) {
+	normalized := make(map[string]jsontext.Value, len(fields))
 	originalNames := make(map[string]string, len(fields))
 	canonicalNames := make(map[string]bool, len(fields))
 	for key, value := range fields {
@@ -509,8 +507,8 @@ func normalizeAuthFilePatchFields(fields map[string]json.RawMessage) (map[string
 	return normalized, nil
 }
 
-func decodeAuthFileRequestRetryPatch(fields map[string]json.RawMessage) (authFileRequestRetryPatch, error) {
-	var raw json.RawMessage
+func decodeAuthFileRequestRetryPatch(fields map[string]jsontext.Value) (authFileRequestRetryPatch, error) {
+	var raw jsontext.Value
 	found := false
 	for key, value := range fields {
 		fieldPath := strings.TrimSpace(key)
@@ -533,7 +531,7 @@ func decodeAuthFileRequestRetryPatch(fields map[string]json.RawMessage) (authFil
 	if value == nil {
 		return authFileRequestRetryPatch{Set: true}, nil
 	}
-	number, okNumber := value.(json.Number)
+	number, okNumber := value.(jsoncompat.Number)
 	if !okNumber {
 		return authFileRequestRetryPatch{}, fmt.Errorf("request_retry must be an integer or null")
 	}
@@ -779,7 +777,7 @@ func authFileIntValue(value any) (int, bool) {
 		return int(typed), true
 	case float64:
 		return int(typed), true
-	case json.Number:
+	case jsoncompat.Number:
 		if i, err := typed.Int64(); err == nil {
 			return int(i), true
 		}
@@ -975,7 +973,7 @@ func (h *Handler) mergeExistingAuthFileMetadata(record *coreauth.Auth) {
 		}
 		if fullPath != "" {
 			if raw, errRead := os.ReadFile(fullPath); errRead == nil && len(raw) > 0 {
-				_ = json.Unmarshal(raw, &existingMap)
+				_ = json.Unmarshal(raw, &existingMap, jsoncompat.Decode)
 			}
 		}
 	}

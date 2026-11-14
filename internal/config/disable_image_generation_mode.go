@@ -2,10 +2,11 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -68,9 +69,9 @@ func (m DisableImageGenerationMode) MarshalJSON() ([]byte, error) {
 	case DisableImageGenerationAll:
 		return []byte("true"), nil
 	case DisableImageGenerationChat:
-		return json.Marshal("chat")
+		return json.Marshal("chat", jsoncompat.Encode)
 	case DisableImageGenerationPassthrough:
-		return json.Marshal("passthrough")
+		return json.Marshal("passthrough", jsoncompat.Encode)
 	default:
 		return []byte("false"), nil
 	}
@@ -115,7 +116,7 @@ func parseDisableImageGenerationJSON(data []byte) (DisableImageGenerationMode, e
 
 	// bool
 	var b bool
-	if err := json.Unmarshal(trimmed, &b); err == nil {
+	if err := json.Unmarshal(trimmed, &b, jsoncompat.Decode); err == nil {
 		if b {
 			return DisableImageGenerationAll, nil
 		}
@@ -124,7 +125,7 @@ func parseDisableImageGenerationJSON(data []byte) (DisableImageGenerationMode, e
 
 	// string
 	var s string
-	if err := json.Unmarshal(trimmed, &s); err != nil {
+	if err := json.Unmarshal(trimmed, &s, jsoncompat.Decode); err != nil {
 		return DisableImageGenerationOff, fmt.Errorf("invalid disable-image-generation value")
 	}
 	return parseDisableImageGenerationString(s)

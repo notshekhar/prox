@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +11,7 @@ import (
 	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -81,7 +82,7 @@ func (m *Manager) Login(ctx context.Context, provider string, cfg *config.Config
 				fullPath := filepath.Join(cfg.AuthDir, targetFile)
 				if raw, errRead := os.ReadFile(fullPath); errRead == nil && len(raw) > 0 {
 					var existingMap map[string]any
-					if errUnmarshal := json.Unmarshal(raw, &existingMap); errUnmarshal == nil && len(existingMap) > 0 {
+					if errUnmarshal := json.Unmarshal(raw, &existingMap, jsoncompat.Decode); errUnmarshal == nil && len(existingMap) > 0 {
 						coreauth.MergeExistingAuthMetadata(record, existingMap)
 					}
 				}

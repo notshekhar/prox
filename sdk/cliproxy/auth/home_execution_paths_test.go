@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strconv"
 	"sync"
@@ -12,6 +12,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -25,7 +26,7 @@ type homeExecutionDispatcher struct{}
 func (homeExecutionDispatcher) HeartbeatOK() bool { return true }
 
 func (homeExecutionDispatcher) RPopAuth(context.Context, string, string, http.Header, int) ([]byte, error) {
-	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive}})
+	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive}}, jsoncompat.Encode)
 }
 
 func (homeExecutionDispatcher) AbortAmbiguousDispatch() {}
@@ -174,7 +175,7 @@ func (homeOAuthLoggingDispatcher) RPopAuth(context.Context, string, string, http
 		Attributes: map[string]string{
 			AttributeAuthKind: AuthKindOAuth,
 		},
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (homeOAuthLoggingDispatcher) AbortAmbiguousDispatch() {}
@@ -266,7 +267,7 @@ func (d *retainingHomeExecutionDispatcher) RPopAuth(context.Context, string, str
 		Attributes: map[string]string{
 			"websockets": "true",
 		},
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*retainingHomeExecutionDispatcher) AbortAmbiguousDispatch() {}
@@ -335,7 +336,7 @@ func (d *changingHomeTargetDispatcher) RPopAuth(context.Context, string, string,
 	if d.calls.Add(1) == 2 && d.firstSelection != nil {
 		d.oldEndedBeforeRPop.Store(!d.firstSelection.Active())
 	}
-	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive, Attributes: map[string]string{"websockets": "true"}}})
+	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive, Attributes: map[string]string{"websockets": "true"}}}, jsoncompat.Encode)
 }
 func (*changingHomeTargetDispatcher) AbortAmbiguousDispatch() {}
 
@@ -413,7 +414,7 @@ func (d *unpinnedTargetChangeDispatcher) RPopAuth(_ context.Context, _ string, _
 		Attributes: map[string]string{
 			"websockets": "true",
 		},
-	}})
+	}}, jsoncompat.Encode)
 }
 func (*unpinnedTargetChangeDispatcher) AbortAmbiguousDispatch() {}
 
@@ -504,7 +505,7 @@ func (d *lifecycleRetryDispatcher) RPopAuthWithConstraints(_ context.Context, _ 
 	if d.calls.Add(1) == 2 && d.executor.first != nil {
 		d.firstEndedBeforeRedispatch.Store(!d.executor.first.Active() && d.executor.firstCtx.Err() != nil)
 	}
-	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive, Attributes: map[string]string{"websockets": "true"}}})
+	return json.Marshal(homeAuthDispatchResponse{Auth: Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive, Attributes: map[string]string{"websockets": "true"}}}, jsoncompat.Encode)
 }
 func (*lifecycleRetryDispatcher) AbortAmbiguousDispatch() {}
 
@@ -616,7 +617,7 @@ func (d *freshHomeStreamSelectionDispatcher) RPopAuthWithConstraints(_ context.C
 			Attributes: map[string]string{
 				AttributeAuthKind: AuthKindAPIKey,
 			},
-		}})
+		}}, jsoncompat.Encode)
 	}
 	return nil, home.ErrAuthNotFound
 }
@@ -821,7 +822,7 @@ func (d *homePerSelectionDispatcher) RPopAuth(context.Context, string, string, h
 	if int(call) > len(d.auths) {
 		return nil, home.ErrAuthNotFound
 	}
-	return json.Marshal(homeAuthDispatchResponse{Auth: d.auths[call-1]})
+	return json.Marshal(homeAuthDispatchResponse{Auth: d.auths[call-1]}, jsoncompat.Encode)
 }
 func (*homePerSelectionDispatcher) AbortAmbiguousDispatch() {}
 
@@ -970,7 +971,7 @@ func (d *accountedHomeExecutionDispatcher) RPopAuth(_ context.Context, model str
 		Model:       model,
 		AuthIndex:   auth.ID,
 		Auth:        auth,
-	})
+	}, jsoncompat.Encode)
 }
 func (*accountedHomeExecutionDispatcher) AbortAmbiguousDispatch() {}
 

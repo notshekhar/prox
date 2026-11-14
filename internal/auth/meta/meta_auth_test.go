@@ -2,7 +2,7 @@ package meta
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestMetaAuth_StartDeviceFlow(t *testing.T) {
@@ -23,7 +24,7 @@ func TestMetaAuth_StartDeviceFlow(t *testing.T) {
 			t.Errorf("expected client_id %s, got %s", ClientID, r.Form.Get("client_id"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(DeviceCodeResponse{
+		_ = json.MarshalWrite(w, DeviceCodeResponse{
 			DeviceCode:              "test-device-code",
 			UserCode:                "TEST-1234",
 			VerificationURI:         "https://auth.meta.com/device",
@@ -52,7 +53,7 @@ func TestMetaAuth_WaitForAuthorization(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			if r.URL.Path == "/key" {
-				_ = json.NewEncoder(w).Encode(MintedKeyResponse{
+				_ = json.MarshalWrite(w, MintedKeyResponse{
 					APIKey:       "LLM|test-minted-key",
 					UserEmail:    "user@meta.com",
 					UserFullName: "Meta User",
@@ -62,12 +63,12 @@ func TestMetaAuth_WaitForAuthorization(t *testing.T) {
 			attempts++
 			if attempts < 2 {
 				w.WriteHeader(http.StatusBadRequest)
-				_ = json.NewEncoder(w).Encode(map[string]string{
+				_ = json.MarshalWrite(w, map[string]string{
 					"error": "authorization_pending",
 				})
 				return
 			}
-			_ = json.NewEncoder(w).Encode(TokenData{
+			_ = json.MarshalWrite(w, TokenData{
 				AccessToken: "test-access-token-123",
 				TokenType:   "Bearer",
 				ExpiresIn:   3600,
@@ -112,7 +113,7 @@ func TestMetaAuth_WaitForAuthorization(t *testing.T) {
 				_, _ = w.Write([]byte(`{"error":"mint unavailable"}`))
 				return
 			}
-			_ = json.NewEncoder(w).Encode(TokenData{
+			_ = json.MarshalWrite(w, TokenData{
 				AccessToken: "test-access-token-dca-only",
 				TokenType:   "Bearer",
 				ExpiresIn:   3600,
@@ -219,7 +220,7 @@ func TestSaveTokenToFile_DoesNotRestoreClearedCredentialFields(t *testing.T) {
 		"models":          []any{"muse-latest"},
 		"disable-cooling": true,
 	}
-	raw, err := json.Marshal(initial)
+	raw, err := json.Marshal(initial, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("json.Marshal error = %v", err)
 	}

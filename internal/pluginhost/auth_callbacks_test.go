@@ -2,7 +2,8 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	sdkauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -348,7 +350,7 @@ func TestHostAuthSaveCallbackRejectsInvalidWeightBeforePersistence(t *testing.T)
 
 			req, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 				Name: "invalid.json",
-				JSON: json.RawMessage(`{"type":"demo","weight":` + rawWeight + `}`),
+				JSON: jsontext.Value(`{"type":"demo","weight":` + rawWeight + `}`),
 			})
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
@@ -374,7 +376,7 @@ func TestHostAuthSaveCallbackWritesPhysicalFile(t *testing.T) {
 
 	req, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: "saved.json",
-		JSON: json.RawMessage(`{"type":"demo","email":"saved@example.com","api_key":"saved-key"}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"saved@example.com","api_key":"saved-key"}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
@@ -411,7 +413,7 @@ func TestHostAuthSaveCallbackPreservesDisabledState(t *testing.T) {
 
 	reqDisabled, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: "test-auth.json",
-		JSON: json.RawMessage(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":true}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":true}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
@@ -450,7 +452,7 @@ func TestHostAuthSaveCallbackPreservesDisabledState(t *testing.T) {
 
 	reqEnabled, errMarshalEnabled := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: "test-auth.json",
-		JSON: json.RawMessage(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":false}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":false}`),
 	})
 	if errMarshalEnabled != nil {
 		t.Fatalf("marshal request enabled: %v", errMarshalEnabled)
@@ -487,7 +489,7 @@ func TestHostAuthSaveCallbackPreservesDisabledState(t *testing.T) {
 
 	reqUpdateDisabled, errMarshalUpdateDisabled := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: "test-auth.json",
-		JSON: json.RawMessage(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":true}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"disabled@example.com","api_key":"test-key","disabled":true}`),
 	})
 	if errMarshalUpdateDisabled != nil {
 		t.Fatalf("marshal update disabled request: %v", errMarshalUpdateDisabled)
@@ -626,7 +628,7 @@ func TestHostAuthSaveCallbackDoesNotDuplicatePluginAuthWithNonJSONID(t *testing.
 
 	reqSave, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: fileName,
-		JSON: json.RawMessage(`{"type":"demo","email":"user@example.com","access_token":"tok-2"}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"user@example.com","access_token":"tok-2"}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal save request: %v", errMarshal)
@@ -707,7 +709,7 @@ func TestHostAuthSaveCallbackReusesExistingSameFileAuthIDWithoutAuthProvider(t *
 
 	reqSave, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: fileName,
-		JSON: json.RawMessage(`{"type":"demo","email":"user@example.com","access_token":"tok-2"}`),
+		JSON: jsontext.Value(`{"type":"demo","email":"user@example.com","access_token":"tok-2"}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal save request: %v", errMarshal)
@@ -764,7 +766,7 @@ func TestHostAuthSaveCallbackPreservesPluginDisabledChildWhenFileDisabledFalse(t
 
 	reqSave, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: fileName,
-		JSON: json.RawMessage(`{"type":"demo","disabled":false}`),
+		JSON: jsontext.Value(`{"type":"demo","disabled":false}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal save request: %v", errMarshal)
@@ -832,7 +834,7 @@ func TestHostAuthSaveCallbackUnregistersModelsForRemovedStaleSameFileAuth(t *tes
 
 	reqSave, errMarshal := json.Marshal(pluginapi.HostAuthSaveRequest{
 		Name: fileName,
-		JSON: json.RawMessage(`{"type":"demo","access_token":"tok-2"}`),
+		JSON: jsontext.Value(`{"type":"demo","access_token":"tok-2"}`),
 	})
 	if errMarshal != nil {
 		t.Fatalf("marshal save request: %v", errMarshal)
@@ -1096,7 +1098,7 @@ func TestHostAuthModelsCallbackReturnsAllCredentialsIncludingConfigBacked(t *tes
 								ID string `json:"id"`
 							} `json:"data"`
 						}
-						if errUnmarshal := json.Unmarshal(req.Body, &catalog); errUnmarshal != nil {
+						if errUnmarshal := json.Unmarshal(req.Body, &catalog, jsoncompat.Decode); errUnmarshal != nil {
 							return pluginapi.ResponseInterceptResponse{}, errUnmarshal
 						}
 						filtered := catalog.Data[:0]

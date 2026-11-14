@@ -2,13 +2,14 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -30,7 +31,7 @@ func (d *repeatedHomeAuthDispatcher) RPopAuth(context.Context, string, string, h
 			Status:   StatusActive,
 			Metadata: map[string]any{"email": "loop@example.com"},
 		},
-	})
+	}, jsoncompat.Encode)
 	return raw, nil
 }
 

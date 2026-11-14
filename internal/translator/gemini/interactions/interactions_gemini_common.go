@@ -3,12 +3,14 @@ package interactions
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
@@ -232,39 +234,39 @@ func copyGeminiToolsToInteractionsDoc(outDoc *ojson.Doc, root ojson.Result) {
 		if uc := tool.Get("urlContext"); uc.Exists() {
 			entry := map[string]any{"type": "url_context"}
 			if uc.IsObject() && len(uc.Map()) > 0 {
-				entry["url_context"] = json.RawMessage(uc.Raw)
+				entry["url_context"] = jsontext.Value(uc.Raw)
 			}
 			normalized = append(normalized, entry)
 		} else if uc := tool.Get("url_context"); uc.Exists() {
 			entry := map[string]any{"type": "url_context"}
 			if uc.IsObject() && len(uc.Map()) > 0 {
-				entry["url_context"] = json.RawMessage(uc.Raw)
+				entry["url_context"] = jsontext.Value(uc.Raw)
 			}
 			normalized = append(normalized, entry)
 		}
 		if ce := tool.Get("codeExecution"); ce.Exists() {
 			entry := map[string]any{"type": "code_execution"}
 			if ce.IsObject() && len(ce.Map()) > 0 {
-				entry["code_execution"] = json.RawMessage(ce.Raw)
+				entry["code_execution"] = jsontext.Value(ce.Raw)
 			}
 			normalized = append(normalized, entry)
 		} else if ce := tool.Get("code_execution"); ce.Exists() {
 			entry := map[string]any{"type": "code_execution"}
 			if ce.IsObject() && len(ce.Map()) > 0 {
-				entry["code_execution"] = json.RawMessage(ce.Raw)
+				entry["code_execution"] = jsontext.Value(ce.Raw)
 			}
 			normalized = append(normalized, entry)
 		}
 		if gs := tool.Get("googleSearch"); gs.Exists() {
 			entry := map[string]any{"type": "google_search"}
 			if gs.IsObject() && len(gs.Map()) > 0 {
-				entry["google_search"] = json.RawMessage(gs.Raw)
+				entry["google_search"] = jsontext.Value(gs.Raw)
 			}
 			normalized = append(normalized, entry)
 		} else if gs := tool.Get("google_search"); gs.Exists() {
 			entry := map[string]any{"type": "google_search"}
 			if gs.IsObject() && len(gs.Map()) > 0 {
-				entry["google_search"] = json.RawMessage(gs.Raw)
+				entry["google_search"] = jsontext.Value(gs.Raw)
 			}
 			normalized = append(normalized, entry)
 		}
@@ -277,9 +279,9 @@ func copyGeminiToolsToInteractionsDoc(outDoc *ojson.Doc, root ojson.Result) {
 				entry["description"] = desc.String()
 			}
 			if params := tool.Get("parameters"); params.Exists() {
-				entry["parameters"] = json.RawMessage(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
+				entry["parameters"] = jsontext.Value(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
 			} else if params := tool.Get("parametersJsonSchema"); params.Exists() {
-				entry["parameters"] = json.RawMessage(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
+				entry["parameters"] = jsontext.Value(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
 			}
 			normalized = append(normalized, entry)
 			return true
@@ -298,9 +300,9 @@ func copyGeminiToolsToInteractionsDoc(outDoc *ojson.Doc, root ojson.Result) {
 					entry["description"] = desc.String()
 				}
 				if params := decl.Get("parameters"); params.Exists() {
-					entry["parameters"] = json.RawMessage(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
+					entry["parameters"] = jsontext.Value(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
 				} else if params := decl.Get("parametersJsonSchema"); params.Exists() {
-					entry["parameters"] = json.RawMessage(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
+					entry["parameters"] = jsontext.Value(util.NormalizeJSONSchemaNumericConstraints(params.Raw))
 				}
 				normalized = append(normalized, entry)
 			}
@@ -312,7 +314,7 @@ func copyGeminiToolsToInteractionsDoc(outDoc *ojson.Doc, root ojson.Result) {
 		_ = outDoc.SetRaw("tools", tools.Raw)
 		return
 	}
-	raw, errMarshal := json.Marshal(normalized)
+	raw, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 	if errMarshal != nil {
 		_ = outDoc.SetRaw("tools", tools.Raw)
 		return
@@ -797,44 +799,44 @@ func copyInteractionsToolsDoc(outDoc *ojson.Doc, root ojson.Result) {
 		toolType := tool.Get("type").String()
 		switch toolType {
 		case "url_context":
-			raw := json.RawMessage(`{}`)
+			raw := jsontext.Value(`{}`)
 			if uc := tool.Get("url_context"); uc.Exists() && uc.IsObject() {
-				raw = json.RawMessage(uc.Raw)
+				raw = jsontext.Value(uc.Raw)
 			} else if uc := tool.Get("urlContext"); uc.Exists() && uc.IsObject() {
-				raw = json.RawMessage(uc.Raw)
+				raw = jsontext.Value(uc.Raw)
 			}
 			entry["urlContext"] = raw
 		case "code_execution":
-			raw := json.RawMessage(`{}`)
+			raw := jsontext.Value(`{}`)
 			if ce := tool.Get("code_execution"); ce.Exists() && ce.IsObject() {
-				raw = json.RawMessage(ce.Raw)
+				raw = jsontext.Value(ce.Raw)
 			} else if ce := tool.Get("codeExecution"); ce.Exists() && ce.IsObject() {
-				raw = json.RawMessage(ce.Raw)
+				raw = jsontext.Value(ce.Raw)
 			}
 			entry["codeExecution"] = raw
 		case "google_search", "web_search":
-			raw := json.RawMessage(`{}`)
+			raw := jsontext.Value(`{}`)
 			if gs := tool.Get("google_search"); gs.Exists() && gs.IsObject() {
-				raw = json.RawMessage(gs.Raw)
+				raw = jsontext.Value(gs.Raw)
 			} else if gs := tool.Get("googleSearch"); gs.Exists() && gs.IsObject() {
-				raw = json.RawMessage(gs.Raw)
+				raw = jsontext.Value(gs.Raw)
 			}
 			entry["googleSearch"] = raw
 		default:
 			if decls := tool.Get("function_declarations"); decls.Exists() && decls.IsArray() {
-				entry["functionDeclarations"] = json.RawMessage(decls.Raw)
+				entry["functionDeclarations"] = jsontext.Value(decls.Raw)
 			} else if name := tool.Get("name"); name.Exists() {
 				decl := map[string]any{"name": name.String()}
 				if desc := tool.Get("description"); desc.Exists() {
 					decl["description"] = desc.String()
 				}
 				if params := tool.Get("parameters"); params.Exists() {
-					decl["parameters"] = json.RawMessage(params.Raw)
+					decl["parameters"] = jsontext.Value(params.Raw)
 				}
 				entry["functionDeclarations"] = []map[string]any{decl}
 			} else {
 				var rawMap map[string]any
-				if errUnmarshal := json.Unmarshal([]byte(tool.Raw), &rawMap); errUnmarshal == nil {
+				if errUnmarshal := json.Unmarshal([]byte(tool.Raw), &rawMap, jsoncompat.Decode); errUnmarshal == nil {
 					if toolType == "" {
 						if uc, ok := rawMap["url_context"]; ok {
 							rawMap["urlContext"] = uc
@@ -871,7 +873,7 @@ func copyInteractionsToolsDoc(outDoc *ojson.Doc, root ojson.Result) {
 		_ = outDoc.SetRaw("tools", tools.Raw)
 		return
 	}
-	raw, errMarshal := json.Marshal(normalized)
+	raw, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 	if errMarshal != nil {
 		_ = outDoc.SetRaw("tools", tools.Raw)
 		return

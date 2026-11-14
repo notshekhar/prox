@@ -3,13 +3,14 @@ package store
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -77,7 +78,7 @@ func (s *postgresCooldownStateStore) Load(ctx context.Context) (records []clipro
 			return nil, fmt.Errorf("postgres cooldown store: scan state: %w", errScan)
 		}
 		var record cliproxyauth.CooldownStateRecord
-		if errUnmarshal := json.Unmarshal(content, &record); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(content, &record, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, fmt.Errorf("postgres cooldown store: decode state: %w", errUnmarshal)
 		}
 		key := cooldownStateKey(record)
@@ -112,7 +113,7 @@ func (s *postgresCooldownStateStore) Save(ctx context.Context, records []cliprox
 			return fmt.Errorf("postgres cooldown store: state has empty auth ID")
 		}
 		record.UpdatedAt = normalizePostgresCooldownTime(record.UpdatedAt, now)
-		content, errMarshal := json.Marshal(record)
+		content, errMarshal := json.Marshal(record, jsoncompat.Encode)
 		if errMarshal != nil {
 			return fmt.Errorf("postgres cooldown store: encode state for %q: %w", key.authID, errMarshal)
 		}

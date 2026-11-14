@@ -7,7 +7,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -58,8 +60,8 @@ type DeviceCodeResponse struct {
 type TokenData struct {
 	AccessToken      string `json:"access_token"`
 	TokenType        string `json:"token_type"`
-	ExpiresIn        int    `json:"expires_in,omitempty"`
-	ExpiresAt        int64  `json:"expires_at,omitempty"`
+	ExpiresIn        int    `json:"expires_in,omitzero"`
+	ExpiresAt        int64  `json:"expires_at,omitzero"`
 	Error            string `json:"error,omitempty"`
 	ErrorDescription string `json:"error_description,omitempty"`
 }
@@ -94,10 +96,10 @@ type MetaTokenStorage struct {
 	DCAToken     string `json:"dca_token,omitempty"`
 	APIKey       string `json:"api_key,omitempty"`
 	TokenType    string `json:"token_type,omitempty"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitzero"`
 	Expired      string `json:"expired,omitempty"`
 	DCAExpired   string `json:"dca_expired,omitempty"`
-	DCAExpiresAt int64  `json:"dca_expires_at,omitempty"`
+	DCAExpiresAt int64  `json:"dca_expires_at,omitzero"`
 	LastRefresh  string `json:"last_refresh,omitempty"`
 	BaseURL      string `json:"base_url,omitempty"`
 	Email        string `json:"email,omitempty"`
@@ -178,7 +180,7 @@ func (ts *MetaTokenStorage) SaveTokenToFile(authFilePath string) error {
 	metadata := ts.Metadata
 	if metadata == nil {
 		if raw, errRead := os.ReadFile(authFilePath); errRead == nil {
-			_ = json.Unmarshal(raw, &metadata)
+			_ = json.Unmarshal(raw, &metadata, jsoncompat.Decode)
 		}
 	}
 	for k, v := range metadata {
@@ -191,7 +193,7 @@ func (ts *MetaTokenStorage) SaveTokenToFile(authFilePath string) error {
 		}
 	}
 
-	raw, err := json.MarshalIndent(data, "", "  ")
+	raw, err := json.Marshal(data, jsoncompat.Encode, jsontext.WithIndent("  "))
 	if err != nil {
 		return fmt.Errorf("meta token storage: encode token file: %w", err)
 	}
@@ -296,7 +298,7 @@ func (a *MetaAuth) StartDeviceFlowWithEndpoint(ctx context.Context, endpoint str
 	}
 
 	var dcr DeviceCodeResponse
-	if err := json.Unmarshal(body, &dcr); err != nil {
+	if err := json.Unmarshal(body, &dcr, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("meta device flow: parse response: %w", err)
 	}
 	if strings.TrimSpace(dcr.DeviceCode) == "" || strings.TrimSpace(dcr.UserCode) == "" {
@@ -372,7 +374,7 @@ func (a *MetaAuth) WaitForAuthorization(ctx context.Context, dcr *DeviceCodeResp
 
 			if resp.StatusCode == http.StatusOK {
 				var tokenData TokenData
-				if err := json.Unmarshal(body, &tokenData); err != nil {
+				if err := json.Unmarshal(body, &tokenData, jsoncompat.Decode); err != nil {
 					return nil, fmt.Errorf("meta auth: parse token response: %w", err)
 				}
 				if tokenData.AccessToken == "" {
@@ -400,7 +402,7 @@ func (a *MetaAuth) WaitForAuthorization(ctx context.Context, dcr *DeviceCodeResp
 			}
 
 			var errResp TokenData
-			_ = json.Unmarshal(body, &errResp)
+			_ = json.Unmarshal(body, &errResp, jsoncompat.Decode)
 			switch errResp.Error {
 			case "authorization_pending":
 				continue
@@ -434,7 +436,7 @@ func (a *MetaAuth) MintAPIKey(ctx context.Context, dcaToken string) (*MintedKeyR
 
 	reqBody, _ := json.Marshal(map[string]string{
 		"dca_token": dcaToken,
-	})
+	}, jsoncompat.Encode)
 
 	mintURL := a.mintURL
 	if mintURL == "" {
@@ -473,7 +475,7 @@ func (a *MetaAuth) MintAPIKey(ctx context.Context, dcaToken string) (*MintedKeyR
 	}
 
 	var minted MintedKeyResponse
-	if err := json.Unmarshal(body, &minted); err != nil {
+	if err := json.Unmarshal(body, &minted, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("meta auth: parse mint response: %w", err)
 	}
 	if strings.TrimSpace(minted.APIKey) == "" {

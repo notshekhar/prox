@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -503,7 +504,7 @@ func TestV8PluginMultiPortalOAuthListLoginPollAndRelogin(t *testing.T) {
 			OAuthProviders []string `json:"oauth_providers"`
 		} `json:"plugins"`
 	}
-	if errUnmarshal := json.Unmarshal(listRec.Body.Bytes(), &listBody); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(listRec.Body.Bytes(), &listBody, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode plugins list: %v", errUnmarshal)
 	}
 	if len(listBody.Plugins) != 1 || !listBody.Plugins[0].SupportsOAuth || listBody.Plugins[0].OAuthProvider != "zcode-zai" {
@@ -526,7 +527,7 @@ func TestV8PluginMultiPortalOAuthListLoginPollAndRelogin(t *testing.T) {
 		URL   string `json:"url"`
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(startRec.Body.Bytes(), &startPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(startRec.Body.Bytes(), &startPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode start payload: %v", errUnmarshal)
 	}
 	if startPayload.URL != "https://bigmodel.cn/login?appId=zcode" {
@@ -599,7 +600,7 @@ func TestV8PluginMultiPortalOAuthListLoginPollAndRelogin(t *testing.T) {
 		State        string `json:"state"`
 		TargetAuthID string `json:"target_auth_id"`
 	}
-	if errUnmarshal := json.Unmarshal(reloginRec.Body.Bytes(), &reloginStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(reloginRec.Body.Bytes(), &reloginStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode relogin start payload: %v", errUnmarshal)
 	}
 	if reloginStart.TargetAuthID != "zcode-account.json" {
@@ -634,7 +635,7 @@ func TestV8PluginMultiPortalOAuthListLoginPollAndRelogin(t *testing.T) {
 	var reloginNoProvStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(reloginNoProviderRec.Body.Bytes(), &reloginNoProvStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(reloginNoProviderRec.Body.Bytes(), &reloginNoProvStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode reloginNoProvStart: %v", errUnmarshal)
 	}
 	mismatchPollRec := httptest.NewRecorder()
@@ -659,7 +660,7 @@ func TestV8PluginMultiPortalOAuthListLoginPollAndRelogin(t *testing.T) {
 	var anonStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(anonStartRec.Body.Bytes(), &anonStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(anonStartRec.Body.Bytes(), &anonStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode anonStart: %v", errUnmarshal)
 	}
 	anonPollRec := httptest.NewRecorder()
@@ -755,7 +756,7 @@ func TestV8PluginReloginPreservesSubdirTargetAndRollsBackOverwriteSafely(t *test
 	var startPayload struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(startRec.Body.Bytes(), &startPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(startRec.Body.Bytes(), &startPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode start payload: %v", errUnmarshal)
 	}
 	pollRec := httptest.NewRecorder()
@@ -788,7 +789,7 @@ func TestV8PluginReloginPreservesSubdirTargetAndRollsBackOverwriteSafely(t *test
 	var failStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(failStartRec.Body.Bytes(), &failStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(failStartRec.Body.Bytes(), &failStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode failStart: %v", errUnmarshal)
 	}
 	failPollRec := httptest.NewRecorder()
@@ -831,7 +832,7 @@ func TestV8PluginReloginPreservesSubdirTargetAndRollsBackOverwriteSafely(t *test
 	var raceStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(raceStartRec.Body.Bytes(), &raceStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raceStartRec.Body.Bytes(), &raceStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode raceStart: %v", errUnmarshal)
 	}
 	racePollRec := httptest.NewRecorder()
@@ -910,7 +911,7 @@ func TestV8PluginReloginPreservesSubdirTargetAndRollsBackOverwriteSafely(t *test
 	var storageTargetStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(storageTargetStartRec.Body.Bytes(), &storageTargetStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(storageTargetStartRec.Body.Bytes(), &storageTargetStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode storageTargetStart: %v", errUnmarshal)
 	}
 	storageTargetPollRec := httptest.NewRecorder()
@@ -966,7 +967,7 @@ func TestV8PluginReloginPreservesSubdirTargetAndRollsBackOverwriteSafely(t *test
 	var logicalStart struct {
 		State string `json:"state"`
 	}
-	if errUnmarshal := json.Unmarshal(logicalStartRec.Body.Bytes(), &logicalStart); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(logicalStartRec.Body.Bytes(), &logicalStart, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode logicalStart: %v", errUnmarshal)
 	}
 	logicalPollRec := httptest.NewRecorder()
@@ -1080,7 +1081,7 @@ func TestListPluginsExposesOAuthProviderEntriesWithFallbackAndSanitization(t *te
 			} `json:"oauth_provider_entries"`
 		} `json:"plugins"`
 	}
-	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &listBody); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &listBody, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode plugins list: %v", errUnmarshal)
 	}
 	if len(listBody.Plugins) != 1 {

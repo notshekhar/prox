@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"sort"
@@ -12,6 +12,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
@@ -124,9 +125,9 @@ type homeErrorDetail struct {
 	Type         string `json:"type"`
 	Message      string `json:"message"`
 	Code         string `json:"code,omitempty"`
-	Retryable    bool   `json:"retryable,omitempty"`
-	RetryAfterMS int64  `json:"retry_after_ms,omitempty"`
-	RequestRetry *int   `json:"request_retry,omitempty"`
+	Retryable    bool   `json:"retryable,omitzero"`
+	RetryAfterMS int64  `json:"retry_after_ms,omitzero"`
+	RequestRetry *int   `json:"request_retry,omitzero"`
 }
 
 type homeDispatchRetryAfterError struct {
@@ -349,23 +350,23 @@ type homeAuthDispatchResponse struct {
 	Provider      string                 `json:"provider"`
 	AuthIndex     string                 `json:"auth_index"`
 	UserAPIKey    string                 `json:"user_api_key"`
-	RequestRetry  *int                   `json:"request_retry,omitempty"`
+	RequestRetry  *int                   `json:"request_retry,omitzero"`
 	ForceMapping  bool                   `json:"force_mapping"`
 	OriginalAlias string                 `json:"original_alias"`
-	ModelInfo     *homeDispatchModelInfo `json:"model_info,omitempty"`
+	ModelInfo     *homeDispatchModelInfo `json:"model_info,omitzero"`
 	Auth          Auth                   `json:"auth"`
 }
 
 type homeDispatchModelInfo struct {
 	ID                         string                       `json:"id"`
 	Type                       string                       `json:"type,omitempty"`
-	InputTokenLimit            int                          `json:"inputTokenLimit,omitempty"`
-	OutputTokenLimit           int                          `json:"outputTokenLimit,omitempty"`
-	ContextLength              int                          `json:"context_length,omitempty"`
-	MaxCompletionTokens        int                          `json:"max_completion_tokens,omitempty"`
-	Thinking                   *registry.ThinkingSupport    `json:"thinking,omitempty"`
-	NativeCapabilities         *registry.NativeCapabilities `json:"native_capabilities,omitempty"`
-	SupportConfigurationUpdate *bool                        `json:"support_configuration_update,omitempty"`
+	InputTokenLimit            int                          `json:"inputTokenLimit,omitzero"`
+	OutputTokenLimit           int                          `json:"outputTokenLimit,omitzero"`
+	ContextLength              int                          `json:"context_length,omitzero"`
+	MaxCompletionTokens        int                          `json:"max_completion_tokens,omitzero"`
+	Thinking                   *registry.ThinkingSupport    `json:"thinking,omitzero"`
+	NativeCapabilities         *registry.NativeCapabilities `json:"native_capabilities,omitzero"`
+	SupportConfigurationUpdate *bool                        `json:"support_configuration_update,omitzero"`
 	UserDefined                bool                         `json:"user_defined"`
 }
 
@@ -1175,14 +1176,14 @@ func (m *Manager) pickHomeDispatchSelection(ctx context.Context, model string, o
 	}
 
 	var dispatch homeAuthDispatchResponse
-	if errUnmarshal := json.Unmarshal(raw, &dispatch); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &dispatch, jsoncompat.Decode); errUnmarshal != nil {
 		endScope()
 		return nil, &Error{Code: "invalid_auth", Message: "home returned invalid auth payload", HTTPStatus: http.StatusBadGateway}
 	}
 	auth := dispatch.Auth
 	if strings.TrimSpace(auth.ID) == "" {
 		// Backward compatibility: older Home instances returned the auth directly.
-		if errUnmarshal := json.Unmarshal(raw, &auth); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &auth, jsoncompat.Decode); errUnmarshal != nil {
 			endScope()
 			return nil, &Error{Code: "invalid_auth", Message: "home returned invalid auth payload", HTTPStatus: http.StatusBadGateway}
 		}

@@ -2,12 +2,13 @@ package translator
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorapi "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/translator"
 )
 
@@ -201,7 +202,7 @@ func benchmarkSchema() map[string]any {
 }
 
 func benchmarkJSON(value any) []byte {
-	raw, errMarshal := json.Marshal(value)
+	raw, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		panic(errMarshal)
 	}

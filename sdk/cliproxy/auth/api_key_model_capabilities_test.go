@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strconv"
 	"testing"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -568,7 +569,7 @@ func (d selectedCapabilityHomeDispatcher) RPopAuth(context.Context, string, stri
 	return json.Marshal(homeAuthDispatchResponse{
 		Model: "gpt-6-luna", Auth: *d.auth,
 		ModelInfo: &homeDispatchModelInfo{ID: "home-selected-model"},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (selectedCapabilityHomeDispatcher) AbortAmbiguousDispatch() {}

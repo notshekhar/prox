@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -838,7 +839,7 @@ func (s *sseJSONValidationState) AddChunk(chunk []byte) ([]byte, error) {
 	}
 	payload, found := sseJSONValidationDataPayload(s.pending)
 	payload = bytes.TrimSpace(payload)
-	if !found || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || json.Valid(payload) {
+	if !found || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		output = append(output, s.pending...)
 		s.pending = s.pending[:0]
 	}
@@ -882,7 +883,7 @@ func sseJSONValidationDataPayload(frame []byte) ([]byte, bool) {
 func validateSSEFrameDataJSON(frame []byte) error {
 	payload, found := sseJSONValidationDataPayload(frame)
 	payload = bytes.TrimSpace(payload)
-	if !found || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || json.Valid(payload) {
+	if !found || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return nil
 	}
 	const max = 512

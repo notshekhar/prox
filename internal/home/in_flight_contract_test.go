@@ -2,13 +2,14 @@ package home
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"io"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestCredentialInFlightWireContractFixture(t *testing.T) {
@@ -60,32 +61,25 @@ func TestCredentialInFlightWireContractRejectsInvalidJSON(t *testing.T) {
 type inFlightContractFixture struct {
 	Part         InFlightSnapshotFrame
 	Overflow     InFlightSnapshotFrame
-	PartJSON     json.RawMessage
-	OverflowJSON json.RawMessage
+	PartJSON     jsontext.Value
+	OverflowJSON jsontext.Value
 }
 
 func decodeInFlightContractFixture(raw []byte) (inFlightContractFixture, error) {
 	var fixture inFlightContractFixture
 	var document struct {
-		Config   json.RawMessage       `json:"config"`
+		Config   jsontext.Value        `json:"config"`
 		Part     InFlightSnapshotFrame `json:"part"`
 		Overflow InFlightSnapshotFrame `json:"overflow"`
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if errDecode := decoder.Decode(&document); errDecode != nil {
-		return fixture, errDecode
-	}
-	if errDecode := decoder.Decode(&struct{}{}); errDecode == nil {
-		return fixture, errors.New("unexpected trailing JSON")
-	} else if errDecode != io.EOF {
+	if errDecode := json.Unmarshal(raw, &document, json.RejectUnknownMembers(true)); errDecode != nil {
 		return fixture, errDecode
 	}
 	documentRaw := struct {
-		Part     json.RawMessage `json:"part"`
-		Overflow json.RawMessage `json:"overflow"`
+		Part     jsontext.Value `json:"part"`
+		Overflow jsontext.Value `json:"overflow"`
 	}{}
-	if errDecode := json.Unmarshal(raw, &documentRaw); errDecode != nil {
+	if errDecode := json.Unmarshal(raw, &documentRaw, jsoncompat.Decode); errDecode != nil {
 		return fixture, errDecode
 	}
 	fixture.Part = document.Part
@@ -102,12 +96,12 @@ func assertInFlightContractFields(t *testing.T) {
 		{name: "Revision", tag: "revision"},
 		{name: "ObservedAt", tag: "observed_at"},
 		{name: "BarrierRevision", tag: "barrier_revision"},
-		{name: "PartIndex", tag: "part_index,omitempty"},
-		{name: "PartCount", tag: "part_count,omitempty"},
-		{name: "DetailsTruncated", tag: "details_truncated,omitempty"},
+		{name: "PartIndex", tag: "part_index,omitzero"},
+		{name: "PartCount", tag: "part_count,omitzero"},
+		{name: "DetailsTruncated", tag: "details_truncated,omitzero"},
 		{name: "Aggregates", tag: "aggregates,omitempty"},
 		{name: "Details", tag: "details,omitempty"},
-		{name: "AggregateGroupCount", tag: "aggregate_group_count,omitempty"},
+		{name: "AggregateGroupCount", tag: "aggregate_group_count,omitzero"},
 	})
 	assertOrderedInFlightJSONFields(t, reflect.TypeOf(InFlightAggregate{}), []inFlightJSONField{
 		{name: "CredentialID", tag: "credential_id"},
@@ -130,10 +124,10 @@ func assertInFlightFixtureKeys(t *testing.T, fixture inFlightContractFixture) {
 	assertRequiredInFlightJSONKeys(t, fixture.OverflowJSON, []string{"kind", "revision", "observed_at", "barrier_revision", "aggregate_group_count"})
 
 	var part struct {
-		Aggregates []json.RawMessage `json:"aggregates"`
-		Details    []json.RawMessage `json:"details"`
+		Aggregates []jsontext.Value `json:"aggregates"`
+		Details    []jsontext.Value `json:"details"`
 	}
-	if errDecode := json.Unmarshal(fixture.PartJSON, &part); errDecode != nil {
+	if errDecode := json.Unmarshal(fixture.PartJSON, &part, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("json.Unmarshal() error = %v", errDecode)
 	}
 	for index, aggregate := range part.Aggregates {
@@ -168,9 +162,9 @@ func assertOrderedInFlightJSONFields(t *testing.T, structType reflect.Type, want
 	}
 }
 
-func assertRequiredInFlightJSONKeys(t *testing.T, raw json.RawMessage, required []string) {
+func assertRequiredInFlightJSONKeys(t *testing.T, raw jsontext.Value, required []string) {
 	t.Helper()
-	var fields map[string]json.RawMessage
+	var fields map[string]jsontext.Value
 	if errDecode := json.Unmarshal(raw, &fields); errDecode != nil {
 		t.Fatalf("json.Unmarshal() error = %v", errDecode)
 	}

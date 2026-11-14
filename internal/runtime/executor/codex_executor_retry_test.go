@@ -1,13 +1,15 @@
 package executor
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestCodexQuotaErrorCredentialScope(t *testing.T) {
@@ -346,7 +348,7 @@ func assertCodexErrorCode(t *testing.T, raw string, wantType string, wantCode st
 			Code string `json:"code"`
 		} `json:"error"`
 	}
-	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+	if err := json.Unmarshal([]byte(raw), &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("error body is not valid JSON: %v; body=%s", err, raw)
 	}
 	if payload.Error.Type != wantType {

@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +16,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/htmlsanitize"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -458,7 +459,7 @@ func pluginInstallRequestedVersion(c *gin.Context) (string, error) {
 		return requestedVersion, nil
 	}
 	var req pluginInstallRequest
-	if errDecode := json.Unmarshal(body, &req); errDecode != nil {
+	if errDecode := json.Unmarshal(body, &req, jsoncompat.Decode); errDecode != nil {
 		return "", fmt.Errorf("decode install request: %w", errDecode)
 	}
 	bodyVersion := strings.TrimSpace(req.Version)

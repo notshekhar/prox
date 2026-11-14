@@ -1,7 +1,8 @@
 package api
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -69,7 +70,7 @@ func TestHomeEmptyModelCatalogResponses(t *testing.T) {
 			if recorder.Code != http.StatusOK {
 				t.Fatalf("status = %d; body=%s", recorder.Code, recorder.Body.String())
 			}
-			var payload map[string]json.RawMessage
+			var payload map[string]jsontext.Value
 			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &payload); errUnmarshal != nil {
 				t.Fatal(errUnmarshal)
 			}
@@ -118,7 +119,7 @@ func TestHomeModelCatalogErrorsRemainErrors(t *testing.T) {
 			if recorder.Code != test.status {
 				t.Fatalf("status = %d, want %d; body=%s", recorder.Code, test.status, recorder.Body.String())
 			}
-			var payload map[string]json.RawMessage
+			var payload map[string]jsontext.Value
 			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &payload); errUnmarshal != nil {
 				t.Fatal(errUnmarshal)
 			}

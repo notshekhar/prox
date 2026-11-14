@@ -3,7 +3,7 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +16,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
@@ -51,7 +52,7 @@ func TestHostHTTPDoCallbackUsesHostHTTPClient(t *testing.T) {
 		URL:    server.URL,
 		Body:   []byte(`{"request":true}`),
 	}
-	rawReq, errMarshal := json.Marshal(req)
+	rawReq, errMarshal := json.Marshal(req, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -99,7 +100,7 @@ func TestHostHTTPDoCallbackRestoresRegisteredRequestContext(t *testing.T) {
 		Method:         http.MethodPost,
 		URL:            server.URL,
 		Body:           []byte(`{"request":true}`),
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -144,7 +145,7 @@ func TestHostHTTPDoStreamCallbackReturnsBeforeUpstreamCompletes(t *testing.T) {
 	rawReq, errMarshal := json.Marshal(pluginapi.HTTPRequest{
 		Method: http.MethodGet,
 		URL:    server.URL,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -305,7 +306,7 @@ func TestHostHTTPStreamCloseIsPluginScoped(t *testing.T) {
 
 func openHostHTTPOperation(t *testing.T, host *Host, ctx context.Context, callbackID string) string {
 	t.Helper()
-	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID})
+	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal operation open request: %v", errMarshal)
 	}
@@ -354,7 +355,7 @@ func TestHostHTTPCallbacksCanBeCanceledBeforeResponse(t *testing.T) {
 					"method": http.MethodGet,
 					"url":    server.URL,
 				},
-			})
+			}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
 			}
@@ -392,7 +393,7 @@ func TestHostHTTPCallbacksCanBeCanceledBeforeResponse(t *testing.T) {
 				t.Fatal("upstream request did not start")
 			}
 
-			rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID})
+			rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID}, jsoncompat.Encode)
 			if errMarshalCancel != nil {
 				t.Fatalf("marshal cancel request: %v", errMarshalCancel)
 			}
@@ -439,7 +440,7 @@ func TestHostHTTPDoWithoutOperationIDIsCanceledWithPluginInstance(t *testing.T) 
 	rawRequest, errMarshal := json.Marshal(map[string]string{
 		"method": http.MethodGet,
 		"url":    server.URL,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -498,7 +499,7 @@ func TestHostHTTPDoCanBeCanceledWhileReadingBody(t *testing.T) {
 			"method": http.MethodGet,
 			"url":    server.URL,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -516,7 +517,7 @@ func TestHostHTTPDoCanBeCanceledWhileReadingBody(t *testing.T) {
 		t.Fatal("upstream response headers were not sent")
 	}
 
-	rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID})
+	rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID}, jsoncompat.Encode)
 	if errMarshalCancel != nil {
 		t.Fatalf("marshal cancel request: %v", errMarshalCancel)
 	}
@@ -548,7 +549,7 @@ func TestHostHTTPCancelBeforeDoPreventsRequest(t *testing.T) {
 
 	host := New()
 	operationID := openHostHTTPOperation(t, host, context.Background(), "")
-	rawCancel, errMarshal := json.Marshal(map[string]string{"operation_id": operationID})
+	rawCancel, errMarshal := json.Marshal(map[string]string{"operation_id": operationID}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal cancel request: %v", errMarshal)
 	}
@@ -562,7 +563,7 @@ func TestHostHTTPCancelBeforeDoPreventsRequest(t *testing.T) {
 			"method": http.MethodGet,
 			"url":    server.URL,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshalRequest != nil {
 		t.Fatalf("marshal request: %v", errMarshalRequest)
 	}
@@ -610,7 +611,7 @@ func TestHostHTTPStreamOperationCanBeCanceledAfterHeaders(t *testing.T) {
 			"method": http.MethodGet,
 			"url":    server.URL,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -631,7 +632,7 @@ func TestHostHTTPStreamOperationCanBeCanceledAfterHeaders(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("upstream response headers were not sent")
 	}
-	rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID})
+	rawCancel, errMarshalCancel := json.Marshal(map[string]string{"operation_id": operationID}, jsoncompat.Encode)
 	if errMarshalCancel != nil {
 		t.Fatalf("marshal cancel request: %v", errMarshalCancel)
 	}
@@ -679,7 +680,7 @@ func TestHostHTTPDoRejectsInvalidOrForeignCallbackContext(t *testing.T) {
 				"host_callback_id": callbackID,
 				"method":           http.MethodGet,
 				"url":              server.URL,
-			})
+			}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
 			}
@@ -700,7 +701,7 @@ func TestHostHTTPOperationRejectsForeignCallbackContext(t *testing.T) {
 	callbackID, closeCallback := host.openCallbackContextForPlugin(context.Background(), "plugin-a")
 	defer closeCallback()
 	callerContextB := withHostCallbackPluginID(context.Background(), "plugin-b")
-	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID})
+	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal operation open request: %v", errMarshal)
 	}
@@ -714,7 +715,7 @@ func TestHostHTTPOperationRejectsClosedCallbackContext(t *testing.T) {
 	callbackID, closeCallback := host.openCallbackContextForPlugin(context.Background(), "plugin-a")
 	closeCallback()
 	callerContext := withHostCallbackPluginID(context.Background(), "plugin-a")
-	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID})
+	rawRequest, errMarshal := json.Marshal(map[string]string{"host_callback_id": callbackID}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal operation open request: %v", errMarshal)
 	}
@@ -743,7 +744,7 @@ func TestHostHTTPOperationRejectsUnboundCallbackContext(t *testing.T) {
 			"method": http.MethodGet,
 			"url":    server.URL,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -779,7 +780,7 @@ func TestHostHTTPOperationRequiresMatchingCallbackID(t *testing.T) {
 			"operation_id":     operationID,
 			"method":           http.MethodGet,
 			"url":              server.URL,
-		})
+		}, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatalf("marshal mismatched request: %v", errMarshal)
 		}
@@ -798,7 +799,7 @@ func TestHostHTTPOperationRequiresMatchingCallbackID(t *testing.T) {
 		"operation_id":     operationID,
 		"method":           http.MethodGet,
 		"url":              server.URL,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal matching request: %v", errMarshal)
 	}
@@ -887,7 +888,7 @@ func TestHostModelExecuteRejectsInvalidProxyURL(t *testing.T) {
 					ProxyURL:      proxyURL,
 					Body:          []byte(`{"request":true}`),
 				},
-			})
+			}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
 			}
@@ -931,7 +932,7 @@ func TestHostModelExecuteForwardsProxyURL(t *testing.T) {
 				ProxyURL:      "socks5h://user:pass@127.0.0.1:1080",
 				Body:          []byte(`{"request":true}`),
 			},
-		})
+		}, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatalf("marshal request: %v", errMarshal)
 		}
@@ -968,7 +969,7 @@ func TestHostModelExecuteCallback(t *testing.T) {
 			Query:         url.Values{"alt": []string{"sse"}},
 			Alt:           "raw",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1028,7 +1029,7 @@ func TestHostModelExecuteCallbacksForwardCallerScope(t *testing.T) {
 			Body:          []byte(`{"messages":[]}`),
 			CallerScope:   " caller-scope-handle-abc ",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshalExec != nil {
 		t.Fatalf("marshal execute request: %v", errMarshalExec)
 	}
@@ -1048,7 +1049,7 @@ func TestHostModelExecuteCallbacksForwardCallerScope(t *testing.T) {
 			Body:          []byte(`{"messages":[]}`),
 			CallerScope:   " caller-scope-handle-abc ",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshalStream != nil {
 		t.Fatalf("marshal execute_stream request: %v", errMarshalStream)
 	}
@@ -1112,7 +1113,7 @@ func TestHostModelExecuteCallbackCarriesCallerPluginSkipID(t *testing.T) {
 			Body:          []byte(`{"request":true}`),
 		},
 		HostCallbackID: callbackID,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1152,7 +1153,7 @@ func TestHostModelStreamClosesWithCallbackScope(t *testing.T) {
 			Body:          []byte(`{"stream":true}`),
 		},
 		HostCallbackID: callbackID,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1204,7 +1205,7 @@ func TestHostModelStreamReadAfterCallbackCloseReturnsDone(t *testing.T) {
 			Body:          []byte(`{"stream":true}`),
 		},
 		HostCallbackID: callbackID,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1270,7 +1271,7 @@ func TestHostModelExecuteStreamStartupErrorCleansUp(t *testing.T) {
 		Model:         "model-1",
 		Stream:        true,
 		Body:          []byte(`{"stream":true}`),
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1310,7 +1311,7 @@ func TestHostModelCallbacksValidateStreamMode(t *testing.T) {
 		ExitProtocol:  "openai",
 		Model:         "model-1",
 		Stream:        true,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal execute request: %v", errMarshal)
 	}
@@ -1324,7 +1325,7 @@ func TestHostModelCallbacksValidateStreamMode(t *testing.T) {
 		ExitProtocol:  "openai",
 		Model:         "model-1",
 		Stream:        false,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal execute stream request: %v", errMarshal)
 	}
@@ -1341,7 +1342,7 @@ func TestHostModelCallbacksRequireExecutor(t *testing.T) {
 		EntryProtocol: "openai",
 		ExitProtocol:  "openai",
 		Model:         "model-1",
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal execute request: %v", errMarshal)
 	}
@@ -1355,7 +1356,7 @@ func TestHostModelCallbacksRequireExecutor(t *testing.T) {
 		ExitProtocol:  "openai",
 		Model:         "model-1",
 		Stream:        true,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal execute stream request: %v", errMarshal)
 	}
@@ -1484,7 +1485,7 @@ func openHostModelStreamForTest(t *testing.T, host *Host) string {
 		Model:         "model-1",
 		Stream:        true,
 		Body:          []byte(`{"stream":true}`),
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1632,7 +1633,7 @@ func TestHostModelStreamStartupRejectsClosedInstanceAndConcurrentTeardown(t *tes
 					Stream:        true,
 					Body:          []byte(`{"stream":true}`),
 				},
-			})
+			}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal request: %v", errMarshal)
 			}
@@ -1674,7 +1675,7 @@ func TestHostModelStreamStartupRejectsClosedInstanceAndConcurrentTeardown(t *tes
 				Body:          []byte(`{"stream":true}`),
 			},
 			HostCallbackID: callbackID,
-		})
+		}, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatalf("marshal request: %v", errMarshal)
 		}
@@ -1718,7 +1719,7 @@ func TestHostLogCallbackRestoresRegisteredRequestContext(t *testing.T) {
 		HostCallbackID: callbackID,
 		Level:          "info",
 		Message:        "plugin callback message",
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal log request: %v", errMarshal)
 	}
@@ -1748,7 +1749,7 @@ func TestDecodeHostHTTPRequestWithWireProfile(t *testing.T) {
 		URL:            "https://example.com/api",
 		WireProfile:    profile,
 	}
-	rawFlat, errMarshal := json.Marshal(flatReq)
+	rawFlat, errMarshal := json.Marshal(flatReq, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal flat request: %v", errMarshal)
 	}
@@ -1775,7 +1776,7 @@ func TestDecodeHostHTTPRequestWithWireProfile(t *testing.T) {
 			WireProfile: profile,
 		},
 	}
-	rawNested, errMarshalNested := json.Marshal(nestedReq)
+	rawNested, errMarshalNested := json.Marshal(nestedReq, jsoncompat.Encode)
 	if errMarshalNested != nil {
 		t.Fatalf("marshal nested request: %v", errMarshalNested)
 	}
@@ -1796,7 +1797,7 @@ func TestDecodeHostHTTPRequestWithWireProfile(t *testing.T) {
 		URL:         "https://example.com/sdk",
 		WireProfile: profile,
 	}
-	rawSDK, errMarshalSDK := json.Marshal(sdkReq)
+	rawSDK, errMarshalSDK := json.Marshal(sdkReq, jsoncompat.Encode)
 	if errMarshalSDK != nil {
 		t.Fatalf("marshal sdk request: %v", errMarshalSDK)
 	}
@@ -1833,7 +1834,7 @@ func TestHostModelExecutePropagatesForcedProviderAndAuthID(t *testing.T) {
 			ForcedProvider: "provider-x",
 			AuthID:         "auth-xyz",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1874,7 +1875,7 @@ func TestHostModelExecuteStreamPropagatesForcedProviderAndAuthID(t *testing.T) {
 			ForcedProvider: "provider-stream",
 			AuthID:         "auth-stream-abc",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
@@ -1954,7 +1955,7 @@ func TestHostModelExecuteCallbackPreservesHTTPStatusOnError(t *testing.T) {
 			ExitProtocol:  "openai",
 			Model:         "gpt-5.5",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}

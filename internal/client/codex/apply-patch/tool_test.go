@@ -1,11 +1,12 @@
 package applypatch
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestApplyPatchToolContract(t *testing.T) {
@@ -260,7 +261,7 @@ func TestApplyPatchToolEscapeInputFragmentsCompose(t *testing.T) {
 	var decoded struct {
 		Input string `json:"input"`
 	}
-	if errUnmarshal := json.Unmarshal([]byte(`{"input":"`+encoded.String()+`"}`), &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(`{"input":"`+encoded.String()+`"}`), &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("escaped fragments did not form valid JSON: %v", errUnmarshal)
 	}
 	want := "*** Begin Patch\n  context\n-\"old\"\r\n+C:\\new\n+补丁🙂\n*** End Patch\n"

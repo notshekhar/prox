@@ -568,7 +568,7 @@ export function MainLayout() {
       labelKey: 'nav_groups.gateway',
       items: [
         {
-          path: '/api-keys',
+          path: '/provider-keys',
           labelKey: 'nav.ai_providers',
           metaKey: 'nav_meta.ai_providers',
           icon: sidebarIcons.aiProviders,

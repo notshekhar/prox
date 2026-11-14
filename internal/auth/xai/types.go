@@ -59,7 +59,7 @@ type TokenData struct {
 	RefreshToken string `json:"refresh_token"`
 	IDToken      string `json:"id_token,omitempty"`
 	TokenType    string `json:"token_type,omitempty"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitzero"`
 	Expire       string `json:"expired,omitempty"`
 	Email        string `json:"email,omitempty"`
 	Subject      string `json:"sub,omitempty"`

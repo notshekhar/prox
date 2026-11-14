@@ -1,12 +1,14 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // ErrorCodeRequestScoped identifies failures tied to the current request rather
@@ -56,7 +58,7 @@ type Error struct {
 	// Retryable indicates whether a retry might fix the issue automatically.
 	Retryable bool `json:"retryable"`
 	// HTTPStatus optionally records an HTTP-like status code for the error.
-	HTTPStatus int `json:"http_status,omitempty"`
+	HTTPStatus int `json:"http_status,omitzero"`
 }
 
 // IsTerminalAuthError checks if err or any error in its chain represents a permanent upstream auth failure.
@@ -216,7 +218,7 @@ func (e *errorWithCause) MarshalJSON() ([]byte, error) {
 	if e == nil || e.base == nil {
 		return []byte("null"), nil
 	}
-	return json.Marshal(e.base)
+	return json.Marshal(e.base, jsoncompat.Encode)
 }
 
 // Keep Error's public four-field layout unchanged for downstream unkeyed literals.
@@ -321,7 +323,7 @@ func (e *authUnavailableError) MarshalJSON() ([]byte, error) {
 	if e == nil || e.base == nil {
 		return []byte("null"), nil
 	}
-	return json.Marshal(e.base)
+	return json.Marshal(e.base, jsoncompat.Encode)
 }
 
 // WithAuthError retains the trusted deadline when the handler enriches context.

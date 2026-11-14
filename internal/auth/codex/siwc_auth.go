@@ -3,10 +3,11 @@ package codex
 import (
 	"context"
 	"crypto/rand"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"io"
 	"net/http"
 	"net/url"
@@ -130,7 +131,7 @@ func (o *CodexAuth) requestSIWCToken(ctx context.Context, form url.Values, clien
 	}
 
 	var tokenResp siwcTokenResponse
-	if errUnmarshal := json.Unmarshal(body, &tokenResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &tokenResp, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("failed to parse SIWC token response: %w", errUnmarshal)
 	}
 	if strings.TrimSpace(tokenResp.AccessToken) == "" {

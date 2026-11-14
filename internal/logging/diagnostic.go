@@ -114,6 +114,9 @@ func SafeErrorDiagnostic(err error) string {
 		{needle: "certificate", label: "tls_certificate_error"},
 		{needle: "invalid character", label: "invalid_response_json"},
 		{needle: "cannot unmarshal", label: "invalid_response_json"},
+		// encoding/json/v2 syntax errors, including truncated input, which v1
+		// reported as "unexpected end of JSON input".
+		{needle: "jsontext:", label: "invalid_response_json"},
 		{needle: "invalid_grant", label: "oauth_error=invalid_grant"},
 		{needle: "refresh_token_expired", label: "oauth_error=refresh_token_expired"},
 		{needle: "refresh_token_revoked", label: "oauth_error=refresh_token_revoked"},

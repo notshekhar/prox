@@ -2,7 +2,8 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"math"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	cliproxysession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -2376,8 +2378,8 @@ func TestExtractSessionIDClaudeMetadataParsesBeforeBoundingSessionID(t *testing.
 		name   string
 		encode func(any) ([]byte, error)
 	}{
-		{name: "rich compact json", encode: json.Marshal},
-		{name: "pretty printed json", encode: func(v any) ([]byte, error) { return json.MarshalIndent(v, "", "  ") }},
+		{name: "rich compact json", encode: func(v any) ([]byte, error) { return json.Marshal(v, jsoncompat.Encode) }},
+		{name: "pretty printed json", encode: func(v any) ([]byte, error) { return json.Marshal(v, jsoncompat.Encode, jsontext.WithIndent("  ")) }},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			userID, errMarshal := tt.encode(metadata)
@@ -2386,7 +2388,7 @@ func TestExtractSessionIDClaudeMetadataParsesBeforeBoundingSessionID(t *testing.
 			}
 			payload, errPayload := json.Marshal(map[string]any{
 				"metadata": map[string]string{"user_id": string(userID)},
-			})
+			}, jsoncompat.Encode)
 			if errPayload != nil {
 				t.Fatalf("marshal payload: %v", errPayload)
 			}

@@ -1,14 +1,15 @@
 package codex
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"testing"
 )
 
 func makeTestJWT(payload map[string]any) string {
 	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none","typ":"JWT"}`))
-	payloadBytes, _ := json.Marshal(payload)
+	payloadBytes, _ := json.Marshal(payload, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	return header + "." + claims + "."
 }

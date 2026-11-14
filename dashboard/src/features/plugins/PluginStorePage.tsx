@@ -1057,8 +1057,6 @@ export function PluginStorePage() {
             </span>
           </div>
 
-          <span className={styles.statusDivider} />
-
           <div className={styles.statusPill}>
             <span className={styles.statusLabel}>{t('plugin_store.plugins_dir')}</span>
             <span
@@ -1068,8 +1066,6 @@ export function PluginStorePage() {
               {data.pluginsDir || 'plugins'}
             </span>
           </div>
-
-          <span className={styles.statusDivider} />
 
           <div className={styles.statusPill}>
             <span className={styles.statusLabel}>{t('plugin_store.stat_available')}</span>

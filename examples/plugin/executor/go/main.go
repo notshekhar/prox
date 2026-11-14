@@ -56,7 +56,8 @@ static void free_host_buffer(void* ptr, size_t len) {
 import "C"
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"time"
@@ -66,15 +67,15 @@ import (
 const abiVersion uint32 = 1
 
 type envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *envelopeError  `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitempty"`
+	Error  *envelopeError `json:"error,omitzero"`
 }
 
 type envelopeError struct {
 	Code       string `json:"code"`
 	Message    string `json:"message"`
-	HTTPStatus int    `json:"http_status,omitempty"`
+	HTTPStatus int    `json:"http_status,omitzero"`
 }
 
 func main() {}
@@ -154,7 +155,7 @@ func handleMethod(method string) ([]byte, error) {
 }
 
 func okEnvelopeJSON(result string) ([]byte, error) {
-	return json.Marshal(envelope{OK: true, Result: json.RawMessage(result)})
+	return json.Marshal(envelope{OK: true, Result: jsontext.Value(result)})
 }
 
 func errorEnvelope(code, message string, httpStatus ...int) []byte {

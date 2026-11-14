@@ -3,10 +3,13 @@ package pluginapi
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // Plugin is the host-side representation produced from a dynamic plugin registration.
@@ -445,7 +448,7 @@ type ModelRegistrationRequest struct {
 	// Plugin is the metadata of the plugin being registered.
 	Plugin Metadata
 	// MultiProviderModels reports whether the host supports ModelRegistrationResponse.Registrations.
-	MultiProviderModels bool `json:"multi_provider_models,omitempty"`
+	MultiProviderModels bool `json:"multi_provider_models,omitzero"`
 }
 
 // ProviderModels pairs a provider key with the models registered for it.
@@ -484,7 +487,7 @@ type StaticModelRequest struct {
 	// Host contains relevant host configuration.
 	Host HostConfigSummary
 	// MultiProviderModels reports whether the host supports ModelResponse.Registrations.
-	MultiProviderModels bool `json:"multi_provider_models,omitempty"`
+	MultiProviderModels bool `json:"multi_provider_models,omitzero"`
 }
 
 // AuthModelRequest carries auth context for provider model discovery.
@@ -654,7 +657,7 @@ func (r *SchedulerPickResponse) UnmarshalJSON(data []byte) error {
 		AltRejectCode   *string `json:"reject_code"`
 	}
 	var raw rawResponse
-	if errUnmarshal := json.Unmarshal(data, &raw); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &raw, jsoncompat.Decode); errUnmarshal != nil {
 		return errUnmarshal
 	}
 	if raw.AuthID != nil {
@@ -866,17 +869,17 @@ type HostAuthFileEntry struct {
 	// StatusMessage carries the latest status detail.
 	StatusMessage string `json:"status_message,omitempty"`
 	// Disabled reports whether the credential is disabled.
-	Disabled bool `json:"disabled,omitempty"`
+	Disabled bool `json:"disabled,omitzero"`
 	// Unavailable reports whether the credential is currently unavailable.
-	Unavailable bool `json:"unavailable,omitempty"`
+	Unavailable bool `json:"unavailable,omitzero"`
 	// RuntimeOnly reports whether the credential has no backing auth file.
-	RuntimeOnly bool `json:"runtime_only,omitempty"`
+	RuntimeOnly bool `json:"runtime_only,omitzero"`
 	// Source reports whether the credential came from file or memory.
 	Source string `json:"source,omitempty"`
 	// Path is the backing auth file path when available.
 	Path string `json:"path,omitempty"`
 	// Size is the backing auth file size when available.
-	Size int64 `json:"size,omitempty"`
+	Size int64 `json:"size,omitzero"`
 	// ModTime is the last modification time when available.
 	ModTime time.Time `json:"modtime,omitempty"`
 	// UpdatedAt is the last credential update time.
@@ -896,17 +899,17 @@ type HostAuthFileEntry struct {
 	// Account is the credential account identifier when available.
 	Account string `json:"account,omitempty"`
 	// Priority is the credential routing priority when available.
-	Priority int `json:"priority,omitempty"`
+	Priority int `json:"priority,omitzero"`
 	// Note is the credential note when available.
 	Note string `json:"note,omitempty"`
 	// BaseURL is the upstream base URL configured for the credential when available.
 	BaseURL string `json:"base_url,omitempty"`
 	// Websockets reports whether websocket mode is enabled when available.
-	Websockets bool `json:"websockets,omitempty"`
+	Websockets bool `json:"websockets,omitzero"`
 	// Success is the recent success count.
-	Success int64 `json:"success,omitempty"`
+	Success int64 `json:"success,omitzero"`
 	// Failed is the recent failure count.
-	Failed int64 `json:"failed,omitempty"`
+	Failed int64 `json:"failed,omitzero"`
 	// RecentRequests is the recent request snapshot.
 	RecentRequests []HostRecentRequestEntry `json:"recent_requests,omitempty"`
 }
@@ -926,7 +929,7 @@ type HostAuthGetResponse struct {
 	// Path is the backing auth file path when available.
 	Path string `json:"path,omitempty"`
 	// JSON contains the credential JSON payload.
-	JSON json.RawMessage `json:"json"`
+	JSON jsontext.Value `json:"json"`
 }
 
 // HostAuthGetRuntimeResponse returns runtime credential information by auth index.
@@ -940,7 +943,7 @@ type HostAuthSaveRequest struct {
 	// Name is the target auth file name. It must end with .json.
 	Name string `json:"name"`
 	// JSON contains the credential JSON payload to save.
-	JSON json.RawMessage `json:"json"`
+	JSON jsontext.Value `json:"json"`
 }
 
 // HostAuthSaveResponse reports the saved physical auth file.
@@ -1002,9 +1005,9 @@ type HostAffinityLookupResponse struct {
 	// ObservedAt reports the observation timestamp.
 	ObservedAt time.Time `json:"observed_at,omitempty"`
 	// Disabled reports whether the bound credential is known to be disabled.
-	Disabled bool `json:"disabled,omitempty"`
+	Disabled bool `json:"disabled,omitzero"`
 	// Unavailable reports whether the bound credential is currently unavailable.
-	Unavailable bool `json:"unavailable,omitempty"`
+	Unavailable bool `json:"unavailable,omitzero"`
 }
 
 // HostRoutingResetCooldownRequest asks the host to clear quota and cooldown routing state for one credential.
@@ -1024,9 +1027,9 @@ type HostRoutingResetCooldownResponse struct {
 // HTTPWireProfile configures transport-level wire representation for plugin HTTP requests.
 type HTTPWireProfile struct {
 	// HTTP1Only forces the transport to use HTTP/1.1 and disables HTTP/2 negotiation.
-	HTTP1Only bool `json:"http1_only,omitempty"`
+	HTTP1Only bool `json:"http1_only,omitzero"`
 	// DisableAutoCompression prevents transparent decompression and automatic Accept-Encoding injection.
-	DisableAutoCompression bool `json:"disable_auto_compression,omitempty"`
+	DisableAutoCompression bool `json:"disable_auto_compression,omitzero"`
 	// HeaderProfile defines desired header-name order and exact casing on the wire.
 	HeaderProfile []string `json:"header_profile,omitempty"`
 }
@@ -1042,7 +1045,7 @@ type HTTPRequest struct {
 	// Body contains the raw request body.
 	Body []byte
 	// WireProfile specifies optional outbound HTTP wire profile settings.
-	WireProfile *HTTPWireProfile `json:"wire_profile,omitempty"`
+	WireProfile *HTTPWireProfile `json:"wire_profile,omitzero"`
 }
 
 // HTTPResponse describes a non-streaming host HTTP response.
@@ -1759,7 +1762,7 @@ type QuotaDescribeResponse struct {
 	// DisplayName is a user-facing label for this quota provider.
 	DisplayName string `json:"display_name,omitempty"`
 	// SupportsReset reports whether this provider supports resetting quota.
-	SupportsReset bool `json:"supports_reset,omitempty"`
+	SupportsReset bool `json:"supports_reset,omitzero"`
 }
 
 // QuotaFetchRequest carries credential context for querying quota.
@@ -1799,7 +1802,7 @@ func (s *QuotaSubscription) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(s),
 	}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(data, &aux, jsoncompat.Decode); err != nil {
 		return err
 	}
 	if s.TierName == "" && aux.AltTierName != "" {
@@ -1826,7 +1829,7 @@ func (g *QuotaGroup) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(g),
 	}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(data, &aux, jsoncompat.Decode); err != nil {
 		return err
 	}
 	if g.DisplayName == "" && aux.AltDisplayName != "" {
@@ -1854,7 +1857,7 @@ func (b *QuotaBucket) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(b),
 	}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(data, &aux, jsoncompat.Decode); err != nil {
 		return err
 	}
 	if aux.RemainingFraction != nil {
@@ -1881,9 +1884,9 @@ type QuotaMetric struct {
 
 // QuotaFetchResponse carries normalized quota information for management UI rendering.
 type QuotaFetchResponse struct {
-	Subscription       *QuotaSubscription `json:"subscription,omitempty"`
+	Subscription       *QuotaSubscription `json:"subscription,omitzero"`
 	Summary            []QuotaMetric      `json:"summary,omitempty"`
-	ServerTimeOffsetMs int64              `json:"serverTimeOffsetMs,omitempty"`
+	ServerTimeOffsetMs int64              `json:"serverTimeOffsetMs,omitzero"`
 	Groups             []QuotaGroup       `json:"groups,omitempty"`
 }
 
@@ -1896,7 +1899,7 @@ func (r *QuotaFetchResponse) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(r),
 	}
-	if err := json.Unmarshal(data, &aux); err != nil {
+	if err := json.Unmarshal(data, &aux, jsoncompat.Decode); err != nil {
 		return err
 	}
 	if r.ServerTimeOffsetMs == 0 && aux.AltServerTimeOffsetMs != 0 {

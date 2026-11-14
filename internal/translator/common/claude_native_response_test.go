@@ -2,10 +2,11 @@ package common_test
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"reflect"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	chat "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/chat-completions"
 	responses "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/responses"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -24,7 +25,7 @@ func TestClaudeNativeResponseNonStreamModelAndContent(t *testing.T) {
 		},
 		"stop_reason": "tool_use", "stop_sequence": nil,
 		"usage": map[string]any{"input_tokens": 11, "output_tokens": 9},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}

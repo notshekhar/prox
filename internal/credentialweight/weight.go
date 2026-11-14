@@ -2,11 +2,12 @@
 package credentialweight
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -86,7 +87,7 @@ func ParseValue(value any) (int64, error) {
 		return int64(typed), nil
 	case float32:
 		return ParseValue(float64(typed))
-	case json.Number:
+	case jsoncompat.Number:
 		weight, errParse := typed.Int64()
 		if errParse != nil {
 			return 0, fmt.Errorf("weight must be an integer: %w", errParse)

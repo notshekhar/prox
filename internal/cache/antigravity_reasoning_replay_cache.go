@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -436,11 +437,11 @@ func marshalAntigravityReasoningReplayHomeValue(items [][]byte, branch string) (
 	stored := make([][]byte, 0, len(items)+1)
 	stored = append(stored, doc.Bytes())
 	stored = append(stored, items...)
-	return json.Marshal(stored)
+	return json.Marshal(stored, jsoncompat.Encode)
 }
 
 func decodeAntigravityReasoningReplayHomeValue(raw []byte) (items [][]byte, deleted bool, generation, branch string, ok bool) {
-	if errUnmarshal := json.Unmarshal(raw, &items); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &items, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, false, "", "", false
 	}
 	if len(items) == 0 || strings.TrimSpace(ojson.GetBytesNoCopy(items[0], "type").String()) != antigravityReasoningReplayGenerationItemType {
@@ -470,7 +471,7 @@ func newAntigravityReasoningReplayTombstone() []byte {
 	_ = doc.Set("type", antigravityReasoningReplayGenerationItemType)
 	_ = doc.Set("generation", newAntigravityReasoningReplayGeneration())
 	_ = doc.Set("branch", newAntigravityReasoningReplayGeneration())
-	raw, _ := json.Marshal([][]byte{doc.Bytes()})
+	raw, _ := json.Marshal([][]byte{doc.Bytes()}, jsoncompat.Encode)
 	return raw
 }
 

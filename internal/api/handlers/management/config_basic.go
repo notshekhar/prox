@@ -1,7 +1,8 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 	log "github.com/sirupsen/logrus"
@@ -81,7 +83,7 @@ func (h *Handler) GetLatestVersion(c *gin.Context) {
 	}
 
 	var info releaseInfo
-	if errDecode := json.NewDecoder(resp.Body).Decode(&info); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(resp.Body), &info, jsoncompat.Decode); errDecode != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "decode_failed", "message": errDecode.Error()})
 		return
 	}
@@ -318,6 +320,8 @@ func normalizeRoutingStrategy(strategy string) (string, bool) {
 		return "weighted-round-robin", true
 	case "fill-first", "fillfirst", "ff":
 		return "fill-first", true
+	case "least-used", "leastused", "lu":
+		return "least-used", true
 	default:
 		return "", false
 	}

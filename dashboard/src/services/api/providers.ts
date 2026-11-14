@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/stores/useAuthStore';
 import { apiClient } from './client';
-import { guardConfigConnection } from './configValue';
+import { guardConfigConnection, readConfigDocument } from './configValue';
 import { isRecord } from '@/utils/helpers';
 import { normalizeApiKeyEntry, normalizeProviderGroups } from './transformers';
 import { serializeModelOptions } from './providerModels';
@@ -247,7 +247,7 @@ export const readProviderGroups = (
 const getGroups = async (family: ProviderFamily) => {
   const assertConnection = guardConfigConnection();
   const session = useAuthStore.getState();
-  const raw = await apiClient.get('/config');
+  const raw = await readConfigDocument();
   assertConnection();
   const current = useAuthStore.getState();
   if (

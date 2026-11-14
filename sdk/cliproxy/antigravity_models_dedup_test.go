@@ -2,7 +2,7 @@ package cliproxy
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -84,11 +84,11 @@ func TestAntigravityCapabilityProbe_AccountAndProjectIsolation(t *testing.T) {
 			t.Errorf("path=%s", r.URL.Path)
 		}
 		var body map[string]string
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		if err := json.UnmarshalRead(r.Body, &body); err != nil {
 			t.Error(err)
 		}
 		id := body["project"]
-		_ = json.NewEncoder(w).Encode(map[string]any{"models": map[string]any{id: map[string]any{}}})
+		_ = json.MarshalWrite(w, map[string]any{"models": map[string]any{id: map[string]any{}}})
 	}))
 	defer server.Close()
 	svc := &Service{cfg: &config.Config{}}

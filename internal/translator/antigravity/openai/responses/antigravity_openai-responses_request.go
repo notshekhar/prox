@@ -2,10 +2,11 @@ package responses
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -67,7 +68,7 @@ func buildAntigravityResponsesWebSearchRequest(model string, payload []byte, str
 func ensureAntigravityResponsesWebSearchToolDoc(doc *ojson.Doc, payload []byte, includedDomains []string) {
 	googleSearchTool := []byte(`{"googleSearch":{"enhancedContent":{"imageSearch":{"maxResultCount":5}}}}`)
 	if len(includedDomains) > 0 {
-		if domainsJSON, errMarshal := json.Marshal(includedDomains); errMarshal == nil {
+		if domainsJSON, errMarshal := json.Marshal(includedDomains, jsoncompat.Encode); errMarshal == nil {
 			googleSearchTool, _ = ojson.SetRawBytes(googleSearchTool, "googleSearch.includedDomains", domainsJSON)
 		}
 	}
@@ -255,7 +256,7 @@ func rewriteOpenAIResponsesReasoningForAntigravityClaude(modelName string, input
 	}
 
 	var root map[string]any
-	if err := json.Unmarshal(geminiJSON, &root); err != nil {
+	if err := json.Unmarshal(geminiJSON, &root, jsoncompat.Decode); err != nil {
 		log.WithError(err).Debug("antigravity responses translator: failed to parse Gemini request for Claude signature rewrite")
 		return geminiJSON
 	}
@@ -327,7 +328,7 @@ func rewriteOpenAIResponsesReasoningForAntigravityClaude(modelName string, input
 	}
 
 	root["contents"] = rewrittenContents
-	out, err := json.Marshal(root)
+	out, err := json.Marshal(root, jsoncompat.Encode)
 	if err != nil {
 		log.WithError(err).Debug("antigravity responses translator: failed to marshal Claude signature rewrite")
 		return geminiJSON

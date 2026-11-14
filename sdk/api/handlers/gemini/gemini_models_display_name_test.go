@@ -1,11 +1,12 @@
 package gemini
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 )
@@ -31,7 +32,7 @@ func TestGeminiModelsResponseUsesConfiguredDisplayName(t *testing.T) {
 			DisplayName string `json:"displayName"`
 		} `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode response: %v", errUnmarshal)
 	}
 	for _, model := range response.Models {

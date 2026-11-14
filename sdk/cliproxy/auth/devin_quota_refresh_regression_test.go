@@ -2,11 +2,12 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -807,12 +808,12 @@ func TestCooldownRecord_IndependentStateJSONRoundTrip(t *testing.T) {
 			Quota: QuotaState{Exceeded: true, Reason: "quota", NextRecoverAt: deadline},
 		},
 	}
-	data, errMarshal := json.Marshal(record)
+	data, errMarshal := json.Marshal(record, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal: %v", errMarshal)
 	}
 	var decoded CooldownStateRecord
-	if errUnmarshal := json.Unmarshal(data, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal: %v", errUnmarshal)
 	}
 	if !decoded.CredentialQuotaPropagated {
@@ -823,7 +824,7 @@ func TestCooldownRecord_IndependentStateJSONRoundTrip(t *testing.T) {
 	}
 	// Old records without the new fields must still load.
 	var legacy CooldownStateRecord
-	if errLegacy := json.Unmarshal([]byte(`{"auth_id":"old","next_retry_after":"2026-10-20T00:00:00Z"}`), &legacy); errLegacy != nil {
+	if errLegacy := json.Unmarshal([]byte(`{"auth_id":"old","next_retry_after":"2026-10-20T00:00:00Z"}`), &legacy, jsoncompat.Decode); errLegacy != nil {
 		t.Fatalf("legacy unmarshal: %v", errLegacy)
 	}
 	if legacy.IndependentState != nil || legacy.CredentialQuotaPropagated {

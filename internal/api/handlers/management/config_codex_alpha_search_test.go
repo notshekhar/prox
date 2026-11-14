@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestPatchCodexKeySupportConfigurationUpdate(t *testing.T) {
@@ -67,7 +68,7 @@ func TestPatchCodexKeySupportConfigurationUpdate(t *testing.T) {
 					Models []map[string]any `json:"models"`
 				} `json:"codex-api-key"`
 			}
-			if errDecode := json.Unmarshal(getRec.Body.Bytes(), &result); errDecode != nil {
+			if errDecode := json.Unmarshal(getRec.Body.Bytes(), &result, jsoncompat.Decode); errDecode != nil {
 				t.Fatalf("decode GET response: %v", errDecode)
 			}
 			if len(result.CodexKeys) != 1 || len(result.CodexKeys[0].Models) != 2 {

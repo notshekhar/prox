@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -195,7 +196,7 @@ api-keys:
 	}
 
 	// 5. PUT round-trip with payload containing auth_index
-	codexJSON, _ := json.Marshal(codexGroups)
+	codexJSON, _ := json.Marshal(codexGroups, jsoncompat.Encode)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPut, "/v8/management/config/api-keys/codex", strings.NewReader(string(codexJSON)))
 	req.Header.Set("Content-Type", "application/json")
@@ -407,7 +408,7 @@ api-keys:
 	}
 
 	// PUT codex keys back (round-trip with auth_index)
-	codexBytes, _ := json.Marshal(pluginCodexGroups)
+	codexBytes, _ := json.Marshal(pluginCodexGroups, jsoncompat.Encode)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequest(http.MethodPut, "/v8/management/config/api-keys/codex", strings.NewReader(string(codexBytes)))
 	req.Header.Set("Content-Type", "application/json")

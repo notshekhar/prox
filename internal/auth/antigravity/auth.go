@@ -3,7 +3,8 @@ package antigravity
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
@@ -193,7 +195,7 @@ func (o *AntigravityAuth) ExchangeCodeForTokens(ctx context.Context, code, redir
 	}
 
 	var token TokenResponse
-	if errDecode := json.NewDecoder(resp.Body).Decode(&token); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(resp.Body), &token, jsoncompat.Decode); errDecode != nil {
 		return nil, fmt.Errorf("antigravity token exchange: decode response: %w", errDecode)
 	}
 	return &token, nil
@@ -235,7 +237,7 @@ func (o *AntigravityAuth) FetchUserInfo(ctx context.Context, accessToken string)
 		return "", &HTTPStatusError{StatusCodeValue: resp.StatusCode, Message: msg}
 	}
 	var info userInfo
-	if errDecode := json.NewDecoder(resp.Body).Decode(&info); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(resp.Body), &info, jsoncompat.Decode); errDecode != nil {
 		return "", fmt.Errorf("antigravity userinfo: decode response: %w", errDecode)
 	}
 	email := strings.TrimSpace(info.Email)
@@ -252,7 +254,7 @@ func (o *AntigravityAuth) FetchProjectID(ctx context.Context, accessToken string
 		"metadata": antigravityLoadCodeAssistMetadata(),
 	}
 
-	rawBody, errMarshal := json.Marshal(loadReqBody)
+	rawBody, errMarshal := json.Marshal(loadReqBody, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", fmt.Errorf("marshal request body: %w", errMarshal)
 	}
@@ -289,7 +291,7 @@ func (o *AntigravityAuth) FetchProjectID(ctx context.Context, accessToken string
 	}
 
 	var loadResp map[string]any
-	if errDecode := json.Unmarshal(bodyBytes, &loadResp); errDecode != nil {
+	if errDecode := json.Unmarshal(bodyBytes, &loadResp, jsoncompat.Decode); errDecode != nil {
 		return "", fmt.Errorf("decode response: %w", errDecode)
 	}
 
@@ -318,7 +320,7 @@ func (o *AntigravityAuth) OnboardUser(ctx context.Context, accessToken, tierID s
 		"metadata": antigravityControlPlaneMetadata(userAgent),
 	}
 
-	rawBody, errMarshal := json.Marshal(requestBody)
+	rawBody, errMarshal := json.Marshal(requestBody, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", fmt.Errorf("marshal request body: %w", errMarshal)
 	}
@@ -364,7 +366,7 @@ func (o *AntigravityAuth) OnboardUser(ctx context.Context, accessToken, tierID s
 
 		if resp.StatusCode == http.StatusOK {
 			var data map[string]any
-			if errDecode := json.Unmarshal(bodyBytes, &data); errDecode != nil {
+			if errDecode := json.Unmarshal(bodyBytes, &data, jsoncompat.Decode); errDecode != nil {
 				return "", fmt.Errorf("decode response: %w", errDecode)
 			}
 

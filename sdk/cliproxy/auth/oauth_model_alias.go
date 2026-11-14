@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 )
 
@@ -287,7 +288,7 @@ func SetOAuthModelAliasesAttribute(auth *Auth, aliases []internalconfig.OAuthMod
 	if len(aliases) == 0 {
 		return
 	}
-	data, errMarshal := json.Marshal(aliases)
+	data, errMarshal := json.Marshal(aliases, jsoncompat.Encode)
 	if errMarshal != nil {
 		return
 	}
@@ -307,7 +308,7 @@ func OAuthModelAliasesFromAttributes(attributes map[string]string) []internalcon
 		return nil
 	}
 	var aliases []internalconfig.OAuthModelAlias
-	if errUnmarshal := json.Unmarshal([]byte(raw), &aliases); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(raw), &aliases, jsoncompat.Decode); errUnmarshal != nil {
 		return nil
 	}
 	return sanitizeOAuthModelAliases(aliases)

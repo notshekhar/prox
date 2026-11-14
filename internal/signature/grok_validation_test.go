@@ -3,8 +3,9 @@ package signature
 import (
 	"bytes"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -55,7 +56,7 @@ func TestInspectGrokEncryptedContent_RejectsAgyGeminiThoughtSignatures(t *testin
 	var entries []struct {
 		ThoughtSignature string `json:"thoughtSignature"`
 	}
-	if err := json.Unmarshal(raw, &entries); err != nil {
+	if err := json.Unmarshal(raw, &entries, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal samples: %v", err)
 	}
 	if len(entries) == 0 {
@@ -390,7 +391,7 @@ func TestDetectSignatureProvider_NeverClassifiesGrok(t *testing.T) {
 		var wrapped struct {
 			Samples []string `json:"samples"`
 		}
-		if err := json.Unmarshal(raw, &wrapped); err != nil {
+		if err := json.Unmarshal(raw, &wrapped, jsoncompat.Decode); err != nil {
 			t.Fatalf("parse grok corpus: %v", err)
 		}
 		samples = wrapped.Samples

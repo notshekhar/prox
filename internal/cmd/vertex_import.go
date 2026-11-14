@@ -4,13 +4,14 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/vertex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -38,7 +39,7 @@ func DoVertexImport(cfg *config.Config, keyPath string, prefix string) {
 		return
 	}
 	var sa map[string]any
-	if errUnmarshal := json.Unmarshal(data, &sa); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &sa, jsoncompat.Decode); errUnmarshal != nil {
 		log.Errorf("vertex-import: invalid service account json: %v", errUnmarshal)
 		return
 	}

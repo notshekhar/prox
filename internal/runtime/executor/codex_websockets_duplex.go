@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gorilla/websocket"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -139,7 +141,7 @@ func (e *CodexWebsocketsExecutor) streamCodexDuplex(
 			payload, _ := json.Marshal(map[string]any{
 				"type": "error", "status": http.StatusBadRequest,
 				"error": map[string]string{"type": "invalid_request_error", "message": message},
-			})
+			}, jsoncompat.Encode)
 			// Reader cleanup joins this writer before closing out. Cancellation must
 			// also release a local error blocked behind a disconnected downstream.
 			select {
@@ -161,7 +163,7 @@ func (e *CodexWebsocketsExecutor) streamCodexDuplex(
 		authorizePayload := func(payload []byte, forceBoundModel bool) (allowed bool, keepOpen bool) {
 			authPayload := payload
 			explicitModel := strings.TrimSpace(ojson.GetBytesNoCopy(authPayload, "model").String())
-			if boundModel != "" && json.Valid(authPayload) && (forceBoundModel || explicitModel == "" || explicitModel == req.Model) {
+			if boundModel != "" && jsontext.Value(authPayload).IsValid(jsoncompat.Decode) && (forceBoundModel || explicitModel == "" || explicitModel == req.Model) {
 				if withModel, errSet := ojson.SetBytes(bytes.Clone(authPayload), "model", boundModel); errSet == nil {
 					authPayload = withModel
 				}
@@ -242,7 +244,7 @@ func (e *CodexWebsocketsExecutor) streamCodexDuplex(
 			payload, _ := json.Marshal(map[string]any{
 				"type": "error", "status": status,
 				"error": map[string]string{"type": "invalid_request_error", "message": msg},
-			})
+			}, jsoncompat.Encode)
 			select {
 			case out <- cliproxyexecutor.StreamChunk{Payload: payload}:
 				consumedPayload = nil
@@ -448,7 +450,7 @@ func (e *CodexWebsocketsExecutor) streamCodexDuplex(
 				}
 				payload := message.Payload
 				consumedPayload = payload
-				if !json.Valid(payload) {
+				if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 					if !reject("invalid websocket request JSON") {
 						return
 					}

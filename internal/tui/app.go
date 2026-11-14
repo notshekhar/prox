@@ -187,11 +187,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+c", "q":
 				return a, tea.Quit
-			case "L":
-				ToggleLocale()
-				a.refreshTabs()
-				a.setAuthInputPrompt()
-				return a, nil
 			case "enter":
 				if a.authConnecting {
 					return a, nil
@@ -219,10 +214,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !a.logsEnabled || a.activeTab != tabLogs {
 				return a, tea.Quit
 			}
-		case "L":
-			ToggleLocale()
-			a.refreshTabs()
-			return a.broadcastToAllTabs(localeChangedMsg{})
 		case "tab":
 			if len(a.tabs) == 0 {
 				return a, nil
@@ -277,9 +268,6 @@ func (a App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return a, cmd
 }
-
-// localeChangedMsg is broadcast to all tabs when the user toggles locale.
-type localeChangedMsg struct{}
 
 func (a *App) refreshTabs() {
 	names := TabNames()
@@ -504,36 +492,4 @@ func RunWithBaseURL(baseURL string, secretKey string, hook *LogHook, output io.W
 	p := tea.NewProgram(app, tea.WithAltScreen(), tea.WithOutput(output))
 	_, err := p.Run()
 	return err
-}
-
-func (a App) broadcastToAllTabs(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
-	var cmd tea.Cmd
-
-	a.dashboard, cmd = a.dashboard.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	a.config, cmd = a.config.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	a.auth, cmd = a.auth.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	a.keys, cmd = a.keys.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	a.oauth, cmd = a.oauth.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-	a.logs, cmd = a.logs.Update(msg)
-	if cmd != nil {
-		cmds = append(cmds, cmd)
-	}
-
-	return a, tea.Batch(cmds...)
 }

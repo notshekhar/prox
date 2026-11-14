@@ -91,15 +91,6 @@ const getResourceRecentSuccess = (
   ).success;
 };
 
-// Paid relay services the upstream dashboard advertises. Their config support
-// stays, but prox never lists them.
-const PROMOTED_RELAYS = new Set<ProviderBrand>([
-  'apikeyFun',
-  'fennoAI',
-  'qiniuCloud',
-  'aiCodeMirror',
-]);
-
 export function ProvidersWorkbenchPage() {
   const { t, i18n } = useTranslation();
   const connectionStatus = useAuthStore((s) => s.connectionStatus);
@@ -155,11 +146,7 @@ export function ProvidersWorkbenchPage() {
     [persistUiState]
   );
 
-  const allGroups = useMemo(() => workbench.snapshot?.groups ?? [], [workbench.snapshot]);
-  const groups = useMemo(
-    () => allGroups.filter((group) => !PROMOTED_RELAYS.has(group.id)),
-    [allGroups]
-  );
+  const groups = useMemo(() => workbench.snapshot?.groups ?? [], [workbench.snapshot]);
   const firstVisibleBrand = groups[0]?.id ?? 'gemini';
   const activeBrand = groups.some((group) => group.id === uiState.activeBrand)
     ? uiState.activeBrand

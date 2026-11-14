@@ -3,7 +3,7 @@ package executor
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"io"
 	"net"
@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/websocket"
 	codexauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	fileauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -36,7 +37,7 @@ func makeTestCodexRefreshJWT(planType, accountID string) string {
 		"email":                       "user@example.com",
 		"https://api.openai.com/auth": authInfo,
 	}
-	payloadBytes, _ := json.Marshal(claimsMap)
+	payloadBytes, _ := json.Marshal(claimsMap, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	return header + "." + claims + "."
 }
@@ -53,7 +54,7 @@ func startCodexMockOAuthServers(t *testing.T, idToken string) (proxyURL string, 
 			"expires_in":    3600,
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(respBody)
+		_ = json.MarshalWrite(w, respBody)
 	}))
 
 	mockProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -312,7 +313,7 @@ func startDualCodexAndSIWCMockOAuthServer(t *testing.T, idToken string, failSIWC
 		switch r.URL.Path {
 		case "/oauth/token":
 			oCount++
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			_ = json.MarshalWrite(w, map[string]any{
 				"access_token":  "outer-access-refreshed",
 				"refresh_token": "outer-refresh-refreshed",
 				"id_token":      idToken,
@@ -326,7 +327,7 @@ func startDualCodexAndSIWCMockOAuthServer(t *testing.T, idToken string, failSIWC
 				_, _ = w.Write([]byte(`{"error":"invalid_grant","code":"refresh_token_reused"}`))
 				return
 			}
-			_ = json.NewEncoder(w).Encode(map[string]any{
+			_ = json.MarshalWrite(w, map[string]any{
 				"access_token":  "siwc-access-refreshed",
 				"refresh_token": "siwc-refresh-refreshed",
 				"id_token":      "siwc-id-refreshed",

@@ -10,7 +10,8 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	. "github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
@@ -517,7 +519,7 @@ func (h *ClaudeCodeAPIHandler) forwardClaudeStreamWithState(c *gin.Context, flus
 			}
 			state.ensureSSEEventBoundary(c.Writer)
 
-			errorBytes, _ := json.Marshal(h.toClaudeError(errMsg))
+			errorBytes, _ := json.Marshal(h.toClaudeError(errMsg), jsoncompat.Encode)
 			_, _ = fmt.Fprintf(c.Writer, "event: error\ndata: %s\n\n", errorBytes)
 		},
 		CloseError: func() *interfaces.ErrorMessage {
@@ -542,7 +544,7 @@ func (h *ClaudeCodeAPIHandler) forwardClaudeStreamWithState(c *gin.Context, flus
 type claudeErrorDetail struct {
 	Type    string              `json:"type"`
 	Message string              `json:"message"`
-	Details *claudeErrorDetails `json:"details,omitempty"`
+	Details *claudeErrorDetails `json:"details,omitzero"`
 }
 
 type claudeErrorDetails struct {
@@ -602,7 +604,7 @@ func (h *ClaudeCodeAPIHandler) WriteErrorResponse(c *gin.Context, msg *interface
 			if markedBody, errMarshal := json.Marshal(h.toClaudeError(&interfaces.ErrorMessage{
 				StatusCode: status,
 				Error:      errors.New(string(body)),
-			})); errMarshal == nil {
+			}), jsoncompat.Encode); errMarshal == nil {
 				body = markedBody
 			}
 		}
@@ -636,7 +638,7 @@ func (h *ClaudeCodeAPIHandler) WriteErrorResponse(c *gin.Context, msg *interface
 		}
 	}
 
-	body, err := json.Marshal(h.toClaudeError(msg))
+	body, err := json.Marshal(h.toClaudeError(msg), jsoncompat.Encode)
 	if err != nil {
 		body = []byte(`{"type":"error","error":{"type":"api_error","message":"Internal Server Error"}}`)
 	}
@@ -670,8 +672,8 @@ func claudeErrorDetailFromText(status int, errText string) (string, string) {
 	errType := claudeErrorTypeFromStatus(status)
 
 	var payload map[string]any
-	if json.Valid([]byte(message)) {
-		if err := json.Unmarshal([]byte(message), &payload); err == nil {
+	if jsontext.Value(message).IsValid(jsoncompat.Decode) {
+		if err := json.Unmarshal([]byte(message), &payload, jsoncompat.Decode); err == nil {
 			if e, ok := payload["error"].(map[string]any); ok {
 				if t, ok := e["type"].(string); ok && strings.TrimSpace(t) != "" {
 					errType = strings.TrimSpace(t)

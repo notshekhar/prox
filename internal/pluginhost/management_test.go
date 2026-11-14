@@ -2,12 +2,13 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"html"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -207,7 +208,7 @@ func TestServeManagementGetPutRoundTripPreservesImmutableField(t *testing.T) {
 						Method: http.MethodGet,
 						Path:   "/plugins/roundtrip-plugin/config",
 						Handler: managementHandlerFunc(func(context.Context, pluginapi.ManagementRequest) (pluginapi.ManagementResponse, error) {
-							payload, _ := json.Marshal(map[string]string{"system_prompt": storedPrompt})
+							payload, _ := json.Marshal(map[string]string{"system_prompt": storedPrompt}, jsoncompat.Encode)
 							return pluginapi.ManagementResponse{
 								Headers: http.Header{"Content-Type": []string{"application/json; charset=utf-8"}},
 								Body:    payload,

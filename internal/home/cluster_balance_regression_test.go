@@ -3,7 +3,8 @@ package home
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net"
@@ -234,7 +235,7 @@ func TestClusterBalanceMalformedRegistrationEndsSubscriberBeforeReady(t *testing
 	client.balance.registered = false
 	ready := false
 	errRun := client.RunConfigSubscriberLifetime(context.Background(), func([]byte) error { return nil }, func() { ready = true })
-	var syntaxError *json.SyntaxError
+	var syntaxError *jsontext.SyntacticError
 	if !errors.As(errRun, &syntaxError) || !strings.Contains(errRun.Error(), "ENABLE response") {
 		t.Fatalf("subscriber did not propagate decoding failure: %v", errRun)
 	}

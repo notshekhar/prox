@@ -17,9 +17,10 @@ describe('removed quick-access providers', () => {
     for (const [brand] of retiredEndpoints) {
       expect(ids).not.toContain(brand);
     }
-    for (const brand of ['apikeyFun', 'fennoAI', 'qiniuCloud', 'kimi']) {
-      expect(ids).toContain(brand);
+    for (const brand of ['apikeyFun', 'fennoAI', 'qiniuCloud', 'aiCodeMirror']) {
+      expect(ids).not.toContain(brand);
     }
+    expect(ids).toContain('kimi');
   });
 
   for (const [name, baseUrl] of retiredEndpoints) {

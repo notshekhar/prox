@@ -5,7 +5,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/browser"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -37,10 +39,10 @@ type codexDeviceUserCodeRequest struct {
 }
 
 type codexDeviceUserCodeResponse struct {
-	DeviceAuthID string          `json:"device_auth_id"`
-	UserCode     string          `json:"user_code"`
-	UserCodeAlt  string          `json:"usercode"`
-	Interval     json.RawMessage `json:"interval"`
+	DeviceAuthID string         `json:"device_auth_id"`
+	UserCode     string         `json:"user_code"`
+	UserCodeAlt  string         `json:"usercode"`
+	Interval     jsontext.Value `json:"interval"`
 }
 
 type codexDeviceTokenRequest struct {
@@ -126,7 +128,7 @@ func (a *CodexAuthenticator) loginWithDeviceFlow(ctx context.Context, cfg *confi
 }
 
 func requestCodexDeviceUserCode(ctx context.Context, client *http.Client) (*codexDeviceUserCodeResponse, error) {
-	body, err := json.Marshal(codexDeviceUserCodeRequest{ClientID: codex.ClientID})
+	body, err := json.Marshal(codexDeviceUserCodeRequest{ClientID: codex.ClientID}, jsoncompat.Encode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode codex device request: %w", err)
 	}
@@ -161,7 +163,7 @@ func requestCodexDeviceUserCode(ctx context.Context, client *http.Client) (*code
 	}
 
 	var parsed codexDeviceUserCodeResponse
-	if err := json.Unmarshal(respBody, &parsed); err != nil {
+	if err := json.Unmarshal(respBody, &parsed, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("failed to decode codex device code response: %w", err)
 	}
 
@@ -179,7 +181,7 @@ func pollCodexDeviceToken(ctx context.Context, client *http.Client, deviceAuthID
 		body, err := json.Marshal(codexDeviceTokenRequest{
 			DeviceAuthID: deviceAuthID,
 			UserCode:     userCode,
-		})
+		}, jsoncompat.Encode)
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode codex device poll request: %w", err)
 		}
@@ -205,7 +207,7 @@ func pollCodexDeviceToken(ctx context.Context, client *http.Client, deviceAuthID
 		switch {
 		case codexDeviceIsSuccessStatus(resp.StatusCode):
 			var parsed codexDeviceTokenResponse
-			if err := json.Unmarshal(respBody, &parsed); err != nil {
+			if err := json.Unmarshal(respBody, &parsed, jsoncompat.Decode); err != nil {
 				return nil, fmt.Errorf("failed to decode codex device token response: %w", err)
 			}
 			return &parsed, nil
@@ -226,21 +228,21 @@ func pollCodexDeviceToken(ctx context.Context, client *http.Client, deviceAuthID
 	}
 }
 
-func parseCodexDevicePollInterval(raw json.RawMessage) time.Duration {
+func parseCodexDevicePollInterval(raw jsontext.Value) time.Duration {
 	defaultInterval := time.Duration(codexDeviceDefaultPollIntervalSeconds) * time.Second
 	if len(raw) == 0 {
 		return defaultInterval
 	}
 
 	var asString string
-	if err := json.Unmarshal(raw, &asString); err == nil {
+	if err := json.Unmarshal(raw, &asString, jsoncompat.Decode); err == nil {
 		if seconds, convErr := strconv.Atoi(strings.TrimSpace(asString)); convErr == nil && seconds > 0 {
 			return time.Duration(seconds) * time.Second
 		}
 	}
 
 	var asInt int
-	if err := json.Unmarshal(raw, &asInt); err == nil && asInt > 0 {
+	if err := json.Unmarshal(raw, &asInt, jsoncompat.Decode); err == nil && asInt > 0 {
 		return time.Duration(asInt) * time.Second
 	}
 

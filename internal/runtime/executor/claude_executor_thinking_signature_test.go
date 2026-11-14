@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
@@ -10,6 +10,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // thinkingSignatureFixtures are signature shapes that survive a JSON round trip
@@ -77,7 +78,7 @@ func buildThinkingHistoryPayload(t *testing.T, signatures []string, firstUserTex
 			map[string]any{"name": "search_web", "input_schema": map[string]any{"type": "object"}},
 		},
 	}
-	encoded, errMarshal := json.Marshal(payload)
+	encoded, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal fixture payload: %v", errMarshal)
 	}

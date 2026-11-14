@@ -3,7 +3,7 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
@@ -614,7 +615,7 @@ func TestRPCInterceptorsIncludeHostCallbackID(t *testing.T) {
 		t.Fatalf("InterceptRequestBeforeAuth() error = %v", errReq)
 	}
 	var req rpcRequestInterceptRequest
-	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodRequestInterceptBefore], &req); errDecode != nil {
+	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodRequestInterceptBefore], &req, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode request interceptor request: %v", errDecode)
 	}
 	if req.HostCallbackID == "" {
@@ -625,7 +626,7 @@ func TestRPCInterceptorsIncludeHostCallbackID(t *testing.T) {
 		t.Fatalf("InterceptRequestAfterAuth() error = %v", errReq)
 	}
 	var reqAfter rpcRequestInterceptRequest
-	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodRequestInterceptAfter], &reqAfter); errDecode != nil {
+	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodRequestInterceptAfter], &reqAfter, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode after-auth request interceptor request: %v", errDecode)
 	}
 	if reqAfter.HostCallbackID == "" {
@@ -636,7 +637,7 @@ func TestRPCInterceptorsIncludeHostCallbackID(t *testing.T) {
 		t.Fatalf("InterceptResponse() error = %v", errResp)
 	}
 	var resp rpcResponseInterceptRequest
-	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodResponseInterceptAfter], &resp); errDecode != nil {
+	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodResponseInterceptAfter], &resp, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response interceptor request: %v", errDecode)
 	}
 	if resp.HostCallbackID == "" {
@@ -647,7 +648,7 @@ func TestRPCInterceptorsIncludeHostCallbackID(t *testing.T) {
 		t.Fatalf("InterceptStreamChunk() error = %v", errChunk)
 	}
 	var chunk rpcStreamChunkInterceptRequest
-	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodResponseInterceptStreamChunk], &chunk); errDecode != nil {
+	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodResponseInterceptStreamChunk], &chunk, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode stream chunk interceptor request: %v", errDecode)
 	}
 	if chunk.HostCallbackID == "" {
@@ -671,7 +672,7 @@ func TestRPCManagementIncludesHostCallbackID(t *testing.T) {
 		t.Fatalf("HandleManagement() error = %v", errHandle)
 	}
 	var req rpcManagementRequest
-	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodManagementHandle], &req); errDecode != nil {
+	if errDecode := json.Unmarshal(client.requests[pluginabi.MethodManagementHandle], &req, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode management request: %v", errDecode)
 	}
 	if req.HostCallbackID == "" {
@@ -701,12 +702,12 @@ func TestSanitizePluginRequestRemovesNonJSONMetadata(t *testing.T) {
 			"list": []any{"item", func() {}},
 		},
 	}
-	raw, errMarshal := json.Marshal(sanitizePluginRequest(req))
+	raw, errMarshal := json.Marshal(sanitizePluginRequest(req), jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal(sanitized request interceptor) error = %v", errMarshal)
 	}
 	var decoded pluginapi.RequestInterceptRequest
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("Unmarshal(sanitized request interceptor) error = %v", errUnmarshal)
 	}
 	if decoded.Metadata["keep"] != "value" {
@@ -731,7 +732,7 @@ func TestSanitizePluginRequestRemovesNonJSONMetadata(t *testing.T) {
 			},
 		},
 	}
-	if _, errMarshalExec := json.Marshal(sanitizePluginRequest(execReq)); errMarshalExec != nil {
+	if _, errMarshalExec := json.Marshal(sanitizePluginRequest(execReq), jsoncompat.Encode); errMarshalExec != nil {
 		t.Fatalf("Marshal(sanitized executor request) error = %v", errMarshalExec)
 	}
 
@@ -744,7 +745,7 @@ func TestSanitizePluginRequestRemovesNonJSONMetadata(t *testing.T) {
 		},
 		HostCallbackID: "callback-1",
 	}
-	if _, errMarshalWrapped := json.Marshal(sanitizePluginRequest(wrappedReq)); errMarshalWrapped != nil {
+	if _, errMarshalWrapped := json.Marshal(sanitizePluginRequest(wrappedReq), jsoncompat.Encode); errMarshalWrapped != nil {
 		t.Fatalf("Marshal(sanitized wrapped request interceptor) error = %v", errMarshalWrapped)
 	}
 }
@@ -961,7 +962,7 @@ func TestHostApplyConfigRollsBackQuiescedPluginWhenReplacementFails(t *testing.T
 		switch method {
 		case pluginabi.MethodPluginRegister, pluginabi.MethodPluginReconfigure:
 			var lifecycleRequest rpcLifecycleRequest
-			if errUnmarshal := json.Unmarshal(request, &lifecycleRequest); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &lifecycleRequest, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			configMu.Lock()
@@ -1077,7 +1078,7 @@ func TestHostApplyConfigAbortsReplacementWhenQuiesceFails(t *testing.T) {
 		switch method {
 		case pluginabi.MethodPluginRegister, pluginabi.MethodPluginReconfigure:
 			var lifecycleRequest rpcLifecycleRequest
-			if errUnmarshal := json.Unmarshal(request, &lifecycleRequest); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &lifecycleRequest, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			configMu.Lock()
@@ -1170,7 +1171,7 @@ func TestHostApplyConfigCoordinatesUsageAcrossQuiesceAndReplacement(t *testing.T
 			return marshalRPCResult(rpcEmptyResponse{})
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if oldQuiesced.Load() {
@@ -1200,7 +1201,7 @@ func TestHostApplyConfigCoordinatesUsageAcrossQuiesceAndReplacement(t *testing.T
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			deliveryMu.Lock()
@@ -1307,7 +1308,7 @@ func TestHostApplyConfigReplaysHeldUsageToRestoredPluginWhenReplacementFails(t *
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if oldQuiesced.Load() {
@@ -1412,7 +1413,7 @@ func TestHostApplyConfigReplaysHeldUsageWhenQuiesceFails(t *testing.T) {
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if oldQuiescing.Load() {
@@ -1523,7 +1524,7 @@ func TestHostApplyConfigRetainsHeldUsageWhenRollbackFailsUntilRecovery(t *testin
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if oldQuiesced.Load() {
@@ -1645,7 +1646,7 @@ func TestHostApplyConfigWaitsForBlockedQuiesceBeforeCanceledRollbackAndReplay(t 
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if oldQuiesced.Load() {
@@ -1759,7 +1760,7 @@ func TestHostApplyConfigReplayDoesNotStarveUnderContinuousUsageTraffic(t *testin
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if rec.RequestID == "held-1" {
@@ -1857,7 +1858,7 @@ func TestHostApplyConfigRetriesFailedQuiesceOnSubsequentReplacement(t *testing.T
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			deliveryMu.Lock()
@@ -1875,7 +1876,7 @@ func TestHostApplyConfigRetriesFailedQuiesceOnSubsequentReplacement(t *testing.T
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			deliveryMu.Lock()
@@ -1972,7 +1973,7 @@ func TestHostApplyConfigRecoversFromTransientUsageReplayErrorWithoutReapply(t *t
 			return lifecycleRegistrationResult(validTestPlugin("alpha"))
 		case pluginabi.MethodUsageHandle:
 			var rec pluginapi.UsageRecord
-			if errUnmarshal := json.Unmarshal(request, &rec); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(request, &rec, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			if rec.RequestID == "held-1" {

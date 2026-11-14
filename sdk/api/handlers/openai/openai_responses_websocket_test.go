@@ -3,7 +3,8 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,7 @@ import (
 	"github.com/gorilla/websocket"
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	requestlogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
@@ -50,7 +52,7 @@ func (d *homeResponsesWebsocketDispatcher) RPopAuth(context.Context, string, str
 		Attributes: map[string]string{
 			"websockets": "true",
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*homeResponsesWebsocketDispatcher) AbortAmbiguousDispatch() {}
@@ -1396,9 +1398,9 @@ func TestResponsesWebsocketToolCacheScanPreservesJSONRequestSemantics(t *testing
 		payload := []byte(`{"input":[{"type":"message","id":"shadowed","role":"user","content":"ignore"}],"INPUT":[{"type":"function_call_output","id":"fco-1","call_id":"missing-call","output":"orphan"}]}`)
 		repaired, _ := prepareResponsesWebsocketFallbackTurn("duplicate-case-input-session", payload)
 		var request struct {
-			Input []json.RawMessage `json:"input"`
+			Input []jsontext.Value `json:"input"`
 		}
-		if errUnmarshal := json.Unmarshal(repaired, &request); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(repaired, &request, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal repaired payload: %v", errUnmarshal)
 		}
 		if len(request.Input) != 0 {
@@ -1410,9 +1412,9 @@ func TestResponsesWebsocketToolCacheScanPreservesJSONRequestSemantics(t *testing
 		payload := []byte(`{"input":[{"type":"message","id":"shadowed","role":"user","content":"ignore"}],"input":[{"type":"function_call_output","id":"fco-1","call_id":"missing-call","output":"orphan"}]}`)
 		repaired, _ := prepareResponsesWebsocketFallbackTurn("duplicate-exact-input-session", payload)
 		var request struct {
-			Input []json.RawMessage `json:"input"`
+			Input []jsontext.Value `json:"input"`
 		}
-		if errUnmarshal := json.Unmarshal(repaired, &request); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(repaired, &request, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal repaired payload: %v", errUnmarshal)
 		}
 		if len(request.Input) != 0 {
@@ -5670,7 +5672,7 @@ func (d *homeHTTPResponsesWebsocketDispatcher) RPopAuth(context.Context, string,
 		Attributes: map[string]string{
 			"websockets": "true",
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*homeHTTPResponsesWebsocketDispatcher) AbortAmbiguousDispatch() {}

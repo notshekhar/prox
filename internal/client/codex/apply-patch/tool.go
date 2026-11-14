@@ -1,12 +1,14 @@
 package applypatch
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const parametersJSON = `{"type":"object","properties":{"input":{"type":"string","description":"The complete apply_patch patch text."}},"required":["input"],"additionalProperties":false}`
@@ -60,47 +62,47 @@ func Description(tool ojson.Result) string {
 func WrapInput(input string) string {
 	body, _ := json.Marshal(struct {
 		Input string `json:"input"`
-	}{Input: input})
+	}{Input: input}, jsoncompat.Encode)
 	return string(body)
 }
 
 // UnwrapInput accepts only a JSON object containing one string field named input.
 func UnwrapInput(arguments string) (string, error) {
-	decoder := json.NewDecoder(strings.NewReader(arguments))
-	token, errToken := decoder.Token()
+	decoder := jsontext.NewDecoder(strings.NewReader(arguments), jsoncompat.Decode)
+	token, errToken := decoder.ReadToken()
 	if errToken != nil {
 		return "", fmt.Errorf("decode apply_patch arguments object: %w", errToken)
 	}
-	if token != json.Delim('{') {
+	if token.Kind() != '{' {
 		return "", fmt.Errorf("apply_patch arguments must be a JSON object")
 	}
 
-	token, errToken = decoder.Token()
+	token, errToken = decoder.ReadToken()
 	if errToken != nil {
 		return "", fmt.Errorf("decode apply_patch input key: %w", errToken)
 	}
-	if token != "input" {
+	if token.String() != "input" {
 		return "", fmt.Errorf("apply_patch arguments must contain the input field")
 	}
 
-	token, errToken = decoder.Token()
+	token, errToken = decoder.ReadToken()
 	if errToken != nil {
 		return "", fmt.Errorf("decode apply_patch input value: %w", errToken)
 	}
-	input, ok := token.(string)
-	if !ok {
+	input := token.String()
+	if token.Kind() != '"' {
 		return "", fmt.Errorf("apply_patch input must be a string")
 	}
 
-	token, errToken = decoder.Token()
+	token, errToken = decoder.ReadToken()
 	if errToken != nil {
 		return "", fmt.Errorf("decode apply_patch arguments closing brace: %w", errToken)
 	}
-	if token != json.Delim('}') {
+	if token.Kind() != '}' {
 		return "", fmt.Errorf("apply_patch arguments must contain only one input field")
 	}
 
-	_, errToken = decoder.Token()
+	_, errToken = decoder.ReadToken()
 	if errToken != io.EOF {
 		if errToken != nil {
 			return "", fmt.Errorf("decode apply_patch arguments end: %w", errToken)
@@ -112,6 +114,6 @@ func UnwrapInput(arguments string) (string, error) {
 
 // EscapeInputFragment encodes patch text for use inside a JSON string without quotes.
 func EscapeInputFragment(fragment string) string {
-	encoded, _ := json.Marshal(fragment)
+	encoded, _ := json.Marshal(fragment, jsoncompat.Encode)
 	return string(encoded[1 : len(encoded)-1])
 }

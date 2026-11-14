@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"math"
@@ -19,6 +20,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -544,7 +546,7 @@ func (e *OpenAICompatExecutor) executeStreamWithCredentials(ctx context.Context,
 				publishStreamError(statusErr{code: http.StatusBadGateway, msg: "upstream error event ended before [DONE]"}, false)
 				return true
 			}
-			if !isDone && !json.Valid(dataPayload) {
+			if !isDone && !jsontext.Value(dataPayload).IsValid(jsoncompat.Decode) {
 				publishStreamError(statusErr{code: http.StatusBadGateway, msg: "upstream stream ended with incomplete SSE data frame"}, false)
 				return true
 			}
@@ -966,7 +968,7 @@ func openAICompatImageEndpointPath(opts cliproxyexecutor.Options) string {
 func prepareOpenAICompatImagesPayload(payload []byte, model string, contentType string, stream bool) ([]byte, string, error) {
 	model = strings.TrimSpace(model)
 	contentType = strings.TrimSpace(contentType)
-	if json.Valid(payload) {
+	if jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		doc := ojson.NewDoc(payload)
 		if model != "" {
 			helps.SetStringIfDifferentDoc(doc, "model", model)
@@ -1158,8 +1160,8 @@ func (e *OpenAICompatExecutor) resolveCompatConfig(auth *cliproxyauth.Auth, req 
 		}
 		present := false
 		if rawOptions, exists := auth.Metadata["credential_options"]; exists {
-			if data, errMarshal := json.Marshal(rawOptions); errMarshal == nil {
-				present = json.Unmarshal(data, &options) == nil
+			if data, errMarshal := json.Marshal(rawOptions, jsoncompat.Encode); errMarshal == nil {
+				present = json.Unmarshal(data, &options, jsoncompat.Decode) == nil
 			}
 		}
 		if raw, exists := auth.Attributes["support_prompt_cache_key"]; exists {
@@ -1238,7 +1240,7 @@ func openAICompatChunkHasFinishReason(payload []byte) bool {
 }
 
 func openAICompatStreamDataError(payload []byte, eventName string) (statusErr, bool) {
-	if len(payload) == 0 || !json.Valid(payload) {
+	if len(payload) == 0 || !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return statusErr{}, false
 	}
 	payloadType := ojson.GetBytesNoCopy(payload, "type").String()

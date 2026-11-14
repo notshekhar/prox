@@ -3,7 +3,7 @@ package cliproxy
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +20,7 @@ import (
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -1964,7 +1965,7 @@ func serveOrderedConfigUpdatesConnection(conn net.Conn, taskRequests *atomic.Int
 			writeRegistryTestConfig(conn, payload)
 		case len(args) >= 3 && strings.EqualFold(args[0], "RPUSH") && args[1] == "plugin-status":
 			var report homeplugins.SyncReport
-			if errUnmarshal := json.Unmarshal([]byte(args[2]), &report); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal([]byte(args[2]), &report, jsoncompat.Decode); errUnmarshal != nil {
 				return
 			}
 			select {
@@ -2322,7 +2323,7 @@ func servePublisherReplacementConnection(conn net.Conn, configRequests *atomic.I
 			}
 		case len(args) >= 3 && strings.EqualFold(args[0], "LPUSH") && args[1] == "in-flight-snapshot":
 			var frame home.InFlightSnapshotFrame
-			if errUnmarshal := json.Unmarshal([]byte(args[2]), &frame); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal([]byte(args[2]), &frame, jsoncompat.Decode); errUnmarshal != nil {
 				return
 			}
 			select {

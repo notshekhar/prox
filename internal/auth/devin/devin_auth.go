@@ -3,7 +3,7 @@ package devin
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"html"
@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -112,7 +113,7 @@ func (s *DevinAuthService) ExchangeCodeForToken(ctx context.Context, code, codeV
 		"code":          strings.TrimSpace(code),
 		"code_verifier": strings.TrimSpace(codeVerifier),
 	}
-	jsonBody, errMarshal := json.Marshal(reqBody)
+	jsonBody, errMarshal := json.Marshal(reqBody, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", errMarshal
 	}

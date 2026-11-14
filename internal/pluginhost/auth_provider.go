@@ -3,7 +3,7 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -504,7 +505,7 @@ func extractRawJSONOAuthProviderHint(raw []byte) string {
 		return ""
 	}
 	var payload map[string]any
-	if errUnmarshal := json.Unmarshal(raw, &payload); errUnmarshal != nil || payload == nil {
+	if errUnmarshal := json.Unmarshal(raw, &payload, jsoncompat.Decode); errUnmarshal != nil || payload == nil {
 		return ""
 	}
 	for _, key := range []string{"oauth_provider", "portal"} {
@@ -1110,9 +1111,9 @@ func (s *pluginTokenStorage) SetMetadata(meta map[string]any) {
 	if _, hadPriority := s.meta["priority"]; hadPriority {
 		if _, hasPriority := meta["priority"]; !hasPriority {
 			var raw map[string]any
-			if errUnmarshal := json.Unmarshal(s.rawJSON, &raw); errUnmarshal == nil {
+			if errUnmarshal := json.Unmarshal(s.rawJSON, &raw, jsoncompat.Decode); errUnmarshal == nil {
 				delete(raw, "priority")
-				if cleaned, errMarshal := json.Marshal(raw); errMarshal == nil {
+				if cleaned, errMarshal := json.Marshal(raw, jsoncompat.Encode); errMarshal == nil {
 					s.rawJSON = cleaned
 				}
 			}
@@ -1162,11 +1163,11 @@ func pluginTokenStorageFileCurrent(path string, payload []byte) bool {
 
 func jsonPayloadEqual(left, right []byte) bool {
 	var leftValue any
-	if errUnmarshalLeft := json.Unmarshal(left, &leftValue); errUnmarshalLeft != nil {
+	if errUnmarshalLeft := json.Unmarshal(left, &leftValue, jsoncompat.Decode); errUnmarshalLeft != nil {
 		return false
 	}
 	var rightValue any
-	if errUnmarshalRight := json.Unmarshal(right, &rightValue); errUnmarshalRight != nil {
+	if errUnmarshalRight := json.Unmarshal(right, &rightValue, jsoncompat.Decode); errUnmarshalRight != nil {
 		return false
 	}
 	return reflect.DeepEqual(leftValue, rightValue)
@@ -1175,7 +1176,7 @@ func jsonPayloadEqual(left, right []byte) bool {
 func mergedStorageJSON(raw []byte, metadata map[string]any, provider string) ([]byte, error) {
 	out := make(map[string]any)
 	if len(bytes.TrimSpace(raw)) > 0 {
-		if errUnmarshal := json.Unmarshal(raw, &out); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &out, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, fmt.Errorf("decode plugin token storage: %w", errUnmarshal)
 		}
 		if out == nil {
@@ -1193,7 +1194,7 @@ func mergedStorageJSON(raw []byte, metadata map[string]any, provider string) ([]
 	if len(out) == 0 {
 		return nil, fmt.Errorf("plugin token storage payload is empty")
 	}
-	payload, errMarshal := json.Marshal(out)
+	payload, errMarshal := json.Marshal(out, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("encode plugin token storage: %w", errMarshal)
 	}

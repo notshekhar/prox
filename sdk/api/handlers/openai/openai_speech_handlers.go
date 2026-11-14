@@ -2,7 +2,7 @@ package openai
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 )
 
@@ -167,7 +168,7 @@ func buildXAISpeechPayload(raw []byte) ([]byte, string, error) {
 	if output != nil {
 		body["output_format"] = output
 	}
-	encoded, err := json.Marshal(body)
+	encoded, err := json.Marshal(body, jsoncompat.Encode)
 	if err != nil {
 		return nil, "", err
 	}

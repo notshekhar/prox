@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -50,8 +53,8 @@ type Plugin struct {
 	License      string                  `json:"license,omitempty"`
 	Tags         []string                `json:"tags,omitempty"`
 	Locales      map[string]PluginLocale `json:"locales,omitempty"`
-	Install      InstallPlan             `json:"install,omitempty"`
-	AuthRequired bool                    `json:"auth_required,omitempty"`
+	Install      InstallPlan             `json:"install"`
+	AuthRequired bool                    `json:"auth_required,omitzero"`
 }
 
 type PluginLocale struct {
@@ -65,7 +68,7 @@ type PluginLocale struct {
 
 type Version struct {
 	Version string      `json:"version"`
-	Install InstallPlan `json:"install,omitempty"`
+	Install InstallPlan `json:"install"`
 }
 
 type InstallPlan struct {
@@ -78,7 +81,7 @@ type Artifact struct {
 	GOARCH string `yaml:"goarch,omitempty" json:"goarch,omitempty"`
 	URL    string `yaml:"url,omitempty" json:"url,omitempty"`
 	SHA256 string `yaml:"sha256,omitempty" json:"sha256,omitempty"`
-	Size   int64  `yaml:"size,omitempty" json:"size,omitempty"`
+	Size   int64  `yaml:"size,omitempty" json:"size,omitzero"`
 }
 
 type Platform struct {
@@ -136,8 +139,7 @@ func SourceName(registryURL string) string {
 
 func ParseRegistry(data []byte) (Registry, error) {
 	var registry Registry
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	if errDecode := decoder.Decode(&registry); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(data)), &registry, jsoncompat.Decode); errDecode != nil {
 		return Registry{}, fmt.Errorf("decode registry: %w", errDecode)
 	}
 	normalizeRegistry(&registry)

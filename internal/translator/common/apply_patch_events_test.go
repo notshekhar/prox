@@ -1,7 +1,7 @@
 package common
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"strings"
@@ -89,7 +89,7 @@ func TestApplyPatchCallStateConcurrentIndependentCalls(t *testing.T) {
 				return
 			}
 			payload := ApplyPatchInputDone(&state, input, index)
-			if !json.Valid(payload) || ojson.GetBytesNoCopy(payload, "call_id").String() != state.CallID {
+			if !jsontext.Value(payload).IsValid() || ojson.GetBytesNoCopy(payload, "call_id").String() != state.CallID {
 				results <- fmt.Errorf("call %d: invalid done identity", index)
 				return
 			}
@@ -118,7 +118,7 @@ func TestApplyPatchEventsPayloads(t *testing.T) {
 		{name: "done", payload: ApplyPatchInputDone(&state, text, 12), kind: "response.custom_tool_call_input.done", textKey: "input", sequence: 12},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if !json.Valid(test.payload) {
+			if !jsontext.Value(test.payload).IsValid() {
 				t.Fatalf("payload is not plain JSON: %q", test.payload)
 			}
 			root := util.ParseGJSONBytesNoCopy(test.payload)
@@ -153,7 +153,7 @@ func TestApplyPatchFailureSanitizesClientError(t *testing.T) {
 		t.Fatal("original conversion error was not preserved")
 	}
 	payload := ApplyPatchFailure("resp_\"1", 17)
-	if !json.Valid(payload) || strings.Contains(string(payload), "secret-token-value") || strings.Contains(string(payload), "Begin Patch") {
+	if !jsontext.Value(payload).IsValid() || strings.Contains(string(payload), "secret-token-value") || strings.Contains(string(payload), "Begin Patch") {
 		t.Fatalf("invalid or unsanitized failure payload: %q", payload)
 	}
 	root := util.ParseGJSONBytesNoCopy(payload)

@@ -3,13 +3,15 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -35,7 +37,7 @@ func TestRPCCapabilitiesIncludeFrontendAuthProviderExclusive(t *testing.T) {
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
-	if !json.Valid(raw) {
+	if !jsontext.Value(raw).IsValid() {
 		t.Fatalf("marshaled capabilities are invalid JSON: %s", raw)
 	}
 	var decoded map[string]any
@@ -235,7 +237,7 @@ func TestRPCCapabilitiesIncludeScheduler(t *testing.T) {
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
-	if !json.Valid(raw) {
+	if !jsontext.Value(raw).IsValid() {
 		t.Fatalf("marshaled capabilities are invalid JSON: %s", raw)
 	}
 	var decoded map[string]any
@@ -324,7 +326,7 @@ func TestRPCCapabilitiesIncludeModelRouter(t *testing.T) {
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
-	if !json.Valid(raw) {
+	if !jsontext.Value(raw).IsValid() {
 		t.Fatalf("marshaled capabilities are invalid JSON: %s", raw)
 	}
 	var decoded map[string]any
@@ -462,7 +464,7 @@ func TestRPCCapabilitiesIncludeQuotaProvider(t *testing.T) {
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
-	if !json.Valid(raw) {
+	if !jsontext.Value(raw).IsValid() {
 		t.Fatalf("marshaled capabilities are invalid JSON: %s", raw)
 	}
 	var decoded map[string]any
@@ -807,12 +809,12 @@ func TestSanitizePluginRequestScheduler(t *testing.T) {
 		},
 	}
 
-	raw, errMarshal := json.Marshal(sanitizePluginRequest(req))
+	raw, errMarshal := json.Marshal(sanitizePluginRequest(req), jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal(sanitized scheduler request) error = %v", errMarshal)
 	}
 	var decoded pluginapi.SchedulerPickRequest
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("Unmarshal(sanitized scheduler request) error = %v", errUnmarshal)
 	}
 
@@ -859,12 +861,12 @@ func TestRPCSchedulerAndUsageSelectionIDCompatibility(t *testing.T) {
 			},
 		},
 	}
-	rawPick, errMarshalPick := json.Marshal(sanitizePluginRequest(pickReq))
+	rawPick, errMarshalPick := json.Marshal(sanitizePluginRequest(pickReq), jsoncompat.Encode)
 	if errMarshalPick != nil {
 		t.Fatalf("Marshal(SchedulerPickRequest) error = %v", errMarshalPick)
 	}
 	var decodedPick pluginapi.SchedulerPickRequest
-	if errUnmarshalPick := json.Unmarshal(rawPick, &decodedPick); errUnmarshalPick != nil {
+	if errUnmarshalPick := json.Unmarshal(rawPick, &decodedPick, jsoncompat.Decode); errUnmarshalPick != nil {
 		t.Fatalf("Unmarshal(SchedulerPickRequest) error = %v", errUnmarshalPick)
 	}
 	if got := decodedPick.Options.Metadata[pluginapi.SelectionIDMetadataKey]; got != "sel-rpc-123" {
@@ -878,12 +880,12 @@ func TestRPCSchedulerAndUsageSelectionIDCompatibility(t *testing.T) {
 		TraceID:     "trace-1",
 		SelectionID: "sel-rpc-123",
 	}
-	rawUsage, errMarshalUsage := json.Marshal(usageRec)
+	rawUsage, errMarshalUsage := json.Marshal(usageRec, jsoncompat.Encode)
 	if errMarshalUsage != nil {
 		t.Fatalf("Marshal(UsageRecord) error = %v", errMarshalUsage)
 	}
 	var decodedUsage pluginapi.UsageRecord
-	if errUnmarshalUsage := json.Unmarshal(rawUsage, &decodedUsage); errUnmarshalUsage != nil {
+	if errUnmarshalUsage := json.Unmarshal(rawUsage, &decodedUsage, jsoncompat.Decode); errUnmarshalUsage != nil {
 		t.Fatalf("Unmarshal(UsageRecord) error = %v", errUnmarshalUsage)
 	}
 	if decodedUsage.SelectionID != "sel-rpc-123" {
@@ -898,7 +900,7 @@ func TestRPCSchedulerAndUsageSelectionIDCompatibility(t *testing.T) {
 		TraceID   string
 	}
 	var legacy legacyUsageRecord
-	if errLegacy := json.Unmarshal(rawUsage, &legacy); errLegacy != nil {
+	if errLegacy := json.Unmarshal(rawUsage, &legacy, jsoncompat.Decode); errLegacy != nil {
 		t.Fatalf("Unmarshal(legacyUsageRecord) error = %v", errLegacy)
 	}
 	if legacy.Provider != "openai" || legacy.RequestID != "req-1" || legacy.TraceID != "trace-1" {
@@ -945,7 +947,7 @@ func (c *recordingRawPatchClient) Call(_ context.Context, method string, request
 		return marshalRPCResult(resp)
 	case pluginabi.MethodRequestInterceptBefore, pluginabi.MethodRequestInterceptAfter:
 		var req pluginapi.RequestInterceptRequest
-		if err := json.Unmarshal(request, &req); err != nil {
+		if err := json.Unmarshal(request, &req, jsoncompat.Decode); err != nil {
 			return nil, err
 		}
 		return marshalRPCResult(pluginapi.RequestInterceptResponse{

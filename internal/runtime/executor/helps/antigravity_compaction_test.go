@@ -1,7 +1,7 @@
 package helps
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 
@@ -79,7 +79,7 @@ func TestPrepareAntigravityCompactionSummaryPayload(t *testing.T) {
 
 	prepared := PrepareAntigravityCompactionSummaryPayload(payload, "gemini-3.7-flash")
 
-	if !json.Valid(prepared) {
+	if !jsontext.Value(prepared).IsValid() {
 		t.Fatalf("prepared payload is not valid JSON: %s", string(prepared))
 	}
 	if ojson.GetBytes(prepared, "stream").Bool() {
@@ -117,12 +117,12 @@ func TestPrepareAntigravityCompactionSummaryPayload(t *testing.T) {
 
 func TestPrepareAntigravityCompactionSummaryPayload_StringInputWithControlChars(t *testing.T) {
 	rawJSON := `{"model":"gemini-3.7-flash","input":"before\u001b[31mafter\nnewline and \"quotes\""}`
-	if !json.Valid([]byte(rawJSON)) {
+	if !jsontext.Value(rawJSON).IsValid() {
 		t.Fatal("test rawJSON must be valid JSON")
 	}
 
 	prepared := PrepareAntigravityCompactionSummaryPayload([]byte(rawJSON), "gemini-3.7-flash")
-	if !json.Valid(prepared) {
+	if !jsontext.Value(prepared).IsValid() {
 		t.Fatalf("prepared output with control chars must be valid JSON, got: %s", string(prepared))
 	}
 
@@ -160,7 +160,7 @@ func TestExpandAntigravityCompactionCapsules(t *testing.T) {
 	if errExpand != nil {
 		t.Fatalf("ExpandAntigravityCompactionCapsules failed: %v", errExpand)
 	}
-	if !json.Valid(expanded) {
+	if !jsontext.Value(expanded).IsValid() {
 		t.Fatalf("expanded payload is not valid JSON: %s", string(expanded))
 	}
 
@@ -231,7 +231,7 @@ func TestExtractAntigravitySummaryText_ReasoningBeforeMessage(t *testing.T) {
 
 func TestBuildAntigravityCompactionResponseAndChunks_ValidJSON(t *testing.T) {
 	respJSON := BuildAntigravityCompactionResponse("gemini-3.7-flash", "cpa-ag-compact-v1:abc", 10, 20, 30)
-	if !json.Valid(respJSON) {
+	if !jsontext.Value(respJSON).IsValid() {
 		t.Fatalf("BuildAntigravityCompactionResponse produced invalid JSON: %s", string(respJSON))
 	}
 
@@ -248,7 +248,7 @@ func TestBuildAntigravityCompactionResponseAndChunks_ValidJSON(t *testing.T) {
 				break
 			}
 		}
-		if dataLine == "" || !json.Valid([]byte(dataLine)) {
+		if dataLine == "" || !jsontext.Value(dataLine).IsValid() {
 			t.Fatalf("chunk[%d] data payload is not valid JSON: %q", i, dataLine)
 		}
 	}

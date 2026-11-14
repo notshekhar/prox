@@ -1,7 +1,7 @@
 package codex
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"

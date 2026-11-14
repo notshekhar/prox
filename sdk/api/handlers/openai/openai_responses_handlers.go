@@ -9,7 +9,8 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	. "github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/httpwire"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
@@ -103,7 +105,7 @@ func (f *responsesSSEFramer) WriteChunk(w io.Writer, chunk []byte) {
 	}
 	if len(f.nextFramePrefix) > 0 {
 		payload, found := responsesSSEDataPayload(f.nextFramePrefix)
-		if found && json.Valid(payload) && ojson.GetBytesNoCopy(payload, "type").String() == "" &&
+		if found && jsontext.Value(payload).IsValid(jsoncompat.Decode) && ojson.GetBytesNoCopy(payload, "type").String() == "" &&
 			!responsesSSEHasField(f.nextFramePrefix, []byte("event:")) && responsesSSEFrameLen(f.nextFramePrefix) == 0 {
 			trimmed := bytes.TrimLeft(chunk, " \t\r\n")
 			field, complete, partial := responsesSSEChunkField(trimmed)
@@ -144,7 +146,7 @@ func (f *responsesSSEFramer) WriteChunk(w io.Writer, chunk []byte) {
 		newFrame := complete && field != "data"
 		if complete && field == "data" {
 			payload, _ := responsesSSEDataPayload(trimmed)
-			valid := json.Valid(payload)
+			valid := jsontext.Value(payload).IsValid(jsoncompat.Decode)
 			if !valid && !bytes.Equal(payload, []byte("[DONE]")) && responsesSSEFrameLen(trimmed) == 0 {
 				f.nextFramePrefix = append(f.nextFramePrefix, chunk...)
 				return
@@ -301,7 +303,7 @@ func (f *responsesSSEFramer) repairFrame(frame []byte) []byte {
 	if f.shouldFilterPrivateEvent(streamEvent, payloadType) {
 		return nil
 	}
-	if !json.Valid(payload) {
+	if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return frame
 	}
 
@@ -450,7 +452,7 @@ func responsesSSERecoverJSONFrame(frame []byte, syntheticBreaks []int) []byte {
 		return frame
 	}
 	payload, found := responsesSSEDataPayload(frame)
-	if found && json.Valid(payload) {
+	if found && jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return frame
 	}
 
@@ -463,7 +465,7 @@ func responsesSSERecoverJSONFrame(frame []byte, syntheticBreaks []int) []byte {
 	}
 	try := func(candidate []byte) []byte {
 		recovered, ok := responsesSSEDataPayload(candidate)
-		if !ok || !json.Valid(recovered) {
+		if !ok || !jsontext.Value(recovered).IsValid(jsoncompat.Decode) {
 			return nil
 		}
 		return responsesSSEFrameWithData(candidate, recovered)
@@ -706,7 +708,7 @@ func responsesSSEDataLinesValid(chunk []byte) bool {
 		return true
 	}
 	payload = bytes.TrimSpace(payload)
-	return len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || json.Valid(payload)
+	return len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) || jsontext.Value(payload).IsValid(jsoncompat.Decode)
 }
 
 func responsesSSENeedsLineBreak(pending, chunk []byte) bool {
@@ -1291,14 +1293,12 @@ func responsesStreamErrorText(errMsg *interfaces.ErrorMessage, status int) strin
 		text = strings.TrimSpace(errMsg.Error.Error())
 	}
 	trimmed := strings.TrimSpace(text)
-	if !json.Valid([]byte(trimmed)) {
+	if !jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 		return truncateResponsesStreamErrorText(redactResponsesStreamErrorText(trimmed), responsesStreamErrorMessageLimit)
 	}
 
 	var root map[string]any
-	dec := json.NewDecoder(bytes.NewReader([]byte(trimmed)))
-	dec.UseNumber()
-	if errUnmarshal := dec.Decode(&root); errUnmarshal != nil {
+	if errUnmarshal := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader([]byte(trimmed))), &root, jsoncompat.DecodeUseNumber); errUnmarshal != nil {
 		return truncateResponsesStreamErrorText(redactResponsesStreamErrorText(trimmed), responsesStreamErrorMessageLimit)
 	}
 
@@ -1317,14 +1317,14 @@ func responsesStreamErrorText(errMsg *interfaces.ErrorMessage, status int) strin
 		if seq, ok := root["sequence_number"]; ok {
 			out["sequence_number"] = seq
 		}
-		data, errMarshal := json.Marshal(out)
+		data, errMarshal := json.Marshal(out, jsoncompat.Encode)
 		if errMarshal == nil {
 			return string(data)
 		}
 	}
 
 	cleanedRoot := sanitizeResponsesStreamErrorNode(root)
-	data, errMarshal := json.Marshal(cleanedRoot)
+	data, errMarshal := json.Marshal(cleanedRoot, jsoncompat.Encode)
 	if errMarshal == nil {
 		return string(data)
 	}

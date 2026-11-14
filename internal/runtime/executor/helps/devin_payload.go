@@ -2,12 +2,14 @@ package helps
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"math"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"google.golang.org/protobuf/encoding/protowire"
 )
@@ -102,7 +104,7 @@ func FinalizeDevinPayload(wire []byte, finalize PayloadFinalizer) ([]byte, []byt
 	if errDecode != nil {
 		return nil, nil, errDecode
 	}
-	body, errMarshal := json.Marshal(view)
+	body, errMarshal := json.Marshal(view, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, nil, errMarshal
 	}
@@ -144,8 +146,8 @@ func decodeDevinPayload(wire []byte, fields map[protowire.Number]devinPayloadFie
 					value = decoded
 				case field.binary:
 					value = base64.StdEncoding.EncodeToString(data)
-				case field.jsonValue && json.Valid(data):
-					value = json.RawMessage(data)
+				case field.jsonValue && jsontext.Value(data).IsValid(jsoncompat.Decode):
+					value = jsontext.Value(data)
 				default:
 					value = string(data)
 				}

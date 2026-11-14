@@ -2,7 +2,8 @@ package executor
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"sort"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -303,19 +305,19 @@ func (f *xaiInternalXSearchResponseFilter) filterCompletedOutput(eventData []byt
 	if f != nil {
 		clientDeclaredTools = f.clientDeclaredTools
 	}
-	items := make([]json.RawMessage, 0, len(output.Array()))
+	items := make([]jsontext.Value, 0, len(output.Array()))
 	changed := false
 	for _, item := range output.Array() {
 		if xaiIsInternalXSearchCall(item, clientDeclaredTools) {
 			changed = true
 			continue
 		}
-		items = append(items, json.RawMessage(item.Raw))
+		items = append(items, jsontext.Value(item.Raw))
 	}
 	if !changed {
 		return eventData
 	}
-	rawOutput, errMarshal := json.Marshal(items)
+	rawOutput, errMarshal := json.Marshal(items, jsoncompat.Encode)
 	if errMarshal != nil {
 		return eventData
 	}
@@ -382,12 +384,12 @@ func normalizeXAIInputNamespaceToolCallsWithFoldDoc(doc *ojson.Doc, shouldFold b
 			}
 			if rawArgs := item.Get("arguments").String(); rawArgs != "" {
 				if ojson.Valid(rawArgs) {
-					dispatcherArgs["arguments"] = json.RawMessage(rawArgs)
+					dispatcherArgs["arguments"] = jsontext.Value(rawArgs)
 				} else {
 					dispatcherArgs["arguments"] = rawArgs
 				}
 			}
-			encodedArgs, errMarshal := json.Marshal(dispatcherArgs)
+			encodedArgs, errMarshal := json.Marshal(dispatcherArgs, jsoncompat.Encode)
 			if errMarshal != nil {
 				continue
 			}
@@ -820,7 +822,7 @@ func sanitizeXAIInputEncryptedContentWithOptionsDoc(doc *ojson.Doc, allowRouterS
 	if !input.Exists() || !input.IsArray() {
 		return false
 	}
-	items := make([]json.RawMessage, 0, len(input.Array()))
+	items := make([]jsontext.Value, 0, len(input.Array()))
 	changed := false
 	dropCount := 0
 	firstReason := ""
@@ -828,12 +830,12 @@ func sanitizeXAIInputEncryptedContentWithOptionsDoc(doc *ojson.Doc, allowRouterS
 	for _, item := range input.Array() {
 		itemType := strings.TrimSpace(item.Get("type").String())
 		if itemType != "reasoning" && itemType != "compaction" {
-			items = append(items, json.RawMessage(item.Raw))
+			items = append(items, jsontext.Value(item.Raw))
 			continue
 		}
 		encryptedContent := item.Get("encrypted_content")
 		if !encryptedContent.Exists() {
-			items = append(items, json.RawMessage(item.Raw))
+			items = append(items, jsontext.Value(item.Raw))
 			continue
 		}
 		reason := ""
@@ -854,12 +856,12 @@ func sanitizeXAIInputEncryptedContentWithOptionsDoc(doc *ojson.Doc, allowRouterS
 		if reason == "" {
 			if rewrittenSig != "" {
 				if next, errSet := ojson.SetBytes([]byte(item.Raw), "encrypted_content", rewrittenSig); errSet == nil {
-					items = append(items, json.RawMessage(next))
+					items = append(items, jsontext.Value(next))
 					changed = true
 					continue
 				}
 			}
-			items = append(items, json.RawMessage(item.Raw))
+			items = append(items, jsontext.Value(item.Raw))
 			continue
 		}
 
@@ -875,10 +877,10 @@ func sanitizeXAIInputEncryptedContentWithOptionsDoc(doc *ojson.Doc, allowRouterS
 
 		next, err := ojson.DeleteBytes([]byte(item.Raw), "encrypted_content")
 		if err != nil {
-			items = append(items, json.RawMessage(item.Raw))
+			items = append(items, jsontext.Value(item.Raw))
 			continue
 		}
-		items = append(items, json.RawMessage(next))
+		items = append(items, jsontext.Value(next))
 		changed = true
 		dropCount++
 		if firstReason == "" {
@@ -889,7 +891,7 @@ func sanitizeXAIInputEncryptedContentWithOptionsDoc(doc *ojson.Doc, allowRouterS
 	if !changed {
 		return false
 	}
-	rawInput, err := json.Marshal(items)
+	rawInput, err := json.Marshal(items, jsoncompat.Encode)
 	if err != nil {
 		return false
 	}
@@ -968,30 +970,30 @@ func mergeAdjacentXAIInputReasoningSummariesDoc(doc *ojson.Doc) bool {
 	}
 
 	changed := false
-	items := make([]json.RawMessage, 0, len(input.Array()))
+	items := make([]jsontext.Value, 0, len(input.Array()))
 	for _, item := range input.Array() {
 		if len(items) > 0 && canMergeXAIReasoningSummary(items[len(items)-1], item) {
 			merged, ok := appendXAIReasoningSummary(items[len(items)-1], item.Get("summary").Array())
 			if ok {
-				items[len(items)-1] = json.RawMessage(merged)
+				items[len(items)-1] = jsontext.Value(merged)
 				changed = true
 				continue
 			}
 		}
-		items = append(items, json.RawMessage(item.Raw))
+		items = append(items, jsontext.Value(item.Raw))
 	}
 	if !changed {
 		return false
 	}
 
-	rawInput, errMarshal := json.Marshal(items)
+	rawInput, errMarshal := json.Marshal(items, jsoncompat.Encode)
 	if errMarshal != nil {
 		return false
 	}
 	return doc.SetRawBytes("input", rawInput) == nil
 }
 
-func canMergeXAIReasoningSummary(previous json.RawMessage, current ojson.Result) bool {
+func canMergeXAIReasoningSummary(previous jsontext.Value, current ojson.Result) bool {
 	previousItem := util.ParseGJSONBytesNoCopy(previous)
 	if previousItem.Get("type").String() != "reasoning" || current.Get("type").String() != "reasoning" {
 		return false
@@ -1010,7 +1012,7 @@ func canMergeXAIReasoningSummary(previous json.RawMessage, current ojson.Result)
 	return true
 }
 
-func appendXAIReasoningSummary(previous json.RawMessage, currentSummary []ojson.Result) ([]byte, bool) {
+func appendXAIReasoningSummary(previous jsontext.Value, currentSummary []ojson.Result) ([]byte, bool) {
 	summary := ojson.GetBytesNoCopy(previous, "summary")
 	if !summary.IsArray() {
 		return previous, false

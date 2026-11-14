@@ -3,9 +3,11 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -184,7 +186,7 @@ type rpcObserverRecordingClient struct {
 func (c *rpcObserverRecordingClient) Call(_ context.Context, method string, request []byte) ([]byte, error) {
 	c.lastMethod = method
 	c.lastRequest = bytes.Clone(request)
-	return json.Marshal(pluginabi.Envelope{OK: true, Result: json.RawMessage(`{}`)})
+	return json.Marshal(pluginabi.Envelope{OK: true, Result: jsontext.Value(`{}`)})
 }
 
 func (c *rpcObserverRecordingClient) Shutdown() {}
@@ -225,7 +227,7 @@ func TestObserveWebSocketResponseEventRPCSanitizesMetadata(t *testing.T) {
 	}
 
 	var decoded rpcWebSocketResponseEvent
-	if errUnmarshal := json.Unmarshal(client.lastRequest, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(client.lastRequest, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal rpc request: %v", errUnmarshal)
 	}
 

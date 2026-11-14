@@ -78,9 +78,6 @@ func (m logsTabModel) waitForLog() tea.Msg {
 
 func (m logsTabModel) Update(msg tea.Msg) (logsTabModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		m.viewport.SetContent(m.renderLogs())
-		return m, nil
 	case logsTickMsg:
 		if m.hook != nil {
 			return m, nil

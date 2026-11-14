@@ -2,12 +2,13 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -104,7 +105,7 @@ func (c *streamCallbackPluginClient) Call(ctx context.Context, method string, re
 		return nil, fmt.Errorf("method = %s, want %s", method, pluginabi.MethodExecutorExecuteStream)
 	}
 	var req rpcExecutorRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode executor stream request: %w", errUnmarshal)
 	}
 	c.streamID = req.StreamID

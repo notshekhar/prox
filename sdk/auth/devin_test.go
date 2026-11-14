@@ -3,7 +3,7 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -98,7 +98,7 @@ func TestDevinAuthenticatorHeadlessManualCodeLogin(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/cli/token":
 			var body map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := json.UnmarshalRead(r.Body, &body); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -168,7 +168,7 @@ func TestDevinAuthenticatorHeadlessManualCallbackURLLogin(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/cli/token":
 			var body map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := json.UnmarshalRead(r.Body, &body); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
@@ -374,7 +374,7 @@ func TestDevinAuthenticatorHeadlessQuotedCode(t *testing.T) {
 		switch r.URL.Path {
 		case "/auth/cli/token":
 			var body map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			if err := json.UnmarshalRead(r.Body, &body); err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}

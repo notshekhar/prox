@@ -2,7 +2,8 @@ package helps
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"regexp"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -319,8 +321,8 @@ func measuredClaudeCodeHaiku55HelperSessionMatches(headers http.Header, payload 
 	if userID.Type != ojson.String || !isValidUserID(userID.String()) {
 		return false
 	}
-	var identityMap map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal([]byte(userID.String()), &identityMap); errUnmarshal != nil {
+	var identityMap map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal([]byte(userID.String()), &identityMap, jsoncompat.Decode); errUnmarshal != nil {
 		return false
 	}
 	for key := range identityMap {
@@ -656,32 +658,31 @@ func measuredClaudeBillingCCH(billing string) bool {
 }
 
 func claudeJSONObjectHasKeys(raw []byte, want []string) bool {
-	if !json.Valid(raw) {
+	if !jsontext.Value(raw).IsValid(jsoncompat.Decode) {
 		return false
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	opening, errOpening := decoder.Token()
-	if errOpening != nil || opening != json.Delim('{') {
+	decoder := jsontext.NewDecoder(bytes.NewReader(raw), jsoncompat.Decode)
+	opening, errOpening := decoder.ReadToken()
+	if errOpening != nil || opening.Kind() != '{' {
 		return false
 	}
 	keyIndex := 0
-	for decoder.More() {
-		token, errToken := decoder.Token()
+	for decoder.PeekKind() == '"' {
+		token, errToken := decoder.ReadToken()
 		if errToken != nil {
 			return false
 		}
-		key, okKey := token.(string)
-		if !okKey || keyIndex >= len(want) || key != want[keyIndex] {
+		key := token.String()
+		if keyIndex >= len(want) || key != want[keyIndex] {
 			return false
 		}
 		keyIndex++
-		var value json.RawMessage
-		if errValue := decoder.Decode(&value); errValue != nil {
+		if errValue := decoder.SkipValue(); errValue != nil {
 			return false
 		}
 	}
-	closing, errClosing := decoder.Token()
-	return errClosing == nil && closing == json.Delim('}') && keyIndex == len(want)
+	closing, errClosing := decoder.ReadToken()
+	return errClosing == nil && closing.Kind() == '}' && keyIndex == len(want)
 }
 
 // IsClaudeCodeUserAgent reports whether userAgent identifies a Claude Code CLI client.

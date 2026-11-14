@@ -1,10 +1,12 @@
 package util
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"math/rand"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // The legacy mapper is kept as a differential oracle for collision semantics.
@@ -45,7 +47,7 @@ func TestUnambiguousClaudeToolNamesRandomized(t *testing.T) {
 				tools[j] = map[string]any{"function": map[string]string{"name": name}}
 			}
 		}
-		request, err := json.Marshal(map[string]any{"tools": tools})
+		request, err := json.Marshal(map[string]any{"tools": tools}, jsoncompat.Encode)
 		if err != nil {
 			t.Fatal(err)
 		}

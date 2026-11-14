@@ -1,41 +1,4 @@
 import {
-  APIKEY_FUN_AFFILIATE_URL,
-  APIKEY_FUN_BASE_URL_OPTIONS,
-  APIKEY_FUN_DASHBOARD_URL,
-  APIKEY_FUN_DISPLAY_NAME,
-  APIKEY_FUN_PROTOCOLS,
-  APIKEY_FUN_PROVIDER_NAME,
-  getApiKeyFunProtocolUrls,
-  resolveApiKeyFunBaseUrl,
-} from './sponsor';
-import {
-  FENNO_AI_AFFILIATE_URL,
-  FENNO_AI_BASE_URL_OPTIONS,
-  FENNO_AI_DISPLAY_NAME,
-  FENNO_AI_PROTOCOL_LABELS,
-  FENNO_AI_PROVIDER_NAME,
-  getFennoAIProtocolUrls,
-  resolveFennoAIBaseUrl,
-} from './fennoAI';
-import {
-  QINIU_CLOUD_AFFILIATE_URL,
-  QINIU_CLOUD_BASE_URL_OPTIONS,
-  QINIU_CLOUD_DISPLAY_NAME,
-  QINIU_CLOUD_PROTOCOL_LABELS,
-  QINIU_CLOUD_PROVIDER_NAME,
-  getQiniuCloudProtocolUrls,
-  resolveQiniuCloudBaseUrl,
-} from './qiniuCloud';
-import {
-  AI_CODE_MIRROR_AFFILIATE_URL,
-  AI_CODE_MIRROR_BASE_URL_OPTIONS,
-  AI_CODE_MIRROR_DISPLAY_NAME,
-  AI_CODE_MIRROR_PROTOCOL_LABELS,
-  AI_CODE_MIRROR_PROVIDER_NAME,
-  getAiCodeMirrorProtocolUrls,
-  resolveAiCodeMirrorBaseUrl,
-} from './aiCodeMirror';
-import {
   KIMI_BASE_URL_OPTIONS,
   KIMI_DISPLAY_NAME,
   KIMI_PROTOCOL_LABELS,
@@ -71,71 +34,15 @@ export interface SponsorProviderDefinition {
   brand: SponsorProviderBrand;
   displayName: string;
   providerName: string;
-  affiliateUrl?: string;
-  dashboardUrl?: string;
   protocols: readonly SponsorProtocol[];
   protocolLabels: readonly string[];
   defaultProtocol: SponsorProtocol;
   baseUrlOptions: readonly SponsorBaseUrlOption[];
-  supportsUsageCheck: boolean;
   resolveBaseUrl: (value: string | undefined | null) => string;
   getProtocolUrls: (value: string | undefined | null) => SponsorProtocolUrls;
 }
 
 const SPONSOR_DEFINITIONS: Record<SponsorProviderBrand, SponsorProviderDefinition> = {
-  apikeyFun: {
-    brand: 'apikeyFun',
-    displayName: APIKEY_FUN_DISPLAY_NAME,
-    providerName: APIKEY_FUN_PROVIDER_NAME,
-    affiliateUrl: APIKEY_FUN_AFFILIATE_URL,
-    dashboardUrl: APIKEY_FUN_DASHBOARD_URL,
-    protocols: ['codex', 'claude', 'openai'],
-    protocolLabels: APIKEY_FUN_PROTOCOLS,
-    defaultProtocol: 'codex',
-    baseUrlOptions: APIKEY_FUN_BASE_URL_OPTIONS,
-    supportsUsageCheck: true,
-    resolveBaseUrl: resolveApiKeyFunBaseUrl,
-    getProtocolUrls: getApiKeyFunProtocolUrls,
-  },
-  fennoAI: {
-    brand: 'fennoAI',
-    displayName: FENNO_AI_DISPLAY_NAME,
-    providerName: FENNO_AI_PROVIDER_NAME,
-    affiliateUrl: FENNO_AI_AFFILIATE_URL,
-    protocols: ['codex', 'claude'],
-    protocolLabels: FENNO_AI_PROTOCOL_LABELS,
-    defaultProtocol: 'codex',
-    baseUrlOptions: FENNO_AI_BASE_URL_OPTIONS,
-    supportsUsageCheck: false,
-    resolveBaseUrl: resolveFennoAIBaseUrl,
-    getProtocolUrls: getFennoAIProtocolUrls,
-  },
-  qiniuCloud: {
-    brand: 'qiniuCloud',
-    displayName: QINIU_CLOUD_DISPLAY_NAME,
-    providerName: QINIU_CLOUD_PROVIDER_NAME,
-    affiliateUrl: QINIU_CLOUD_AFFILIATE_URL,
-    protocols: ['openai', 'claude', 'gemini', 'codex'],
-    protocolLabels: QINIU_CLOUD_PROTOCOL_LABELS,
-    defaultProtocol: 'openai',
-    baseUrlOptions: QINIU_CLOUD_BASE_URL_OPTIONS,
-    supportsUsageCheck: false,
-    resolveBaseUrl: resolveQiniuCloudBaseUrl,
-    getProtocolUrls: getQiniuCloudProtocolUrls,
-  },
-  aiCodeMirror: {
-    brand: 'aiCodeMirror',
-    displayName: AI_CODE_MIRROR_DISPLAY_NAME,
-    providerName: AI_CODE_MIRROR_PROVIDER_NAME,
-    affiliateUrl: AI_CODE_MIRROR_AFFILIATE_URL,
-    protocols: ['openai', 'claude', 'gemini', 'codex'],
-    protocolLabels: AI_CODE_MIRROR_PROTOCOL_LABELS,
-    defaultProtocol: 'openai',
-    baseUrlOptions: AI_CODE_MIRROR_BASE_URL_OPTIONS,
-    supportsUsageCheck: false,
-    resolveBaseUrl: resolveAiCodeMirrorBaseUrl,
-    getProtocolUrls: getAiCodeMirrorProtocolUrls,
-  },
   kimi: {
     brand: 'kimi',
     displayName: KIMI_DISPLAY_NAME,
@@ -144,17 +51,12 @@ const SPONSOR_DEFINITIONS: Record<SponsorProviderBrand, SponsorProviderDefinitio
     protocolLabels: KIMI_PROTOCOL_LABELS,
     defaultProtocol: 'openai',
     baseUrlOptions: KIMI_BASE_URL_OPTIONS,
-    supportsUsageCheck: false,
     resolveBaseUrl: resolveKimiBaseUrl,
     getProtocolUrls: getKimiProtocolUrls,
   },
 };
 
 export const isMultiProtocolSponsorBrand = (brand: ProviderBrand): brand is SponsorProviderBrand =>
-  brand === 'apikeyFun' ||
-  brand === 'fennoAI' ||
-  brand === 'qiniuCloud' ||
-  brand === 'aiCodeMirror' ||
   brand === 'kimi';
 
 export type SponsorAggregationConflict = 'multiple-configs' | 'multiple-openai-keys';

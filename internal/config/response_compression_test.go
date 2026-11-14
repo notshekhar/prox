@@ -1,9 +1,10 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,12 +30,12 @@ func TestResponseCompressionConfig(t *testing.T) {
 			if got := cfg.ServerResponseCompression.EffectiveMinBytes(); got != tc.minBytes {
 				t.Fatalf("EffectiveMinBytes() = %d, want %d", got, tc.minBytes)
 			}
-			encoded, errMarshal := json.Marshal(cfg)
+			encoded, errMarshal := json.Marshal(cfg, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
 			var roundTrip Config
-			if errUnmarshal := json.Unmarshal(encoded, &roundTrip); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(encoded, &roundTrip, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatal(errUnmarshal)
 			}
 			if roundTrip.ServerResponseCompression.IsEnabled() != tc.enabled || roundTrip.ServerResponseCompression.EffectiveMinBytes() != tc.minBytes {

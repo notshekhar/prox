@@ -3,7 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"sync"
@@ -12,6 +12,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -81,7 +82,7 @@ func TestHomeAppLogForwarder_ForwardsFormattedLogWhenBoundOwnerIsHealthy(t *test
 	}
 
 	var got homeAppLogPayload
-	if errUnmarshal := json.Unmarshal(stub.pushedAt(0), &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushedAt(0), &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v", errUnmarshal)
 	}
 	if got.Level != "debug" {

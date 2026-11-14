@@ -1,12 +1,13 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"strings"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func makeTestCodexJWT(planType, accountID string) string {
@@ -21,7 +22,7 @@ func makeTestCodexJWT(planType, accountID string) string {
 		"email":                       "user@example.com",
 		"https://api.openai.com/auth": authInfo,
 	}
-	payloadBytes, _ := json.Marshal(claimsMap)
+	payloadBytes, _ := json.Marshal(claimsMap, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	return header + "." + claims + "."
 }

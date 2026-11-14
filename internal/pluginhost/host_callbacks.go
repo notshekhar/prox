@@ -2,7 +2,7 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
@@ -26,8 +27,8 @@ type rpcHostHTTPRequest struct {
 	URL            string                     `json:"url,omitempty"`
 	Headers        httpHeader                 `json:"headers,omitempty"`
 	Body           []byte                     `json:"body,omitempty"`
-	WireProfile    *pluginapi.HTTPWireProfile `json:"wire_profile,omitempty"`
-	Request        *httpRequest               `json:"request,omitempty"`
+	WireProfile    *pluginapi.HTTPWireProfile `json:"wire_profile,omitzero"`
+	Request        *httpRequest               `json:"request,omitzero"`
 }
 
 type httpHeader map[string][]string
@@ -37,7 +38,7 @@ type httpRequest struct {
 	URL         string                     `json:"url,omitempty"`
 	Headers     httpHeader                 `json:"headers,omitempty"`
 	Body        []byte                     `json:"body,omitempty"`
-	WireProfile *pluginapi.HTTPWireProfile `json:"wire_profile,omitempty"`
+	WireProfile *pluginapi.HTTPWireProfile `json:"wire_profile,omitzero"`
 }
 
 type rpcHostHTTPStreamResponse struct {
@@ -54,7 +55,7 @@ type rpcHostHTTPStreamReadRequest struct {
 type rpcHostHTTPStreamReadResponse struct {
 	Payload []byte `json:"payload,omitempty"`
 	Error   string `json:"error,omitempty"`
-	Done    bool   `json:"done,omitempty"`
+	Done    bool   `json:"done,omitzero"`
 }
 
 type rpcHostHTTPStreamCloseRequest struct {
@@ -272,7 +273,7 @@ func (h *Host) callHostHTTPDoStream(ctx context.Context, request []byte) ([]byte
 
 func (h *Host) callHostHTTPOperationOpen(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostHTTPOperationOpenRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host http operation open request: %w", errUnmarshal)
 	}
 	operationID, errOpen := h.openHostHTTPOperation(ctx, req.HostCallbackID)
@@ -284,7 +285,7 @@ func (h *Host) callHostHTTPOperationOpen(ctx context.Context, request []byte) ([
 
 func (h *Host) callHostHTTPCancel(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostHTTPCancelRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host http cancel request: %w", errUnmarshal)
 	}
 	operationID := strings.TrimSpace(req.OperationID)
@@ -304,7 +305,7 @@ func (h *Host) callHostHTTPCancel(ctx context.Context, request []byte) ([]byte, 
 
 func (h *Host) callHostHTTPStreamRead(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostHTTPStreamReadRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host http stream read request: %w", errUnmarshal)
 	}
 	if h == nil || h.httpStreams == nil {
@@ -327,7 +328,7 @@ func (h *Host) callHostHTTPStreamRead(ctx context.Context, request []byte) ([]by
 
 func (h *Host) callHostHTTPStreamClose(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostHTTPStreamCloseRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host http stream close request: %w", errUnmarshal)
 	}
 	if h != nil && h.httpStreams != nil {
@@ -348,7 +349,7 @@ func decodeHostHTTPRequestWithCallbackID(raw []byte) (pluginapi.HTTPRequest, str
 
 func decodeHostHTTPRequestWithOperationID(raw []byte) (pluginapi.HTTPRequest, string, string, error) {
 	var req rpcHostHTTPRequest
-	if errUnmarshal := json.Unmarshal(raw, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return pluginapi.HTTPRequest{}, "", "", fmt.Errorf("decode host http request: %w", errUnmarshal)
 	}
 	if req.Request != nil {
@@ -384,7 +385,7 @@ func cloneWireProfile(src *pluginapi.HTTPWireProfile) *pluginapi.HTTPWireProfile
 
 func (h *Host) callHostStreamEmit(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcStreamEmitRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode stream emit request: %w", errUnmarshal)
 	}
 	chunk := pluginapi.ExecutorStreamChunk{Payload: append([]byte(nil), req.Payload...)}
@@ -397,7 +398,7 @@ func (h *Host) callHostStreamEmit(ctx context.Context, request []byte) ([]byte, 
 
 func (h *Host) callHostStreamClose(request []byte) ([]byte, error) {
 	var req rpcStreamCloseRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode stream close request: %w", errUnmarshal)
 	}
 	h.streams.closeWithError(req.StreamID, rpcStreamError(req.Error, req.ErrorDetail))
@@ -406,7 +407,7 @@ func (h *Host) callHostStreamClose(request []byte) ([]byte, error) {
 
 func (h *Host) callHostModelExecute(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostModelExecutionRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host model execution request: %w", errUnmarshal)
 	}
 	if req.Stream {
@@ -507,7 +508,7 @@ func modelExecutionError(errMsg *interfaces.ErrorMessage) error {
 
 func (h *Host) callHostLog(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostLogRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host log request: %w", errUnmarshal)
 	}
 	ctx = h.resolveCallbackContext(req.HostCallbackID, ctx)

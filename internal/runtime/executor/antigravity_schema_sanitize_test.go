@@ -1,13 +1,14 @@
 package executor
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	antigravityclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/claude"
 	antigravitychat "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/openai/chat-completions"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -369,7 +370,7 @@ func TestAntigravityBuildRequestKeepsJSONObjectMimeOnly(t *testing.T) {
 	input := []byte(`{"model":"gemini-3.1-pro-low","messages":[{"role":"user","content":"hi"}],"response_format":{"type":"json_object"}}`)
 	translated, _ := antigravitychat.ConvertOpenAIRequestToAntigravity("gemini-3.1-pro-low", input, false)
 	body := buildRequestBodyFromRawPayload(t, "gemini-3.1-pro-low", translated)
-	encoded, errMarshal := json.Marshal(body)
+	encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}
@@ -394,7 +395,7 @@ func TestAntigravityBuildRequestPreservesGenerationResponseSchemaMetadata(t *tes
 	for _, modelName := range []string{"gemini-3.6-flash-high", "gemini-3.1-pro-low"} {
 		t.Run(modelName, func(t *testing.T) {
 			body := buildRequestBodyFromRawPayload(t, modelName, payload)
-			encoded, errMarshal := json.Marshal(body)
+			encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
@@ -425,7 +426,7 @@ func TestAntigravityBuildRequestSanitizesSnakeCaseGenerationResponseSchemas(t *t
 			input := []byte(`{"model":"gemini-3.6-flash-high","messages":[{"role":"user","content":"hi"}],"generation_config":{"` + testCase.alias + `":{"type":"object","$id":"drop-me","properties":{"title":{"type":"string"}}}}}`)
 			translated, _ := antigravitychat.ConvertOpenAIRequestToAntigravity("gemini-3.6-flash-high", input, false)
 			body := buildRequestBodyFromRawPayload(t, "gemini-3.6-flash-high", translated)
-			encoded, errMarshal := json.Marshal(body)
+			encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
@@ -601,7 +602,7 @@ func TestAntigravityBuildRequestStripsPropertyNamesFromOutboundBody(t *testing.T
 				}}`)
 
 				body := buildRequestBodyFromRawPayload(t, modelName, payload)
-				encoded, errMarshal := json.Marshal(body)
+				encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 				if errMarshal != nil {
 					t.Fatal(errMarshal)
 				}
@@ -738,7 +739,7 @@ func TestAntigravityBuildRequestFlattensToolUnionsForClaude_Issue3662Regression(
 	declParams := func(t *testing.T, modelName string) ojson.Result {
 		t.Helper()
 		body := buildRequestBodyFromRawPayload(t, modelName, payload)
-		encoded, errMarshal := json.Marshal(body)
+		encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatal(errMarshal)
 		}
@@ -801,7 +802,7 @@ func TestAntigravityBuildRequestFlattensToolUnionsForClaude_Issue3662Regression(
 		returnPayload := []byte(`{"request":{"tools":[{"functionDeclarations":[` + decl + `]}]}}`)
 
 		body := buildRequestBodyFromRawPayload(t, "claude-opus-5-5-high", returnPayload)
-		encoded, errMarshal := json.Marshal(body)
+		encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatal(errMarshal)
 		}
@@ -840,7 +841,7 @@ func TestAntigravityBuildRequestFlattensToolUnionsForClaude_Issue3662Regression(
 		}
 
 		body := buildRequestBodyFromRawPayload(t, "claude-opus-5-5-high", translated)
-		encoded, errMarshal := json.Marshal(body)
+		encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatal(errMarshal)
 		}
@@ -869,7 +870,7 @@ func TestAntigravityBuildRequestFlattensToolUnionsForClaude_Issue3662Regression(
 			}
 
 			body := buildRequestBodyFromRawPayload(t, modelName, translated)
-			encoded, errMarshal := json.Marshal(body)
+			encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}

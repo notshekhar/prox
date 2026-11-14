@@ -1,11 +1,13 @@
 package responses
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
@@ -115,15 +117,15 @@ func hasInternalCarrierFields(item ojson.Result) bool {
 }
 
 func stripGeminiResponsesCarrierMetadata(rawJSON string) ([]byte, bool) {
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(rawJSON), &fields); err != nil {
+	var fields map[string]jsontext.Value
+	if err := json.Unmarshal([]byte(rawJSON), &fields, jsoncompat.Decode); err != nil {
 		return []byte(rawJSON), false
 	}
 	delete(fields, geminiResponsesCarrierDirectionField)
 	delete(fields, geminiResponsesCarrierTargetField)
 	delete(fields, geminiResponsesCarrierSignatureField)
 	delete(fields, geminiResponsesCarrierSummaryField)
-	stripped, errMarshal := json.Marshal(fields)
+	stripped, errMarshal := json.Marshal(fields, jsoncompat.Encode)
 	if errMarshal != nil {
 		return []byte(rawJSON), false
 	}

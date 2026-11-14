@@ -39,8 +39,9 @@ prox dashboard        # open the dashboard
 | `prox login <provider>` | Add an account (`claude`, `codex`) |
 | `prox accounts` | List your accounts |
 | `prox status` | Show whether the proxy is running |
+| `prox doctor` | Find out why routing or an account is not working |
 | `prox dashboard` | Open the dashboard |
-| `prox service on\|off` | Run in the background and start at login (macOS) |
+| `prox service on\|off` | Run in the background and start at login (macOS, Linux) |
 | `prox upgrade [--force]` | Update to the latest release |
 | `prox version` | Show the version |
 
@@ -58,18 +59,27 @@ time, and the same password opens the dashboard. Only a hash is stored, so if yo
 forget it, set `secret-key: ""` under `management:` in `~/.prox/config.yaml` and
 start prox to choose a new one.
 
-Where no terminal can ask, set `PROX_MASTER_PASSWORD`. `prox service on` keeps the
-password in your macOS Keychain so the background service can start at login.
+Where no terminal can ask, set `PROX_MASTER_PASSWORD`. So the background service can
+start at login, `prox service on` keeps the password in your macOS Keychain, or on
+Linux in `~/.prox/service.env`, a file only you can read.
 
 The password guards starting prox and the dashboard. It doesn't encrypt your
-logins in `~/.prox/auth`, and server flags such as `prox -tui` don't ask for it.
+logins in `~/.prox/auth`.
 
 ## How requests are spread
 
-With `strategy: "round-robin"`, each new conversation goes to the next account.
-A conversation then stays on its account, so its prompt cache keeps working, and
-moves only when that account hits a limit or fails. To rotate on every request
-instead, set `session-affinity: false` under `routing:`.
+With `strategy: "least-used"`, each new conversation goes to the account with the
+most quota left, and accounts within five points of each other take turns. A
+conversation then stays on its account so its prompt cache keeps working. It moves
+when the account passes 95% and another has room, or when a request fails. Usage
+comes from provider responses, so Claude and Codex accounts report it and others
+count as unused.
+
+Older configs use `"round-robin"`, which ignores usage: each new conversation just
+goes to the next account. To rotate on every request instead, set
+`session-affinity: false` under `routing:`.
+
+The terminal log names the account that served each request.
 
 ## Develop
 
@@ -77,6 +87,7 @@ instead, set `session-affinity: false` under `routing:`.
 scripts/build.sh                                    # dashboard + bin/prox
 go vet ./... && go test ./...
 (cd dashboard && bun run type-check && bun test)
+(cd dashboard && bun run check:bundle ../bin/prox)  # the built dashboard in real Chrome
 ```
 
 The dashboard is a Vite and React app in `dashboard/`. `bun run build` there

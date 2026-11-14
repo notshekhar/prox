@@ -7,7 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +19,7 @@ import (
 	vertexauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/vertex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -103,7 +104,7 @@ func convertImagenToGeminiResponse(data []byte, model string) []byte {
 		},
 	}
 
-	result, err := json.Marshal(response)
+	result, err := json.Marshal(response, jsoncompat.Encode)
 	if err != nil {
 		return data
 	}
@@ -170,7 +171,7 @@ func convertToImagenRequest(payload []byte) ([]byte, error) {
 		imagenReq["instances"].([]map[string]any)[0]["negativePrompt"] = negativePrompt.String()
 	}
 
-	return json.Marshal(imagenReq)
+	return json.Marshal(imagenReq, jsoncompat.Encode)
 }
 
 // GeminiVertexExecutor sends requests to Vertex AI Gemini endpoints using service account credentials.
@@ -1483,7 +1484,7 @@ func vertexCreds(a *cliproxyauth.Auth) (projectID, location string, serviceAccou
 	if errNorm != nil {
 		return "", "", nil, fmt.Errorf("vertex executor: %w", errNorm)
 	}
-	saJSON, errMarshal := json.Marshal(normalized)
+	saJSON, errMarshal := json.Marshal(normalized, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", "", nil, fmt.Errorf("vertex executor: marshal service_account failed: %w", errMarshal)
 	}

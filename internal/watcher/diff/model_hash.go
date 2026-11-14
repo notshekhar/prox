@@ -3,11 +3,12 @@ package diff
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"sort"
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
@@ -53,13 +54,13 @@ func ComputeExcludedModelsHash(excluded []string) string {
 		return ""
 	}
 	sort.Strings(normalized)
-	data, _ := json.Marshal(normalized)
+	data, _ := json.Marshal(normalized, jsoncompat.Encode)
 	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
 }
 
 func thinkingHashSuffix(support *registry.ThinkingSupport) string {
-	data, _ := json.Marshal(support)
+	data, _ := json.Marshal(support, jsoncompat.Encode)
 	return "|thinking=" + string(data)
 }
 

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"

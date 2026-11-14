@@ -5,7 +5,8 @@ package executor
 // Do not refactor these helpers to call the production implementations.
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
@@ -68,7 +69,7 @@ func legacyNormalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byt
 			continue
 		}
 		var calls, responses []functionRef
-		var responseParts, otherParts []json.RawMessage
+		var responseParts, otherParts []jsontext.Value
 		hasOtherPart := false
 		parts.ForEach(func(_, part ojson.Result) bool {
 			switch {
@@ -76,10 +77,10 @@ func legacyNormalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byt
 				calls = append(calls, functionRef{id: part.Get("functionCall.id").String(), name: part.Get("functionCall.name").String()})
 			case part.Get("functionResponse").Exists():
 				responses = append(responses, functionRef{id: part.Get("functionResponse.id").String(), name: part.Get("functionResponse.name").String()})
-				responseParts = append(responseParts, json.RawMessage(part.Raw))
+				responseParts = append(responseParts, jsontext.Value(part.Raw))
 			default:
 				hasOtherPart = true
-				otherParts = append(otherParts, json.RawMessage(part.Raw))
+				otherParts = append(otherParts, jsontext.Value(part.Raw))
 			}
 			return true
 		})
@@ -99,7 +100,7 @@ func legacyNormalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byt
 		}
 
 		if len(pending) > 0 && len(responses) > 0 {
-			ordered := make([]json.RawMessage, 0, len(responseParts))
+			ordered := make([]jsontext.Value, 0, len(responseParts))
 			used := make([]bool, len(responses))
 			for _, call := range pending {
 				for responseIndex, response := range responses {

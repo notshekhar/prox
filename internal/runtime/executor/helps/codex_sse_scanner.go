@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"strconv"
 	"strings"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -203,7 +205,7 @@ func codexSSEClosed(joined []byte) bool {
 	if len(trimmed) == 0 || (trimmed[len(trimmed)-1] != '}' && trimmed[len(trimmed)-1] != ']') {
 		return false
 	}
-	return json.Valid(joined)
+	return jsontext.Value(joined).IsValid(jsoncompat.Decode)
 }
 
 // codexSSEIncompleteJSON reports whether one data line's value starts a JSON object or array that
@@ -279,13 +281,13 @@ func (s *CodexSSEScanner) assemble(held []byte, lines int, joined []byte) []byte
 		s.diagnose(held, lines, bytes.TrimSpace(joined))
 		return held
 	}
-	if json.Valid(joined) {
-		var compacted bytes.Buffer
-		compacted.Grow(len(codexSSEDataPrefix) + 1 + len(joined))
-		compacted.Write(codexSSEDataPrefix)
-		compacted.WriteByte(' ')
-		if errCompact := json.Compact(&compacted, joined); errCompact == nil {
-			return compacted.Bytes()
+	if jsontext.Value(joined).IsValid(jsoncompat.Decode) {
+		compacted := make([]byte, 0, len(codexSSEDataPrefix)+1+len(joined))
+		compacted = append(append(compacted, codexSSEDataPrefix...), ' ')
+		// The options jsontext.Value.Compact uses: strings and numbers stay byte-for-byte.
+		compacted, errCompact := jsontext.AppendFormat(compacted, joined, jsontext.AllowDuplicateNames(true), jsontext.AllowInvalidUTF8(true), jsontext.PreserveRawStrings(true))
+		if errCompact == nil {
+			return compacted
 		}
 	}
 	s.diagnose(held, lines, joined)
@@ -297,14 +299,14 @@ func (s *CodexSSEScanner) assemble(held []byte, lines int, joined []byte) []byte
 // lines carried it, each line's length and whether it is valid on its own, and where the joined
 // data fails to parse. It never logs data bytes.
 func (s *CodexSSEScanner) diagnose(held []byte, lines int, data []byte) {
-	if s.warned || len(data) == 0 || bytes.Equal(data, []byte("[DONE]")) || json.Valid(data) {
+	if s.warned || len(data) == 0 || bytes.Equal(data, []byte("[DONE]")) || jsontext.Value(data).IsValid(jsoncompat.Decode) {
 		return
 	}
 	s.warned = true
 	offset := int64(-1)
-	var syntaxErr *json.SyntaxError
-	if errors.As(json.Unmarshal(data, new(json.RawMessage)), &syntaxErr) {
-		offset = syntaxErr.Offset
+	var syntaxErr *jsontext.SyntacticError
+	if errors.As(json.Unmarshal(data, new(jsontext.Value), jsoncompat.Decode), &syntaxErr) {
+		offset = syntaxErr.ByteOffset
 	}
 	shown := min(lines, codexSSEDiagnosticLines)
 	lengths := make([]string, shown)
@@ -314,7 +316,7 @@ func (s *CodexSSEScanner) diagnose(held []byte, lines int, data []byte) {
 		line, held, _ = bytes.Cut(held, []byte("\n"))
 		value := bytes.TrimSpace(line[len(codexSSEDataPrefix):])
 		lengths[i] = strconv.Itoa(len(value))
-		valid[i] = strconv.FormatBool(json.Valid(value))
+		valid[i] = strconv.FormatBool(jsontext.Value(value).IsValid(jsoncompat.Decode))
 	}
 	more := ""
 	if lines > shown {

@@ -2,15 +2,17 @@ package management
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
-func parseCredentialWeightPatch(raw json.RawMessage) (*int, error) {
+func parseCredentialWeightPatch(raw jsontext.Value) (*int, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("weight is missing")
 	}
@@ -18,8 +20,7 @@ func parseCredentialWeightPatch(raw json.RawMessage) (*int, error) {
 		return nil, nil
 	}
 	var weight int
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	if errDecode := decoder.Decode(&weight); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(raw)), &weight, jsoncompat.Decode); errDecode != nil {
 		return nil, fmt.Errorf("weight must be an integer")
 	}
 	if errValidate := config.ValidateCredentialWeight(&weight); errValidate != nil {
@@ -55,11 +56,11 @@ func (h *Handler) putStringList(c *gin.Context, set func([]string), after func()
 		return
 	}
 	var arr []string
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []string `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -179,11 +180,11 @@ func (h *Handler) PutGeminiKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.GeminiKey
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []config.GeminiKey `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -204,13 +205,13 @@ func (h *Handler) PatchGeminiKey(c *gin.Context) {
 	type geminiKeyPatch struct {
 		APIKey              *string                          `json:"api-key"`
 		Priority            *int                             `json:"priority"`
-		Weight              json.RawMessage                  `json:"weight"`
+		Weight              jsontext.Value                   `json:"weight"`
 		Prefix              *string                          `json:"prefix"`
 		BaseURL             *string                          `json:"base-url"`
 		ProxyURL            *string                          `json:"proxy-url"`
 		Headers             *map[string]string               `json:"headers"`
 		ExcludedModels      *[]string                        `json:"excluded-models"`
-		DisableCooling      json.RawMessage                  `json:"disable-cooling"`
+		DisableCooling      jsontext.Value                   `json:"disable-cooling"`
 		RequestRetry        *int                             `json:"request-retry"`
 		RequestScopedErrors *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
 	}
@@ -383,12 +384,12 @@ func (h *Handler) PutInteractionsKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.GeminiKey
-	errUnmarshal := json.Unmarshal(data, &arr)
+	errUnmarshal := json.Unmarshal(data, &arr, jsoncompat.Decode)
 	if errUnmarshal != nil {
 		var obj struct {
 			Items []config.GeminiKey `json:"items"`
 		}
-		errObjUnmarshal := json.Unmarshal(data, &obj)
+		errObjUnmarshal := json.Unmarshal(data, &obj, jsoncompat.Decode)
 		if errObjUnmarshal != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
@@ -410,13 +411,13 @@ func (h *Handler) PatchInteractionsKey(c *gin.Context) {
 	type geminiKeyPatch struct {
 		APIKey              *string                          `json:"api-key"`
 		Priority            *int                             `json:"priority"`
-		Weight              json.RawMessage                  `json:"weight"`
+		Weight              jsontext.Value                   `json:"weight"`
 		Prefix              *string                          `json:"prefix"`
 		BaseURL             *string                          `json:"base-url"`
 		ProxyURL            *string                          `json:"proxy-url"`
 		Headers             *map[string]string               `json:"headers"`
 		ExcludedModels      *[]string                        `json:"excluded-models"`
-		DisableCooling      json.RawMessage                  `json:"disable-cooling"`
+		DisableCooling      jsontext.Value                   `json:"disable-cooling"`
 		RequestRetry        *int                             `json:"request-retry"`
 		RequestScopedErrors *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
 	}
@@ -614,11 +615,11 @@ func (h *Handler) PutClaudeKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.ClaudeKey
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []config.ClaudeKey `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -653,7 +654,7 @@ func (h *Handler) PatchClaudeKey(c *gin.Context) {
 		APIKey                  *string                          `json:"api-key"`
 		Priority                *int                             `json:"priority"`
 		FingerprintProfile      *string                          `json:"fingerprint-profile"`
-		Weight                  json.RawMessage                  `json:"weight"`
+		Weight                  jsontext.Value                   `json:"weight"`
 		Prefix                  *string                          `json:"prefix"`
 		BaseURL                 *string                          `json:"base-url"`
 		ProxyURL                *string                          `json:"proxy-url"`
@@ -661,10 +662,10 @@ func (h *Handler) PatchClaudeKey(c *gin.Context) {
 		Headers                 *map[string]string               `json:"headers"`
 		ExcludedModels          *[]string                        `json:"excluded-models"`
 		RebuildMidSystemMessage *bool                            `json:"rebuild-mid-system-message"`
-		DisableCooling          json.RawMessage                  `json:"disable-cooling"`
+		DisableCooling          jsontext.Value                   `json:"disable-cooling"`
 		RequestRetry            *int                             `json:"request-retry"`
 		RequestScopedErrors     *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
-		Cloak                   json.RawMessage                  `json:"cloak"`
+		Cloak                   jsontext.Value                   `json:"cloak"`
 	}
 	var body struct {
 		Index *int            `json:"index"`
@@ -764,7 +765,7 @@ func (h *Handler) PatchClaudeKey(c *gin.Context) {
 				CacheUserID    *bool     `json:"cache-user-id"`
 			}
 			var p cloakPatch
-			if errCloak := json.Unmarshal(body.Value.Cloak, &p); errCloak != nil {
+			if errCloak := json.Unmarshal(body.Value.Cloak, &p, jsoncompat.Decode); errCloak != nil {
 				c.JSON(400, gin.H{"error": "invalid cloak config"})
 				return
 			}
@@ -873,11 +874,11 @@ func (h *Handler) PutOpenAICompat(c *gin.Context) {
 		return
 	}
 	var arr []config.OpenAICompatibility
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []config.OpenAICompatibility `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -909,7 +910,7 @@ func (h *Handler) PatchOpenAICompat(c *gin.Context) {
 		Priority              *int                                `json:"priority"`
 		Prefix                *string                             `json:"prefix"`
 		Disabled              *bool                               `json:"disabled"`
-		DisableCooling        json.RawMessage                     `json:"disable-cooling"`
+		DisableCooling        jsontext.Value                      `json:"disable-cooling"`
 		BaseURL               *string                             `json:"base-url"`
 		APIKeyEntries         *[]config.OpenAICompatibilityAPIKey `json:"api-key-entries"`
 		Models                *[]config.OpenAICompatibilityModel  `json:"models"`
@@ -1043,11 +1044,11 @@ func (h *Handler) PutVertexCompatKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.VertexCompatKey
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []config.VertexCompatKey `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1073,14 +1074,14 @@ func (h *Handler) PatchVertexCompatKey(c *gin.Context) {
 	type vertexCompatPatch struct {
 		APIKey         *string                     `json:"api-key"`
 		Priority       *int                        `json:"priority"`
-		Weight         json.RawMessage             `json:"weight"`
+		Weight         jsontext.Value              `json:"weight"`
 		Prefix         *string                     `json:"prefix"`
 		BaseURL        *string                     `json:"base-url"`
 		ProxyURL       *string                     `json:"proxy-url"`
 		Headers        *map[string]string          `json:"headers"`
 		Models         *[]config.VertexCompatModel `json:"models"`
 		ExcludedModels *[]string                   `json:"excluded-models"`
-		DisableCooling json.RawMessage             `json:"disable-cooling"`
+		DisableCooling jsontext.Value              `json:"disable-cooling"`
 		RequestRetry   *int                        `json:"request-retry"`
 	}
 	var body struct {
@@ -1232,11 +1233,11 @@ func (h *Handler) PutOAuthExcludedModels(c *gin.Context) {
 		return
 	}
 	var entries map[string][]string
-	if err = json.Unmarshal(data, &entries); err != nil {
+	if err = json.Unmarshal(data, &entries, jsoncompat.Decode); err != nil {
 		var wrapper struct {
 			Items map[string][]string `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &wrapper); err2 != nil {
+		if err2 := json.Unmarshal(data, &wrapper, jsoncompat.Decode); err2 != nil {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1323,11 +1324,11 @@ func (h *Handler) PutOAuthModelAlias(c *gin.Context) {
 		return
 	}
 	var entries map[string][]config.OAuthModelAlias
-	if err = json.Unmarshal(data, &entries); err != nil {
+	if err = json.Unmarshal(data, &entries, jsoncompat.Decode); err != nil {
 		var wrapper struct {
 			Items map[string][]config.OAuthModelAlias `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &wrapper); err2 != nil {
+		if err2 := json.Unmarshal(data, &wrapper, jsoncompat.Decode); err2 != nil {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1426,11 +1427,11 @@ func (h *Handler) PutOAuthRequestScopedErrors(c *gin.Context) {
 		return
 	}
 	var entries map[string][]config.RequestScopedErrorRule
-	if err = json.Unmarshal(data, &entries); err != nil {
+	if err = json.Unmarshal(data, &entries, jsoncompat.Decode); err != nil {
 		var wrapper struct {
 			Items map[string][]config.RequestScopedErrorRule `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &wrapper); err2 != nil {
+		if err2 := json.Unmarshal(data, &wrapper, jsoncompat.Decode); err2 != nil {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1528,11 +1529,11 @@ func (h *Handler) PutCodexKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.CodexKey
-	if err = json.Unmarshal(data, &arr); err != nil {
+	if err = json.Unmarshal(data, &arr, jsoncompat.Decode); err != nil {
 		var obj struct {
 			Items []config.CodexKey `json:"items"`
 		}
-		if err2 := json.Unmarshal(data, &obj); err2 != nil || len(obj.Items) == 0 {
+		if err2 := json.Unmarshal(data, &obj, jsoncompat.Decode); err2 != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1561,7 +1562,7 @@ func (h *Handler) PatchCodexKey(c *gin.Context) {
 	type codexKeyPatch struct {
 		APIKey               *string                          `json:"api-key"`
 		Priority             *int                             `json:"priority"`
-		Weight               json.RawMessage                  `json:"weight"`
+		Weight               jsontext.Value                   `json:"weight"`
 		Prefix               *string                          `json:"prefix"`
 		BaseURL              *string                          `json:"base-url"`
 		ProxyURL             *string                          `json:"proxy-url"`
@@ -1569,8 +1570,8 @@ func (h *Handler) PatchCodexKey(c *gin.Context) {
 		Models               *[]config.CodexModel             `json:"models"`
 		Headers              *map[string]string               `json:"headers"`
 		ExcludedModels       *[]string                        `json:"excluded-models"`
-		DisableCooling       json.RawMessage                  `json:"disable-cooling"`
-		DisableCodexCloaking json.RawMessage                  `json:"disable-codex-cloaking"`
+		DisableCooling       jsontext.Value                   `json:"disable-cooling"`
+		DisableCodexCloaking jsontext.Value                   `json:"disable-codex-cloaking"`
 		RequestRetry         *int                             `json:"request-retry"`
 		RequestScopedErrors  *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
 	}
@@ -1730,11 +1731,11 @@ func (h *Handler) PutXAIKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.XAIKey
-	if errUnmarshal := json.Unmarshal(data, &arr); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &arr, jsoncompat.Decode); errUnmarshal != nil {
 		var obj struct {
 			Items []config.XAIKey `json:"items"`
 		}
-		if errObject := json.Unmarshal(data, &obj); errObject != nil || len(obj.Items) == 0 {
+		if errObject := json.Unmarshal(data, &obj, jsoncompat.Decode); errObject != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1763,7 +1764,7 @@ func (h *Handler) PatchXAIKey(c *gin.Context) {
 	type xaiKeyPatch struct {
 		APIKey              *string                          `json:"api-key"`
 		Priority            *int                             `json:"priority"`
-		Weight              json.RawMessage                  `json:"weight"`
+		Weight              jsontext.Value                   `json:"weight"`
 		Prefix              *string                          `json:"prefix"`
 		BaseURL             *string                          `json:"base-url"`
 		Websockets          *bool                            `json:"websockets"`
@@ -1771,7 +1772,7 @@ func (h *Handler) PatchXAIKey(c *gin.Context) {
 		Models              *[]config.XAIModel               `json:"models"`
 		Headers             *map[string]string               `json:"headers"`
 		ExcludedModels      *[]string                        `json:"excluded-models"`
-		DisableCooling      json.RawMessage                  `json:"disable-cooling"`
+		DisableCooling      jsontext.Value                   `json:"disable-cooling"`
 		RequestRetry        *int                             `json:"request-retry"`
 		RequestScopedErrors *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
 	}
@@ -1928,11 +1929,11 @@ func (h *Handler) PutMetaKeys(c *gin.Context) {
 		return
 	}
 	var arr []config.MetaKey
-	if errUnmarshal := json.Unmarshal(data, &arr); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &arr, jsoncompat.Decode); errUnmarshal != nil {
 		var obj struct {
 			Items []config.MetaKey `json:"items"`
 		}
-		if errObject := json.Unmarshal(data, &obj); errObject != nil || len(obj.Items) == 0 {
+		if errObject := json.Unmarshal(data, &obj, jsoncompat.Decode); errObject != nil || len(obj.Items) == 0 {
 			c.JSON(400, gin.H{"error": "invalid body"})
 			return
 		}
@@ -1961,14 +1962,14 @@ func (h *Handler) PatchMetaKey(c *gin.Context) {
 	type metaKeyPatch struct {
 		APIKey              *string                          `json:"api-key"`
 		Priority            *int                             `json:"priority"`
-		Weight              json.RawMessage                  `json:"weight"`
+		Weight              jsontext.Value                   `json:"weight"`
 		Prefix              *string                          `json:"prefix"`
 		BaseURL             *string                          `json:"base-url"`
 		ProxyURL            *string                          `json:"proxy-url"`
 		Models              *[]config.CodexModel             `json:"models"`
 		Headers             *map[string]string               `json:"headers"`
 		ExcludedModels      *[]string                        `json:"excluded-models"`
-		DisableCooling      json.RawMessage                  `json:"disable-cooling"`
+		DisableCooling      jsontext.Value                   `json:"disable-cooling"`
 		RequestRetry        *int                             `json:"request-retry"`
 		RequestScopedErrors *[]config.RequestScopedErrorRule `json:"request-scoped-errors"`
 	}
@@ -2107,7 +2108,7 @@ func (h *Handler) DeleteMetaKey(c *gin.Context) {
 	c.JSON(400, gin.H{"error": "missing api-key or index"})
 }
 
-func applyDisableCoolingPatch(c *gin.Context, raw json.RawMessage, target **bool) bool {
+func applyDisableCoolingPatch(c *gin.Context, raw jsontext.Value, target **bool) bool {
 	if len(raw) == 0 {
 		return true
 	}
@@ -2116,7 +2117,7 @@ func applyDisableCoolingPatch(c *gin.Context, raw json.RawMessage, target **bool
 		return true
 	}
 	var value bool
-	if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal != nil {
 		c.JSON(400, gin.H{"error": "disable-cooling must be a boolean or null"})
 		return false
 	}
@@ -2124,7 +2125,7 @@ func applyDisableCoolingPatch(c *gin.Context, raw json.RawMessage, target **bool
 	return true
 }
 
-func applyDisableCodexCloakingPatch(c *gin.Context, raw json.RawMessage, target **bool) bool {
+func applyDisableCodexCloakingPatch(c *gin.Context, raw jsontext.Value, target **bool) bool {
 	if len(raw) == 0 {
 		return true
 	}
@@ -2133,7 +2134,7 @@ func applyDisableCodexCloakingPatch(c *gin.Context, raw json.RawMessage, target 
 		return true
 	}
 	var value bool
-	if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal != nil {
 		c.JSON(400, gin.H{"error": "disable-codex-cloaking must be a boolean or null"})
 		return false
 	}

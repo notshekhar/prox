@@ -2,7 +2,8 @@ package responses
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -17,8 +18,8 @@ import (
 // translator at origin/dev d739485df, before Codex tool_search support. With
 // upstream.claude.tool-search off the translator must reproduce it exactly.
 type toolSearchGoldenCase struct {
-	Name    string          `json:"name"`
-	Request json.RawMessage `json:"request"`
+	Name    string         `json:"name"`
+	Request jsontext.Value `json:"request"`
 }
 
 type toolSearchGoldenFixtures struct {

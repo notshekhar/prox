@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -97,7 +98,7 @@ func requestCodexTokenState(t *testing.T, router http.Handler) string {
 	var payload struct {
 		State string `json:"state"`
 	}
-	if errDecode := json.Unmarshal(w.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(w.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode codex auth URL response: %v", errDecode)
 	}
 	if payload.State == "" {
@@ -131,7 +132,7 @@ func makeOAuthTestJWT(planType string) string {
 		"email":                       "oauth-user@example.test",
 		"https://api.openai.com/auth": authInfo,
 	}
-	payloadBytes, _ := json.Marshal(claimsMap)
+	payloadBytes, _ := json.Marshal(claimsMap, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	return header + "." + claims + "."
 }
@@ -318,7 +319,7 @@ func TestRequestCodexTokenLoginDoesNotRaceConfigV8Save(t *testing.T) {
 		var payload struct {
 			State string `json:"state"`
 		}
-		if errDecode := json.Unmarshal(w.Body.Bytes(), &payload); errDecode != nil {
+		if errDecode := json.Unmarshal(w.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 			t.Fatalf("decode %s response: %v", endpoint, errDecode)
 		}
 		saveRetry(`1`)

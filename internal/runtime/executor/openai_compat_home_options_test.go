@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	cpaauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
@@ -170,7 +171,7 @@ func TestHomeCompatOptionsUseSelectedRoute(t *testing.T) {
 					if !tc.withoutModelInfo {
 						dispatch["model_info"] = map[string]any{"id": "upstream", "user_defined": true, "thinking": map[string]any{"levels": []string{"high"}}}
 					}
-					wire, errMarshal := json.Marshal(dispatch)
+					wire, errMarshal := json.Marshal(dispatch, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}

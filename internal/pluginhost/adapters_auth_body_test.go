@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -182,14 +183,14 @@ func TestFrontendAuthRequestDecodedBodyOverRPC(t *testing.T) {
 	_, _ = adapter.Authenticate(context.Background(), pluginapi.FrontendAuthRequest{Body: []byte("raw"), DecodedBody: []byte("decoded")})
 	raw := client.requests[pluginabi.MethodFrontendAuthAuthenticate]
 	var got pluginapi.FrontendAuthRequest
-	if errUnmarshal := json.Unmarshal(raw, &got); errUnmarshal != nil || string(got.Body) != "raw" || string(got.DecodedBody) != "decoded" {
+	if errUnmarshal := json.Unmarshal(raw, &got, jsoncompat.Decode); errUnmarshal != nil || string(got.Body) != "raw" || string(got.DecodedBody) != "decoded" {
 		t.Fatalf("request %s decoded to %+v, err %v", raw, got, errUnmarshal)
 	}
 	var old struct {
 		Method string
 		Body   []byte
 	}
-	if errUnmarshal := json.Unmarshal(raw, &old); errUnmarshal != nil || string(old.Body) != "raw" {
+	if errUnmarshal := json.Unmarshal(raw, &old, jsoncompat.Decode); errUnmarshal != nil || string(old.Body) != "raw" {
 		t.Fatalf("old plugin type failed on %s: %v", raw, errUnmarshal)
 	}
 }

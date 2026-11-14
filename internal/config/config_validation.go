@@ -2,8 +2,8 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
-
+	"encoding/json/jsontext"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -34,7 +34,7 @@ func sanitizePayloadRawRules(rules []PayloadRule, section string) []PayloadRule 
 				continue
 			}
 			trimmed := bytes.TrimSpace(raw)
-			if len(trimmed) == 0 || !json.Valid(trimmed) {
+			if len(trimmed) == 0 || !jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 				log.WithFields(log.Fields{
 					"section":    section,
 					"rule_index": i + 1,

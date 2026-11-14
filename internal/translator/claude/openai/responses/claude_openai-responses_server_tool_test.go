@@ -3,11 +3,13 @@ package responses
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -221,12 +223,12 @@ func TestRoundTripPreservesReachableClaudeBlocks(t *testing.T) {
 			completed = data
 		}
 	}
-	var items []json.RawMessage
+	var items []jsontext.Value
 	completed.Get("response.output").ForEach(func(_, v ojson.Result) bool {
-		items = append(items, json.RawMessage(v.Raw))
+		items = append(items, jsontext.Value(v.Raw))
 		return true
 	})
-	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": items})
+	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": items}, jsoncompat.Encode)
 	out, _ := ConvertOpenAIResponsesRequestToClaude("claude-test", req, false)
 
 	got := claudeAssistantBlockTypes(t, out)
@@ -447,7 +449,7 @@ func TestClaudeWebSearchErrorResultSurvivesRoundTrip(t *testing.T) {
 	}
 
 	// Replay back to Claude
-	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": []json.RawMessage{json.RawMessage(outputItems[0].Raw)}})
+	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": []jsontext.Value{jsontext.Value(outputItems[0].Raw)}}, jsoncompat.Encode)
 	replayed, _ := ConvertOpenAIResponsesRequestToClaude("claude-test", req, false)
 	replayedBlocks := ojson.GetBytesNoCopy(replayed, "messages.0.content")
 	if got := replayedBlocks.Get("1.content.0.type").String(); got != "web_search_tool_result_error" {
@@ -524,11 +526,11 @@ func TestTextSearchTextOrderPreservedInStreamingAndReplay(t *testing.T) {
 
 	// Replay back to Claude and verify the block sequence matches original Claude order:
 	// text -> server_tool_use -> web_search_tool_result -> text
-	var rawItems []json.RawMessage
+	var rawItems []jsontext.Value
 	for _, it := range items {
-		rawItems = append(rawItems, json.RawMessage(it.Raw))
+		rawItems = append(rawItems, jsontext.Value(it.Raw))
 	}
-	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": rawItems})
+	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": rawItems}, jsoncompat.Encode)
 	replayed, _ := ConvertOpenAIResponsesRequestToClaude("claude-test", req, false)
 	replayedBlocks := claudeAssistantBlockTypes(t, replayed)
 	wantBlocks := []string{"text", "server_tool_use", "web_search_tool_result", "text"}

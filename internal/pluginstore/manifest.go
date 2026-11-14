@@ -7,7 +7,7 @@ import (
 )
 
 type Manifest struct {
-	SchemaVersion int                     `yaml:"schema-version,omitempty" json:"schema_version,omitempty"`
+	SchemaVersion int                     `yaml:"schema-version,omitempty" json:"schema_version,omitzero"`
 	ID            string                  `yaml:"id,omitempty" json:"id,omitempty"`
 	Name          string                  `yaml:"name,omitempty" json:"name,omitempty"`
 	Description   string                  `yaml:"description,omitempty" json:"description,omitempty"`
@@ -23,7 +23,7 @@ type Manifest struct {
 	SourceID      string                  `yaml:"source-id,omitempty" json:"source_id,omitempty"`
 	SourceName    string                  `yaml:"source-name,omitempty" json:"source_name,omitempty"`
 	SourceURL     string                  `yaml:"source-url,omitempty" json:"source_url,omitempty"`
-	Install       InstallPlan             `yaml:"install,omitempty" json:"install,omitempty"`
+	Install       InstallPlan             `yaml:"install,omitempty" json:"install"`
 }
 
 func ManifestFromRelease(source Source, plugin Plugin, release Release) (Manifest, error) {

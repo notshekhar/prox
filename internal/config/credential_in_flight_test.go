@@ -2,9 +2,8 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
-	"io"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"math"
 	"os"
 	"path/filepath"
@@ -153,34 +152,20 @@ func TestCredentialInFlightConfigRejectsUnsafeBounds(t *testing.T) {
 
 type credentialInFlightConfigFixture struct {
 	Config     CredentialInFlightConfig `json:"config"`
-	ConfigJSON json.RawMessage          `json:"-"`
+	ConfigJSON jsontext.Value           `json:"-"`
 }
 
 func decodeCredentialInFlightConfigFixture(raw []byte) (credentialInFlightConfigFixture, error) {
 	var fixture credentialInFlightConfigFixture
 	var document struct {
-		Config   json.RawMessage `json:"config"`
-		Part     json.RawMessage `json:"part"`
-		Overflow json.RawMessage `json:"overflow"`
+		Config   jsontext.Value `json:"config"`
+		Part     jsontext.Value `json:"part"`
+		Overflow jsontext.Value `json:"overflow"`
 	}
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if errDecode := decoder.Decode(&document); errDecode != nil {
+	if errDecode := json.Unmarshal(raw, &document, json.RejectUnknownMembers(true)); errDecode != nil {
 		return fixture, errDecode
 	}
-	if errDecode := decoder.Decode(&struct{}{}); errDecode == nil {
-		return fixture, errors.New("unexpected trailing JSON")
-	} else if errDecode != io.EOF {
-		return fixture, errDecode
-	}
-	decoder = json.NewDecoder(bytes.NewReader(document.Config))
-	decoder.DisallowUnknownFields()
-	if errDecode := decoder.Decode(&fixture.Config); errDecode != nil {
-		return fixture, errDecode
-	}
-	if errDecode := decoder.Decode(&struct{}{}); errDecode == nil {
-		return fixture, errors.New("unexpected trailing config JSON")
-	} else if errDecode != io.EOF {
+	if errDecode := json.Unmarshal(document.Config, &fixture.Config, json.RejectUnknownMembers(true)); errDecode != nil {
 		return fixture, errDecode
 	}
 	fixture.ConfigJSON = document.Config
@@ -220,9 +205,9 @@ func assertOrderedJSONFields(t *testing.T, structType reflect.Type, want []jsonF
 	}
 }
 
-func assertRequiredJSONKeys(t *testing.T, raw json.RawMessage, required []string) {
+func assertRequiredJSONKeys(t *testing.T, raw jsontext.Value, required []string) {
 	t.Helper()
-	var fields map[string]json.RawMessage
+	var fields map[string]jsontext.Value
 	if errDecode := json.Unmarshal(raw, &fields); errDecode != nil {
 		t.Fatalf("json.Unmarshal() error = %v", errDecode)
 	}

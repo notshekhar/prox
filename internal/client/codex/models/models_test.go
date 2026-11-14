@@ -2,10 +2,11 @@ package models
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -628,7 +629,7 @@ func TestCodexClientModelsResponseDoesNotInheritUnsupportedReasoningLevels(t *te
 			}
 			model := models[0]
 			if len(tt.wantEfforts) == 0 {
-				encodedLevels, errMarshal := json.Marshal(model["supported_reasoning_levels"])
+				encodedLevels, errMarshal := json.Marshal(model["supported_reasoning_levels"], jsoncompat.Encode)
 				if errMarshal != nil {
 					t.Fatalf("marshal supported_reasoning_levels: %v", errMarshal)
 				}
@@ -678,7 +679,7 @@ func TestSanitizeCodexClientReasoningMetadataPreservesEmptyArray(t *testing.T) {
 			}
 			sanitizeCodexClientReasoningMetadata(entry, tt.version)
 
-			encodedEntry, errMarshal := json.Marshal(entry)
+			encodedEntry, errMarshal := json.Marshal(entry, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal model metadata: %v", errMarshal)
 			}

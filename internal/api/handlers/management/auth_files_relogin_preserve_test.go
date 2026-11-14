@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +16,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -85,7 +86,7 @@ func TestSaveTokenRecord_PreservesExistingAuthFileSettings(t *testing.T) {
 		"thinking":      map[string]any{"enabled": true},
 		"priority":      float64(2),
 	}
-	raw, errMarshal := json.Marshal(initialContent)
+	raw, errMarshal := json.Marshal(initialContent, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal initial error: %v", errMarshal)
 	}
@@ -193,7 +194,7 @@ func TestSaveTokenRecord_MigratesMatchingLegacyClaudeCredential(t *testing.T) {
 		"disabled":          true,
 		"weight":            float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy credential: %v", errMarshal)
 	}
@@ -273,7 +274,7 @@ func TestSaveTokenRecord_MigratesMatchingLegacyXAICredential(t *testing.T) {
 		"disabled":      true,
 		"weight":        float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy credential: %v", errMarshal)
 	}
@@ -346,7 +347,7 @@ func TestSaveTokenRecord_ReloginKeepsCanonicalXAICredential(t *testing.T) {
 		"refresh_token": "old-refresh",
 		"prefix":        "team",
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal canonical credential: %v", errMarshal)
 	}
@@ -407,7 +408,7 @@ func TestSaveTokenRecord_SubjectOnlyReloginKeepsEmailCredential(t *testing.T) {
 		"prefix":        "team",
 		"weight":        float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal canonical credential: %v", errMarshal)
 	}
@@ -474,7 +475,7 @@ func TestPatchAuthFileFields_DeletesPluginFields(t *testing.T) {
 		"weight":  float64(10),
 		"headers": map[string]any{"X-Header": "val"},
 	}
-	raw, errMarshal := json.Marshal(initialContent)
+	raw, errMarshal := json.Marshal(initialContent, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal error: %v", errMarshal)
 	}

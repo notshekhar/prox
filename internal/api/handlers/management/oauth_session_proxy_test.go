@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/antigravity"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -59,7 +60,7 @@ func (s *proxyTestCodexOAuthService) ExchangeCodeForTokens(ctx context.Context, 
 	var payload struct {
 		Email string `json:"email"`
 	}
-	_ = json.Unmarshal(body, &payload)
+	_ = json.Unmarshal(body, &payload, jsoncompat.Decode)
 	if payload.Email == "" {
 		payload.Email = "codex-" + code + "@example.test"
 	}
@@ -227,7 +228,7 @@ func TestStartOAuthV8SessionScopedProxyAndPersistence(t *testing.T) {
 		State string `json:"state"`
 		URL   string `json:"url"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &startResp); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &startResp, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode start response: %v", errDecode)
 	}
 	if startResp.State == "" || startResp.URL == "" {
@@ -298,7 +299,7 @@ func TestStartOAuthV8RejectsInvalidOrQueryProxyURL(t *testing.T) {
 		body, _ := json.Marshal(map[string]any{
 			"provider":  "codex",
 			"proxy_url": badProxy,
-		})
+		}, jsoncompat.Encode)
 		req := httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(body)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -384,7 +385,7 @@ func TestStartOAuthV8ProxyFailuresDoNotFallbackDirectAndRedactCredentials(t *tes
 			body, _ := json.Marshal(map[string]string{
 				"provider":  "codex",
 				"proxy_url": tc.proxyURL,
-			})
+			}, jsoncompat.Encode)
 			req := httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(body)))
 			req.Header.Set("Content-Type", "application/json")
 			rec := httptest.NewRecorder()
@@ -395,7 +396,7 @@ func TestStartOAuthV8ProxyFailuresDoNotFallbackDirectAndRedactCredentials(t *tes
 			var startResp struct {
 				State string `json:"state"`
 			}
-			_ = json.Unmarshal(rec.Body.Bytes(), &startResp)
+			_ = json.Unmarshal(rec.Body.Bytes(), &startResp, jsoncompat.Decode)
 			t.Cleanup(func() { CancelOAuthSession(startResp.State) })
 
 			if _, errWrite := WriteOAuthCallbackFileForPendingSession(authDir, "codex", startResp.State, "code-fail", ""); errWrite != nil {
@@ -464,7 +465,7 @@ func TestStartOAuthV8ParallelSessionsWithDifferentProxiesOutOfOrderCallbacks(t *
 	router.GET("/status", h.GetAuthStatus)
 
 	startWithProxy := func(proxyURL string) string {
-		body, _ := json.Marshal(map[string]string{"provider": "codex", "proxy_url": proxyURL})
+		body, _ := json.Marshal(map[string]string{"provider": "codex", "proxy_url": proxyURL}, jsoncompat.Encode)
 		req := httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(body)))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
@@ -475,7 +476,7 @@ func TestStartOAuthV8ParallelSessionsWithDifferentProxiesOutOfOrderCallbacks(t *
 		var resp struct {
 			State string `json:"state"`
 		}
-		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+		_ = json.Unmarshal(rec.Body.Bytes(), &resp, jsoncompat.Decode)
 		t.Cleanup(func() { CancelOAuthSession(resp.State) })
 		return resp.State
 	}
@@ -553,7 +554,7 @@ func (s *proxyTestAntigravityOAuthService) ExchangeCodeForTokens(ctx context.Con
 	}
 	defer func() { _ = resp.Body.Close() }()
 	var token antigravity.TokenResponse
-	if errDecode := json.NewDecoder(resp.Body).Decode(&token); errDecode != nil {
+	if errDecode := json.UnmarshalRead(resp.Body, &token, jsoncompat.Decode); errDecode != nil {
 		return nil, errDecode
 	}
 	return &token, nil
@@ -573,7 +574,7 @@ func (s *proxyTestAntigravityOAuthService) FetchUserInfo(ctx context.Context, ac
 	var info struct {
 		Email string `json:"email"`
 	}
-	if errDecode := json.NewDecoder(resp.Body).Decode(&info); errDecode != nil {
+	if errDecode := json.UnmarshalRead(resp.Body, &info, jsoncompat.Decode); errDecode != nil {
 		return "", errDecode
 	}
 	return info.Email, nil
@@ -593,7 +594,7 @@ func (s *proxyTestAntigravityOAuthService) FetchProjectID(ctx context.Context, a
 	var proj struct {
 		ProjectID string `json:"project_id"`
 	}
-	if errDecode := json.NewDecoder(resp.Body).Decode(&proj); errDecode != nil {
+	if errDecode := json.UnmarshalRead(resp.Body, &proj, jsoncompat.Decode); errDecode != nil {
 		return "", errDecode
 	}
 	return proj.ProjectID, nil
@@ -692,7 +693,7 @@ func TestStartOAuthV8AntigravityAndPluginSessionProxyAndRestartPersistence(t *te
 	router.DELETE("/session", h.CancelAuthSession)
 
 	// 1. Antigravity session with proxy_url covers token exchange, userinfo, and project discovery
-	agBody, _ := json.Marshal(map[string]string{"provider": "antigravity", "proxy_url": proxyServer.URL})
+	agBody, _ := json.Marshal(map[string]string{"provider": "antigravity", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	agRec := httptest.NewRecorder()
 	router.ServeHTTP(agRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(agBody))))
 	if agRec.Code != http.StatusOK {
@@ -701,7 +702,7 @@ func TestStartOAuthV8AntigravityAndPluginSessionProxyAndRestartPersistence(t *te
 	var agStart struct {
 		State string `json:"state"`
 	}
-	_ = json.Unmarshal(agRec.Body.Bytes(), &agStart)
+	_ = json.Unmarshal(agRec.Body.Bytes(), &agStart, jsoncompat.Decode)
 	t.Cleanup(func() { CancelOAuthSession(agStart.State) })
 
 	if _, errWrite := WriteOAuthCallbackFileForPendingSession(authDir, "antigravity", agStart.State, "ag-code", ""); errWrite != nil {
@@ -743,7 +744,7 @@ func TestStartOAuthV8AntigravityAndPluginSessionProxyAndRestartPersistence(t *te
 	}
 
 	// 2. Plugin OAuth session with proxy_url covers StartLogin, PollLogin, and saved credential
-	pluginBody, _ := json.Marshal(map[string]string{"provider": "custom-sso", "proxy_url": proxyServer.URL})
+	pluginBody, _ := json.Marshal(map[string]string{"provider": "custom-sso", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	pluginRec := httptest.NewRecorder()
 	router.ServeHTTP(pluginRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(pluginBody))))
 	if pluginRec.Code != http.StatusOK {
@@ -874,7 +875,7 @@ func TestStartOAuthV8AntigravityProjectDiscoveryProxyFailureFailsSession(t *test
 	router.POST("/v8/management/oauth/auth-url", h.StartOAuthV8)
 	router.GET("/status", h.GetAuthStatus)
 
-	agBody, _ := json.Marshal(map[string]string{"provider": "antigravity", "proxy_url": proxyServer.URL})
+	agBody, _ := json.Marshal(map[string]string{"provider": "antigravity", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	agRec := httptest.NewRecorder()
 	router.ServeHTTP(agRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(agBody))))
 	if agRec.Code != http.StatusOK {
@@ -883,7 +884,7 @@ func TestStartOAuthV8AntigravityProjectDiscoveryProxyFailureFailsSession(t *test
 	var agStart struct {
 		State string `json:"state"`
 	}
-	_ = json.Unmarshal(agRec.Body.Bytes(), &agStart)
+	_ = json.Unmarshal(agRec.Body.Bytes(), &agStart, jsoncompat.Decode)
 	t.Cleanup(func() { CancelOAuthSession(agStart.State) })
 
 	if _, errWrite := WriteOAuthCallbackFileForPendingSession(authDir, "antigravity", agStart.State, "ag-code", ""); errWrite != nil {
@@ -962,7 +963,7 @@ func TestStartOAuthV8PluginPollCancelRaceDoesNotDropProxyOrSaveCancelledSession(
 	router.POST("/v8/management/oauth/auth-url", h.StartOAuthV8)
 	router.GET("/status", h.GetAuthStatus)
 
-	body, _ := json.Marshal(map[string]string{"provider": "race-sso", "proxy_url": proxyServer.URL})
+	body, _ := json.Marshal(map[string]string{"provider": "race-sso", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(body))))
 	if rec.Code != http.StatusOK {
@@ -1019,7 +1020,7 @@ func TestStartOAuthV8PluginPollCancelRaceDoesNotDropProxyOrSaveCancelledSession(
 	}
 	defer func() { h.postAuthHook = nil }()
 
-	commitBody, _ := json.Marshal(map[string]string{"provider": "commit-sso", "proxy_url": proxyServer.URL})
+	commitBody, _ := json.Marshal(map[string]string{"provider": "commit-sso", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	commitRec := httptest.NewRecorder()
 	router.ServeHTTP(commitRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(commitBody))))
 	if commitRec.Code != http.StatusOK {
@@ -1082,7 +1083,7 @@ func TestStartOAuthV8PluginPollCancelRaceDoesNotDropProxyOrSaveCancelledSession(
 		},
 	})
 
-	interleaveBody, _ := json.Marshal(map[string]string{"provider": "interleave-sso", "proxy_url": proxyServer.URL})
+	interleaveBody, _ := json.Marshal(map[string]string{"provider": "interleave-sso", "proxy_url": proxyServer.URL}, jsoncompat.Encode)
 	interleaveRec := httptest.NewRecorder()
 	router.ServeHTTP(interleaveRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(interleaveBody))))
 	if interleaveRec.Code != http.StatusOK {
@@ -1194,7 +1195,7 @@ func TestStartOAuthV8WithoutProxyPreservesDefaultBehaviorAndPersistedProxyRefres
 	var startResp struct {
 		State string `json:"state"`
 	}
-	_ = json.Unmarshal(rec.Body.Bytes(), &startResp)
+	_ = json.Unmarshal(rec.Body.Bytes(), &startResp, jsoncompat.Decode)
 	t.Cleanup(func() { CancelOAuthSession(startResp.State) })
 	if _, errWrite := WriteOAuthCallbackFileForPendingSession(authDir, "codex", startResp.State, "no-proxy", ""); errWrite != nil {
 		t.Fatalf("write callback: %v", errWrite)
@@ -1283,7 +1284,7 @@ func TestStartOAuthV8WithoutProxyPreservesDefaultBehaviorAndPersistedProxyRefres
 	refreshStartBody, _ := json.Marshal(map[string]string{
 		"provider":  "refresh-sso",
 		"proxy_url": proxyServer.URL,
-	})
+	}, jsoncompat.Encode)
 	refreshStartRec := httptest.NewRecorder()
 	router.ServeHTTP(refreshStartRec, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(refreshStartBody))))
 	if refreshStartRec.Code != http.StatusOK {

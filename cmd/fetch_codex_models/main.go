@@ -18,7 +18,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"flag"
 	"fmt"
 	"io"
@@ -32,6 +33,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	codexauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdkauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
@@ -301,9 +303,9 @@ func fetchModels(ctx context.Context, auth *coreauth.Auth, accessToken, clientVe
 
 func ensureBaselineModel(raw []byte) ([]byte, int, error) {
 	var payload struct {
-		Models []json.RawMessage `json:"models"`
+		Models []jsontext.Value `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(raw, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, 0, fmt.Errorf("failed to parse response JSON: %w", errUnmarshal)
 	}
 	// Keep this check intentionally loose: fetch_codex_models dumps the upstream
@@ -386,9 +388,9 @@ func codexModelsURL(clientVersion string) (string, error) {
 
 func countModels(raw []byte) (int, error) {
 	var payload struct {
-		Models []json.RawMessage `json:"models"`
+		Models []jsontext.Value `json:"models"`
 	}
-	if err := json.Unmarshal(raw, &payload); err != nil {
+	if err := json.Unmarshal(raw, &payload, jsoncompat.Decode); err != nil {
 		return 0, fmt.Errorf("failed to parse response JSON: %w", err)
 	}
 	// Keep this check intentionally loose: fetch_codex_models dumps the upstream
@@ -401,12 +403,11 @@ func countModels(raw []byte) (int, error) {
 }
 
 func prettyJSON(raw []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := json.Indent(&buf, raw, "", "  "); err != nil {
+	pretty := jsontext.Value(bytes.Clone(raw))
+	if err := pretty.Indent(jsontext.WithIndent("  ")); err != nil {
 		return nil, err
 	}
-	buf.WriteByte('\n')
-	return buf.Bytes(), nil
+	return append(pretty, '\n'), nil
 }
 
 func metaStringValue(m map[string]any, key string) string {

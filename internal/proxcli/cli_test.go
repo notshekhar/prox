@@ -2,7 +2,7 @@ package proxcli
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +10,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // sandbox points HOME, PROX_HOME and PATH at a temp folder, so no test can
@@ -33,6 +35,10 @@ func newSandbox(t *testing.T) sandbox {
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+"/usr/bin:/bin")
 	t.Setenv("MANAGEMENT_STATIC_PATH", "")
 	t.Setenv(masterPasswordEnv, sandboxPassword)
+	// Nothing listens here, so no test reaches GitHub.
+	previousLatest := latestReleaseURL
+	latestReleaseURL = "http://127.0.0.1:1/latest"
+	t.Cleanup(func() { latestReleaseURL = previousLatest })
 	return sandbox{home: home, bin: bin}
 }
 
@@ -122,7 +128,7 @@ func TestFirstRunCreatesPrivateConfigBoundToLocalhost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = json.Unmarshal(raw, &claude); err != nil {
+	if err = json.Unmarshal(raw, &claude, jsoncompat.Decode); err != nil {
 		t.Fatal(err)
 	}
 	if claude.Env["ANTHROPIC_AUTH_TOKEN"] != cfg.Access.APIKeys[0] {

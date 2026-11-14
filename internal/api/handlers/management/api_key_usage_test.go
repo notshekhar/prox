@@ -2,13 +2,14 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -64,7 +65,7 @@ func TestGetAPIKeyUsage_GroupsByProviderAndAPIKey(t *testing.T) {
 	}
 
 	var payload map[string]map[string]apiKeyUsageEntry
-	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
 
@@ -124,7 +125,7 @@ func TestGetAPIKeyUsage_GroupsOpenAICompatibleByCompatName(t *testing.T) {
 	}
 
 	var payload map[string]map[string]apiKeyUsageEntry
-	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
 

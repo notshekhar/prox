@@ -2,7 +2,8 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/google/uuid"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
@@ -54,9 +56,9 @@ type KimiThinkingReplaySnapshot struct {
 }
 
 type kimiThinkingReplayHomeValue struct {
-	Generation string          `json:"generation"`
-	Deleted    bool            `json:"deleted,omitempty"`
-	Content    json.RawMessage `json:"content,omitempty"`
+	Generation string         `json:"generation"`
+	Deleted    bool           `json:"deleted,omitzero"`
+	Content    jsontext.Value `json:"content,omitzero"`
 }
 
 var (
@@ -311,9 +313,9 @@ func readOrReserveKimiThinkingReplayHomeValue(ctx context.Context, client kimiTh
 func marshalKimiThinkingReplayHomeValue(generation string, deleted bool, content []byte) ([]byte, error) {
 	value := kimiThinkingReplayHomeValue{Generation: generation, Deleted: deleted}
 	if !deleted {
-		value.Content = append(json.RawMessage(nil), content...)
+		value.Content = append(jsontext.Value(nil), content...)
 	}
-	return json.Marshal(value)
+	return json.Marshal(value, jsoncompat.Encode)
 }
 
 func decodeKimiThinkingReplayHomeValue(raw []byte) ([]byte, string, bool, bool) {
@@ -328,7 +330,7 @@ func decodeKimiThinkingReplayHomeValue(raw []byte) ([]byte, string, bool, bool) 
 		return append([]byte(nil), raw...), "legacy", false, true
 	}
 	var value kimiThinkingReplayHomeValue
-	if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal != nil || strings.TrimSpace(value.Generation) == "" {
+	if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal != nil || strings.TrimSpace(value.Generation) == "" {
 		return nil, "", false, false
 	}
 	if value.Deleted {

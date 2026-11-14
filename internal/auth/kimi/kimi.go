@@ -4,7 +4,7 @@ package kimi
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/buildinfo"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -443,7 +444,7 @@ func (c *DeviceFlowClient) RequestDeviceCode(ctx context.Context) (*DeviceCodeRe
 	}
 
 	var deviceCode DeviceCodeResponse
-	if err = json.Unmarshal(bodyBytes, &deviceCode); err != nil {
+	if err = json.Unmarshal(bodyBytes, &deviceCode, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("kimi: failed to parse device code response: %w", err)
 	}
 
@@ -537,7 +538,7 @@ func (c *DeviceFlowClient) exchangeDeviceCode(ctx context.Context, deviceCode st
 		Scope            string  `json:"scope"`
 	}
 
-	if err = json.Unmarshal(bodyBytes, &oauthResp); err != nil {
+	if err = json.Unmarshal(bodyBytes, &oauthResp, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("kimi: failed to parse token response: %w", err), false
 	}
 
@@ -645,7 +646,7 @@ func (c *DeviceFlowClient) refreshTokenSingleFlight(ctx context.Context, refresh
 		Scope        string  `json:"scope"`
 	}
 
-	if err = json.Unmarshal(bodyBytes, &tokenResp); err != nil {
+	if err = json.Unmarshal(bodyBytes, &tokenResp, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("kimi: failed to parse refresh response: %w", err)
 	}
 

@@ -15,10 +15,6 @@ interface ProviderRowProps {
   onSelect: (brand: ProviderBrand) => void;
 }
 
-const QUICK_FILL_BRAND_ORDER: readonly ProviderBrand[] = ['fennoAI', 'qiniuCloud', 'aiCodeMirror'];
-
-const QUICK_FILL_BRANDS: ReadonlySet<ProviderBrand> = new Set(QUICK_FILL_BRAND_ORDER);
-
 const joinClasses = (...names: Array<string | false | undefined>) =>
   names.filter(Boolean).join(' ');
 
@@ -84,23 +80,15 @@ function ProviderRow({ group, active, onSelect }: ProviderRowProps) {
 export function ProviderCategoryList({ groups, activeBrand, onSelect }: ProviderCategoryListProps) {
   const { t } = useTranslation();
 
-  const quickFillGroups = groups
-    .filter((group) => QUICK_FILL_BRANDS.has(group.id))
-    .sort(
-      (left, right) =>
-        QUICK_FILL_BRAND_ORDER.indexOf(left.id) - QUICK_FILL_BRAND_ORDER.indexOf(right.id)
-    );
-  const providerGroups = groups.filter((group) => !QUICK_FILL_BRANDS.has(group.id));
   const sections = [
     {
       label: t('providersPage.categories.inUse'),
-      items: providerGroups.filter((group) => group.resources.length > 0),
+      items: groups.filter((group) => group.resources.length > 0),
     },
     {
       label: t('providersPage.categories.available'),
-      items: providerGroups.filter((group) => group.resources.length === 0),
+      items: groups.filter((group) => group.resources.length === 0),
     },
-    { label: t('providersPage.categories.quickFill'), items: quickFillGroups },
   ].filter((section) => section.items.length > 0);
 
   return (

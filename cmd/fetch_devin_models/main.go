@@ -18,7 +18,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"flag"
 	"fmt"
@@ -31,6 +32,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
@@ -62,11 +64,11 @@ type devinModelJSON struct {
 	Type                      string             `json:"type"`
 	OwnedBy                   string             `json:"owned_by"`
 	DisplayName               string             `json:"display_name"`
-	ContextLength             int                `json:"context_length,omitempty"`
-	MaxCompletionTokens       int                `json:"max_completion_tokens,omitempty"`
+	ContextLength             int                `json:"context_length,omitzero"`
+	MaxCompletionTokens       int                `json:"max_completion_tokens,omitzero"`
 	SupportedInputModalities  []string           `json:"supportedInputModalities,omitempty"`
 	SupportedOutputModalities []string           `json:"supportedOutputModalities,omitempty"`
-	Thinking                  *devinThinkingJSON `json:"thinking,omitempty"`
+	Thinking                  *devinThinkingJSON `json:"thinking,omitzero"`
 }
 
 type devinThinkingJSON struct {
@@ -195,9 +197,9 @@ func main() {
 
 	var encoded []byte
 	if pretty {
-		encoded, err = json.MarshalIndent(outputJSON, "", "  ")
+		encoded, err = json.Marshal(outputJSON, jsoncompat.Encode, jsontext.WithIndent("  "))
 	} else {
-		encoded, err = json.Marshal(outputJSON)
+		encoded, err = json.Marshal(outputJSON, jsoncompat.Encode)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: failed to encode JSON: %v\n", err)

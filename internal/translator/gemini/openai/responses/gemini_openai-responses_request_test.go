@@ -1,13 +1,14 @@
 package responses
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
@@ -3615,7 +3616,7 @@ func TestConvertOpenAIResponsesRequestToGemini_ParallelOutputsAcrossNotices(t *t
 						}
 						items = append(items, note)
 					}
-					input, errMarshal := json.Marshal(map[string]any{"model": "gemini-4-argon", "input": items})
+					input, errMarshal := json.Marshal(map[string]any{"model": "gemini-4-argon", "input": items}, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}

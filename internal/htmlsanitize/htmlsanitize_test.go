@@ -2,7 +2,7 @@ package htmlsanitize
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"html"
 	"testing"
 )

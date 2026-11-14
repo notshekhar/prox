@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,6 +11,7 @@ import (
 	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -46,7 +47,7 @@ func TestManagerLogin_PreservesExistingAuthFileMetadata(t *testing.T) {
 		"note":         "important note",
 		"weight":       float64(10),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal error: %v", errMarshal)
 	}
@@ -130,7 +131,7 @@ func TestManagerLogin_MigratesMatchingLegacyClaudeCredential(t *testing.T) {
 		"disabled":          true,
 		"weight":            float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy credential: %v", errMarshal)
 	}
@@ -206,7 +207,7 @@ func TestManagerLogin_ReloginKeepsCanonicalXAICredential(t *testing.T) {
 		"access_token": "old-token",
 		"prefix":       "team",
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal canonical credential: %v", errMarshal)
 	}
@@ -269,7 +270,7 @@ func TestManagerLogin_SubjectOnlyReloginKeepsEmailCredential(t *testing.T) {
 		"prefix":       "team",
 		"weight":       float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal canonical credential: %v", errMarshal)
 	}
@@ -387,7 +388,7 @@ func TestManagerLogin_DoesNotMigrateLegacyClaudeCredentialFromDifferentOrganizat
 		"access_token":      "old-token",
 		"prefix":            "team",
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy credential: %v", errMarshal)
 	}
@@ -513,7 +514,7 @@ func TestManagerLogin_MigratesMatchingLegacyXAICredential(t *testing.T) {
 		"disabled":     true,
 		"weight":       float64(5),
 	}
-	raw, errMarshal := json.Marshal(existing)
+	raw, errMarshal := json.Marshal(existing, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal legacy credential: %v", errMarshal)
 	}

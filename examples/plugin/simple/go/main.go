@@ -37,7 +37,8 @@ extern void cliproxyPluginShutdown(void);
 import "C"
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -50,9 +51,9 @@ import (
 var usageCount atomic.Int64
 
 type envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *envelopeError  `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitempty"`
+	Error  *envelopeError `json:"error,omitzero"`
 }
 
 type envelopeError struct {

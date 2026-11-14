@@ -2,11 +2,13 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestClusterLatencyProbeCadenceKeepsEvidenceFresh(t *testing.T) {
@@ -168,7 +170,7 @@ func TestClusterLatencyReportsRespectScheduledProbeBudget(t *testing.T) {
 		var report struct {
 			Samples []clusterLatencySample `json:"samples"`
 		}
-		if errDecode := json.Unmarshal([]byte(args[3]), &report); errDecode != nil {
+		if errDecode := json.Unmarshal([]byte(args[3]), &report, jsoncompat.Decode); errDecode != nil {
 			t.Fatal(errDecode)
 		}
 		if len(report.Samples) == 0 {

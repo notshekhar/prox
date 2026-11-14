@@ -2,7 +2,7 @@ package store
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +16,7 @@ import (
 	gitconfig "github.com/go-git/go-git/v6/config"
 	"github.com/go-git/go-git/v6/plumbing"
 	"github.com/go-git/go-git/v6/plumbing/object"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -682,7 +683,7 @@ func TestGitTokenStoreSaveRetryAfterLeaseConflictCommitsMatchingContent(t *testi
 	}
 	remoteAdvanced := false
 	authA.Storage = &callbackTokenStorage{save: func(path string) error {
-		raw, errMarshal := json.Marshal(authA.Metadata)
+		raw, errMarshal := json.Marshal(authA.Metadata, jsoncompat.Encode)
 		if errMarshal != nil {
 			return errMarshal
 		}

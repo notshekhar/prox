@@ -2,11 +2,12 @@ package chat_completions
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestConvertCodexResponseToOpenAI_IncompleteTerminal(t *testing.T) {
@@ -622,7 +623,7 @@ func TestConvertCodexResponseToOpenAI_NonStreamPreservesExplicitZeroCacheWriteTo
 
 func mustJSONMarshal(t *testing.T, value any) []byte {
 	t.Helper()
-	data, errMarshal := json.Marshal(value)
+	data, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("failed to marshal test JSON: %v", errMarshal)
 	}

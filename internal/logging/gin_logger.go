@@ -71,7 +71,7 @@ func GinLogrusLogger() gin.HandlerFunc {
 			return
 		}
 
-		if shouldSkipGinRequestLogging(c) {
+		if shouldSkipGinRequestLogging(c) || isClientProbe(c) {
 			return
 		}
 
@@ -99,13 +99,17 @@ func GinLogrusLogger() gin.HandlerFunc {
 		if creditsUsed(c) {
 			logLine += " [credits]"
 		}
+		account := selectedAccount(c)
+		if account != "" {
+			logLine += " [" + account + "]"
+		}
 		if errorMessage != "" {
 			logLine = logLine + " | " + errorMessage
 		}
 
 		entry := log.WithFields(log.Fields{
 			"request_id": requestID,
-			requestField: compactRequest{method: method, path: plainPath, status: statusCode, latency: latency},
+			requestField: compactRequest{method: method, path: plainPath, status: statusCode, latency: latency, account: account},
 		})
 
 		switch {
@@ -171,6 +175,12 @@ func shouldSkipGinRequestLogging(c *gin.Context) bool {
 	}
 	flag, ok := val.(bool)
 	return ok && flag
+}
+
+// isClientProbe matches the connectivity check Claude Code sends at launch. It
+// means nothing here, and a 404 warning per launch only buries real problems.
+func isClientProbe(c *gin.Context) bool {
+	return c.Request.Method == http.MethodHead && c.Request.URL.Path == "/api/hello"
 }
 
 func creditsUsed(c *gin.Context) bool {

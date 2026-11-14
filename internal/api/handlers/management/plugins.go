@@ -1,7 +1,8 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/htmlsanitize"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 	"gopkg.in/yaml.v3"
@@ -543,10 +545,8 @@ func pluginIDFromRequest(c *gin.Context) (string, bool) {
 }
 
 func readPluginConfigObject(c *gin.Context) (map[string]any, bool) {
-	decoder := json.NewDecoder(c.Request.Body)
-	decoder.UseNumber()
 	var body map[string]any
-	if errDecode := decoder.Decode(&body); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(c.Request.Body), &body, jsoncompat.DecodeUseNumber); errDecode != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_body", "message": errDecode.Error()})
 		return nil, false
 	}
@@ -626,7 +626,7 @@ func yamlNodeFromJSONValue(value any) (*yaml.Node, error) {
 		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: typed}, nil
 	case bool:
 		return boolYAMLNode(typed), nil
-	case json.Number:
+	case jsoncompat.Number:
 		if _, errInt64 := typed.Int64(); errInt64 == nil {
 			return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: typed.String()}, nil
 		}

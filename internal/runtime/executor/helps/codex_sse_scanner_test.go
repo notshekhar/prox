@@ -314,7 +314,7 @@ func TestCodexSSEScannerDiagnosticDescribesFraming(t *testing.T) {
 	if len(entries) != 1 {
 		t.Fatalf("warnings = %d, want 1", len(entries))
 	}
-	want := log.Fields{"data_lines": 2, "line_bytes": "37,5", "lines_valid": "false,false", "data_bytes": 43, "json_error_offset": int64(38)}
+	want := log.Fields{"data_lines": 2, "line_bytes": "37,5", "lines_valid": "false,false", "data_bytes": 43, "json_error_offset": int64(37)}
 	for key, value := range want {
 		if entries[0].Data[key] != value {
 			t.Fatalf("diagnostic field %s = %v, want %v (fields %v)", key, entries[0].Data[key], value, entries[0].Data)

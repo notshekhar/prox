@@ -1,12 +1,14 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 )
 
@@ -27,7 +29,7 @@ func TestGetUsageQueuePopsRequestedRecords(t *testing.T) {
 			t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var payload []json.RawMessage
+		var payload []jsontext.Value
 		if errUnmarshal := json.Unmarshal(rec.Body.Bytes(), &payload); errUnmarshal != nil {
 			t.Fatalf("unmarshal response: %v", errUnmarshal)
 		}
@@ -81,13 +83,13 @@ func withManagementUsageQueue(t *testing.T, fn func()) {
 	fn()
 }
 
-func requireRecordID(t *testing.T, raw json.RawMessage, want int) {
+func requireRecordID(t *testing.T, raw jsontext.Value, want int) {
 	t.Helper()
 
 	var payload struct {
 		ID int `json:"id"`
 	}
-	if errUnmarshal := json.Unmarshal(raw, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal record: %v", errUnmarshal)
 	}
 	if payload.ID != want {

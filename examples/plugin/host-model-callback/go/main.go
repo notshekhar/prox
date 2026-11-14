@@ -57,7 +57,8 @@ import "C"
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"html"
 	"net/http"
@@ -79,9 +80,9 @@ const (
 )
 
 type envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *envelopeError  `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitempty"`
+	Error  *envelopeError `json:"error,omitzero"`
 }
 
 type envelopeError struct {
@@ -125,17 +126,17 @@ type managementResponse struct {
 }
 
 type managementBodyOptions struct {
-	Model         string          `json:"model"`
-	Mode          string          `json:"mode"`
-	EntryProtocol string          `json:"entry_protocol"`
-	ExitProtocol  string          `json:"exit_protocol"`
-	Prompt        string          `json:"prompt"`
-	Stream        *bool           `json:"stream"`
-	Body          json.RawMessage `json:"body"`
-	Headers       http.Header     `json:"headers"`
-	Query         url.Values      `json:"query"`
-	Alt           string          `json:"alt"`
-	ImplicitClose *bool           `json:"implicit_close"`
+	Model         string         `json:"model"`
+	Mode          string         `json:"mode"`
+	EntryProtocol string         `json:"entry_protocol"`
+	ExitProtocol  string         `json:"exit_protocol"`
+	Prompt        string         `json:"prompt"`
+	Stream        *bool          `json:"stream"`
+	Body          jsontext.Value `json:"body"`
+	Headers       http.Header    `json:"headers"`
+	Query         url.Values     `json:"query"`
+	Alt           string         `json:"alt"`
+	ImplicitClose *bool          `json:"implicit_close"`
 }
 
 type hostModelExecutionRequest struct {
@@ -341,7 +342,7 @@ func applyBodyOptions(opts *runOptions, raw []byte) error {
 		opts.Stream = *bodyOpts.Stream
 	}
 	if len(bodyOpts.Body) > 0 && string(bodyOpts.Body) != "null" {
-		if !json.Valid(bodyOpts.Body) {
+		if !jsontext.Value(bodyOpts.Body).IsValid() {
 			return fmt.Errorf("body must be valid JSON")
 		}
 		opts.Body = append([]byte(nil), bodyOpts.Body...)
@@ -382,7 +383,7 @@ func applyQueryOptions(opts *runOptions, query url.Values) error {
 	}
 	if raw := strings.TrimSpace(query.Get("body")); raw != "" {
 		body := []byte(raw)
-		if !json.Valid(body) {
+		if !jsontext.Value(body).IsValid() {
 			return fmt.Errorf("query body must be valid JSON")
 		}
 		opts.Body = append([]byte(nil), body...)
@@ -556,7 +557,7 @@ func modelRequestBody(opts runOptions) ([]byte, error) {
 	return raw, nil
 }
 
-func callHost(method string, payload any) (json.RawMessage, error) {
+func callHost(method string, payload any) (jsontext.Value, error) {
 	rawPayload, errMarshal := json.Marshal(payload)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("marshal host callback payload %s: %w", method, errMarshal)
@@ -599,7 +600,7 @@ func callHost(method string, payload any) (json.RawMessage, error) {
 	if callCode != 0 {
 		return nil, fmt.Errorf("host callback %s returned code=%d", method, int(callCode))
 	}
-	return append(json.RawMessage(nil), env.Result...), nil
+	return append(jsontext.Value(nil), env.Result...), nil
 }
 
 func htmlResponse(statusCode int, body []byte) managementResponse {
@@ -668,15 +669,15 @@ func writeDefinition(out *bytes.Buffer, key string, value string) {
 }
 
 func prettyBody(raw []byte) string {
-	var buf bytes.Buffer
-	if errIndent := json.Indent(&buf, raw, "", "  "); errIndent == nil {
-		return buf.String()
+	pretty := jsontext.Value(bytes.Clone(raw))
+	if errIndent := pretty.Indent(jsontext.WithIndent("  ")); errIndent == nil {
+		return pretty.String()
 	}
 	return string(raw)
 }
 
 func prettyJSON(v any) string {
-	raw, errMarshal := json.MarshalIndent(v, "", "  ")
+	raw, errMarshal := json.Marshal(v, json.Deterministic(true), jsontext.WithIndent("  "))
 	if errMarshal != nil {
 		return fmt.Sprintf("%v", v)
 	}

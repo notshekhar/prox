@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestManagementV8RoutesShareAccessControl(t *testing.T) {
@@ -150,7 +151,7 @@ func TestManagementV8IndependentContract(t *testing.T) {
 	} {
 		body := request(http.MethodGet, tc.url, "", http.StatusOK)
 		var login struct{ URL, State string }
-		if errDecode := json.Unmarshal([]byte(body), &login); errDecode != nil {
+		if errDecode := json.Unmarshal([]byte(body), &login, jsoncompat.Decode); errDecode != nil {
 			t.Fatal(errDecode)
 		}
 		t.Cleanup(func() { management.CancelOAuthSession(login.State) })

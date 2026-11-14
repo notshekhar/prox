@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
 
@@ -18,7 +19,7 @@ func TestHomeDispatchWebSearchCapability(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var wire homeDispatchModelInfo
-			if err := json.Unmarshal([]byte(tc.raw), &wire); err != nil {
+			if err := json.Unmarshal([]byte(tc.raw), &wire, jsoncompat.Decode); err != nil {
 				t.Fatal(err)
 			}
 			req := attachResolvedHomeModelInfo(cliproxyexecutor.Request{Model: "alias"}, nil, "alias", wire.registryModelInfo(), wire.SupportConfigurationUpdate)

@@ -2,11 +2,13 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"testing"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -56,16 +58,16 @@ func TestHomeDispatchConfigurationUpdateCapabilityAndLegacyFallback(t *testing.T
 				cfg.CodexKey = []internalconfig.CodexKey{{APIKey: "home-update-key", Prefix: "tenant", Models: []internalconfig.CodexModel{{Name: model, SupportConfigurationUpdate: true}}}}
 			}
 			manager.SetConfig(cfg)
-			payload, errMarshal := json.Marshal(homeAuthDispatchResponse{Model: model, Auth: *auth})
+			payload, errMarshal := json.Marshal(homeAuthDispatchResponse{Model: model, Auth: *auth}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}
-			var dispatch map[string]json.RawMessage
+			var dispatch map[string]jsontext.Value
 			if errUnmarshal := json.Unmarshal(payload, &dispatch); errUnmarshal != nil {
 				t.Fatal(errUnmarshal)
 			}
-			dispatch["model_info"] = json.RawMessage(`{"id":"` + infoID + `"` + tc.capability + `}`)
-			payload, errMarshal = json.Marshal(dispatch)
+			dispatch["model_info"] = jsontext.Value(`{"id":"` + infoID + `"` + tc.capability + `}`)
+			payload, errMarshal = json.Marshal(dispatch, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatal(errMarshal)
 			}

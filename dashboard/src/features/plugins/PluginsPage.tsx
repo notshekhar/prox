@@ -516,8 +516,6 @@ export function PluginsPage() {
             </span>
           </div>
 
-          <span className={styles.statusDivider} />
-
           <div className={styles.statusPill}>
             <span className={styles.statusLabel}>{t('plugin_management.plugins_dir')}</span>
             <span
@@ -528,14 +526,10 @@ export function PluginsPage() {
             </span>
           </div>
 
-          <span className={styles.statusDivider} />
-
           <div className={styles.statusPill}>
             <span className={styles.statusLabel}>{t('plugin_management.discovered')}</span>
             <span className={styles.statusValue}>{pluginStats.discovered}</span>
           </div>
-
-          <span className={styles.statusDivider} />
 
           <div className={styles.statusPill}>
             <span className={styles.statusLabel}>{t('plugin_management.effective')}</span>
@@ -589,12 +583,6 @@ export function PluginsPage() {
         <EmptyState
           title={t('plugin_management.no_plugins')}
           description={t('plugin_management.no_plugins_desc')}
-          action={
-            <Button variant="secondary" size="sm" onClick={loadPlugins} disabled={!connected}>
-              <IconRefreshCw size={16} />
-              {t('plugin_management.refresh')}
-            </Button>
-          }
         />
       ) : (
         <div className={styles.pluginList}>

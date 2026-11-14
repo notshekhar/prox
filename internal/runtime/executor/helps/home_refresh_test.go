@@ -3,7 +3,7 @@ package helps
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strings"
@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -313,7 +314,7 @@ func TestRefreshAuthViaHomeAcceptsAuthEnvelope(t *testing.T) {
 			},
 		},
 		AuthIndex: "home-index-1",
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal home envelope: %v", errMarshal)
 	}

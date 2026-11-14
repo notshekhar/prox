@@ -6,13 +6,15 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -108,7 +110,7 @@ type SDKConfig struct {
 
 	// NonStreamKeepAliveInterval controls how often blank lines are emitted for non-streaming responses.
 	// <= 0 disables keep-alives. Value is in seconds.
-	NonStreamKeepAliveInterval int `yaml:"nonstream-keepalive-interval,omitempty" json:"nonstream-keepalive-interval,omitempty"`
+	NonStreamKeepAliveInterval int `yaml:"nonstream-keepalive-interval,omitempty" json:"nonstream-keepalive-interval,omitzero"`
 }
 
 // TLSHandshakeTimeout returns the configured upstream TLS handshake bound
@@ -286,13 +288,11 @@ func (c *CodexWebSearchResultCacheConfig) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	var raw struct {
-		Enabled bool            `json:"enabled"`
-		TTL     json.RawMessage `json:"ttl"`
-		Limit   int             `json:"limit"`
+		Enabled bool           `json:"enabled"`
+		TTL     jsontext.Value `json:"ttl"`
+		Limit   int            `json:"limit"`
 	}
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
-	decoder.DisallowUnknownFields()
-	if errDecode := decoder.Decode(&raw); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(trimmed)), &raw, jsoncompat.Decode, json.RejectUnknownMembers(true)); errDecode != nil {
 		return errDecode
 	}
 	ttl, errTTL := parseCodexWebSearchResultCacheTTLJSON(raw.TTL)
@@ -311,20 +311,20 @@ func (c *CodexWebSearchResultCacheConfig) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func parseCodexWebSearchResultCacheTTLJSON(raw json.RawMessage) (string, error) {
+func parseCodexWebSearchResultCacheTTLJSON(raw jsontext.Value) (string, error) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
 		return "", nil
 	}
 	if trimmed[0] == '"' {
 		var s string
-		if errUnmarshal := json.Unmarshal(trimmed, &s); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(trimmed, &s, jsoncompat.Decode); errUnmarshal != nil {
 			return "", fmt.Errorf("client.codex.web-search-result-cache.ttl: %w", errUnmarshal)
 		}
 		return strings.TrimSpace(s), nil
 	}
 	var n int64
-	if errUnmarshal := json.Unmarshal(trimmed, &n); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(trimmed, &n, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("client.codex.web-search-result-cache.ttl must be a duration string or integer seconds")
 	}
 	return strconv.FormatInt(n, 10), nil
@@ -368,14 +368,14 @@ type StreamingConfig struct {
 	// KeepAliveSeconds controls how often the server emits SSE heartbeats (": keep-alive\n\n")
 	// or WebSocket Ping control frames.
 	// <= 0 disables keep-alives. Default is 0.
-	KeepAliveSeconds int `yaml:"keepalive-seconds,omitempty" json:"keepalive-seconds,omitempty"`
+	KeepAliveSeconds int `yaml:"keepalive-seconds,omitempty" json:"keepalive-seconds,omitzero"`
 
 	// BootstrapRetries controls how many times the server may retry a streaming request before any bytes are sent,
 	// to allow auth rotation / transient recovery.
 	// <= 0 disables bootstrap retries. Default is 0.
-	BootstrapRetries int `yaml:"bootstrap-retries,omitempty" json:"bootstrap-retries,omitempty"`
+	BootstrapRetries int `yaml:"bootstrap-retries,omitempty" json:"bootstrap-retries,omitzero"`
 
 	// SendKeepAliveBeforeFT controls whether SSE heartbeats are sent before the first token arrives
 	// when KeepAliveSeconds > 0. Default is false.
-	SendKeepAliveBeforeFT bool `yaml:"send-keepalive-before-ft,omitempty" json:"send-keepalive-before-ft,omitempty"`
+	SendKeepAliveBeforeFT bool `yaml:"send-keepalive-before-ft,omitempty" json:"send-keepalive-before-ft,omitzero"`
 }

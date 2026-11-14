@@ -1,86 +1,103 @@
 package proxcli
 
 import (
+	"errors"
 	"fmt"
-	"html"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
+	"runtime"
 )
 
-const serviceLabel = "dev.notshekhar.prox"
+// serviceEnv marks a `prox start` run by the background service.
+const serviceEnv = "PROX_SERVICE"
 
-const plistTemplate = `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key><string>%s</string>
-  <key>ProgramArguments</key>
-  <array><string>%s</string><string>start</string></array>
-  <key>EnvironmentVariables</key>
-  <dict><key>PROX_HOME</key><string>%s</string></dict>
-  <key>RunAtLoad</key><true/>
-  <key>KeepAlive</key><true/>
-  <key>StandardOutPath</key><string>%s</string>
-  <key>StandardErrorPath</key><string>%s</string>
-</dict>
-</plist>
-`
-
-func serviceTarget() string { return "gui/" + strconv.Itoa(os.Getuid()) }
-
-// storeServicePassword proves the password before saving it, so a typo can't
-// leave the service failing to start at every login.
-func storeServicePassword(p Paths, cfg settings, errOut io.Writer) error {
-	password, err := requireMasterPassword(p, cfg, terminalOrEnvPassword(errOut), errOut)
-	if err != nil {
-		return err
+// giveUp ends `prox start` over a problem that retrying can't fix, such as a
+// wrong saved password or a copy already running. Under the background service
+// it exits 0, because launchd and systemd restart a failed start every few
+// seconds, forever; the reason is still written to the log.
+func giveUp(errOut io.Writer, err error) Outcome {
+	fmt.Fprintln(errOut, err)
+	if os.Getenv(serviceEnv) != "" {
+		return finished(0)
 	}
-	return saveKeychainPassword(password)
+	return finished(1)
+}
+
+// backgroundService is how one operating system keeps prox running. Nobody is
+// at a terminal when it starts at login, so each keeps the master password
+// somewhere it can reach by itself.
+type backgroundService interface {
+	savePassword(p Paths, password string) error
+	forgetPassword(p Paths)
+	enable(p Paths, exe string) error
+	disable(p Paths) error
+}
+
+func backgroundServiceFor(goos string) (backgroundService, error) {
+	switch goos {
+	case "darwin":
+		return launchdService{}, nil
+	case "linux":
+		return systemdService{}, nil
+	}
+	return nil, fmt.Errorf("prox service isn't supported on %s", goos)
 }
 
 func serviceOn(p Paths, cfg settings, out, errOut io.Writer) int {
-	if err := storeServicePassword(p, cfg, errOut); err != nil {
+	if err := turnServiceOn(p, cfg, runtime.GOOS, errOut); err != nil {
 		fmt.Fprintln(errOut, err)
-		return 1
-	}
-	exe, err := os.Executable()
-	if err == nil {
-		exe, err = filepath.EvalSymlinks(exe)
-	}
-	if err != nil {
-		fmt.Fprintf(errOut, "find prox binary: %v\n", err)
-		return 1
-	}
-	body := fmt.Sprintf(plistTemplate, serviceLabel, html.EscapeString(exe), html.EscapeString(p.Home),
-		html.EscapeString(p.Log), html.EscapeString(p.Log))
-	if err = os.MkdirAll(filepath.Dir(p.LaunchAgent), 0o755); err != nil {
-		fmt.Fprintf(errOut, "create LaunchAgents folder: %v\n", err)
-		return 1
-	}
-	if err = os.WriteFile(p.LaunchAgent, []byte(body), 0o644); err != nil {
-		fmt.Fprintf(errOut, "write service file: %v\n", err)
-		return 1
-	}
-	// Bootout first so turning it on twice picks up a moved binary instead of failing.
-	_ = exec.Command("launchctl", "bootout", serviceTarget()+"/"+serviceLabel).Run()
-	if output, errBoot := exec.Command("launchctl", "bootstrap", serviceTarget(), p.LaunchAgent).CombinedOutput(); errBoot != nil {
-		fmt.Fprintf(errOut, "start service: %v: %s\n", errBoot, output)
 		return 1
 	}
 	fmt.Fprintf(out, "prox now runs in the background and starts at login. Logs: %s\n", p.Log)
 	return 0
 }
 
+func turnServiceOn(p Paths, cfg settings, goos string, errOut io.Writer) error {
+	manager, err := backgroundServiceFor(goos)
+	if err != nil {
+		return err
+	}
+	// Prove the password first, so a typo can't leave the service failing at
+	// every login.
+	password, err := requireMasterPassword(p, cfg, terminalOrEnvPassword(errOut), errOut)
+	if err != nil {
+		return err
+	}
+	if err = manager.savePassword(p, password); err != nil {
+		return err
+	}
+	exe, err := os.Executable()
+	if err == nil {
+		exe, err = filepath.EvalSymlinks(exe)
+	}
+	if err != nil {
+		return fmt.Errorf("find prox binary: %w", err)
+	}
+	return manager.enable(p, exe)
+}
+
 func serviceOff(p Paths, out, errOut io.Writer) int {
-	_ = exec.Command("launchctl", "bootout", serviceTarget()+"/"+serviceLabel).Run()
-	deleteKeychainPassword()
-	if err := os.Remove(p.LaunchAgent); err != nil && !os.IsNotExist(err) {
-		fmt.Fprintf(errOut, "remove service file: %v\n", err)
+	if err := turnServiceOff(p, runtime.GOOS); err != nil {
+		fmt.Fprintln(errOut, err)
 		return 1
 	}
 	fmt.Fprintln(out, "prox no longer runs in the background.")
 	return 0
+}
+
+func turnServiceOff(p Paths, goos string) error {
+	manager, err := backgroundServiceFor(goos)
+	if err != nil {
+		return err
+	}
+	manager.forgetPassword(p)
+	return manager.disable(p)
+}
+
+func removeIfPresent(path string) error {
+	if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return nil
 }

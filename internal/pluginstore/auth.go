@@ -33,7 +33,7 @@ type AuthConfig struct {
 	PasswordEnv    string   `yaml:"password-env,omitempty" json:"password_env,omitempty"`
 	HeaderName     string   `yaml:"header-name,omitempty" json:"header_name,omitempty"`
 	HeaderValueEnv string   `yaml:"header-value-env,omitempty" json:"header_value_env,omitempty"`
-	AllowInsecure  bool     `yaml:"allow-insecure,omitempty" json:"allow_insecure,omitempty"`
+	AllowInsecure  bool     `yaml:"allow-insecure,omitempty" json:"allow_insecure,omitzero"`
 }
 
 // Secret holds short-lived credential material that can be overwritten after use.

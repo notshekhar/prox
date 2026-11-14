@@ -34,8 +34,8 @@
 
   :global(.input:focus) {
     background: var(--bg-primary);
-    border-color: var(--text-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-primary) 12%, transparent);
+    border-color: var(--primary-color);
+    box-shadow: none;
   }
 
   :global(.input[aria-invalid='true']) {
@@ -227,8 +227,8 @@
 
   &:focus-visible,
   &[aria-expanded='true'] {
-    border-color: var(--text-primary);
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-primary) 12%, transparent);
+    border-color: var(--primary-color);
+    box-shadow: none;
   }
 
   &[aria-invalid='true'] {
@@ -358,7 +358,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .fieldsRoot :global(.input),
-  .selectControl > button[aria-haspopup='listbox'],
+  .selectControl > button[aria-haspopup='listbox'] {
+    transition: none;
+  }
 
   .fieldHighlightActive {
     animation: none;

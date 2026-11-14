@@ -1,12 +1,13 @@
 package claude
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -106,7 +107,7 @@ func buildAntigravityWebSearchRequest(model string, payload []byte) []byte {
 	_ = outDoc.Set("request.systemInstruction.parts.0.text", antigravityWebSearchSystemInstruction)
 	_ = outDoc.Set("request.tools.0.googleSearch.enhancedContent.imageSearch.maxResultCount", maxResultCount)
 	if len(includedDomains) > 0 {
-		if domainsJSON, err := json.Marshal(includedDomains); err == nil {
+		if domainsJSON, err := json.Marshal(includedDomains, jsoncompat.Encode); err == nil {
 			_ = outDoc.SetRawBytes("request.tools.0.googleSearch.includedDomains", domainsJSON)
 		}
 	}
@@ -423,7 +424,7 @@ func buildClaudeWebSearchContent(toolUseID string, textContent string, grounding
 		textBlockDoc := ojson.NewDocString(`{"type":"text","text":""}`)
 		_ = textBlockDoc.Set("text", block.Text)
 		if len(block.Citations) > 0 {
-			citationsJSON, _ := json.Marshal(block.Citations)
+			citationsJSON, _ := json.Marshal(block.Citations, jsoncompat.Encode)
 			_ = textBlockDoc.SetRawBytes("citations", citationsJSON)
 		}
 		_ = contentDoc.SetRawBytes("-1", textBlockDoc.Bytes())
@@ -464,7 +465,7 @@ func appendClaudeWebSearchStreamBlocks(appendEvent func(string, string), startIn
 		}
 		appendEvent("content_block_start", textBlockStart)
 		for _, citation := range block.Citations {
-			citationJSON, _ := json.Marshal(citation)
+			citationJSON, _ := json.Marshal(citation, jsoncompat.Encode)
 			citationDelta := fmt.Sprintf(`{"type":"content_block_delta","index":%d,"delta":{"type":"citations_delta","citation":%s}}`, contentIndex, string(citationJSON))
 			appendEvent("content_block_delta", citationDelta)
 		}

@@ -3,13 +3,14 @@ package registry
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -137,8 +138,8 @@ func modelSectionChanged(a, b []*ModelInfo) bool {
 			}
 		}
 	}
-	aj, err1 := json.Marshal(a)
-	bj, err2 := json.Marshal(b)
+	aj, err1 := json.Marshal(a, jsoncompat.Encode)
+	bj, err2 := json.Marshal(b, jsoncompat.Encode)
 	if err1 != nil || err2 != nil {
 		return true
 	}
@@ -194,7 +195,7 @@ func mergeProviderNames(existing, incoming []string) []string {
 
 func loadModelsFromBytes(data []byte, source string) error {
 	var parsed staticModelsJSON
-	if err := json.Unmarshal(data, &parsed); err != nil {
+	if err := json.Unmarshal(data, &parsed, jsoncompat.Decode); err != nil {
 		return fmt.Errorf("%s: decode models catalog: %w", source, err)
 	}
 	if err := validateModelsCatalog(&parsed); err != nil {

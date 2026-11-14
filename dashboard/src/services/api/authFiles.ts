@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from './client';
-import { getConfigValue, guardConfigConnection } from './configValue';
+import { getConfigValue, guardConfigConnection, readConfigDocument } from './configValue';
 import { isRecord } from '@/utils/helpers';
 import type { AuthFilesResponse } from '@/types/authFile';
 import type { OAuthModelAliasEntry } from '@/types';
@@ -460,6 +460,13 @@ export const serializeOauthModelAliases = (
 const OAUTH_MODEL_ALIAS_ENDPOINT = '/config/oauth/model-alias';
 const OAUTH_EXCLUDED_MODELS_ENDPOINT = '/config/oauth/excluded-models';
 
+// Read from the whole config: asking for an unset map directly answers 404, which
+// fills the log with a warning on every page load.
+async function readOauthMap(key: string): Promise<unknown> {
+  const config = (await readConfigDocument()) as { oauth?: Record<string, unknown> } | null;
+  return config?.oauth?.[key] ?? {};
+}
+
 const oauthMapWrites = new Map<string, Promise<void>>();
 
 // v8 replaces a whole provider map. Serialize local read/modify/write operations
@@ -630,8 +637,7 @@ export const authFilesApi = {
 
   // OAuth excluded models
   async getOauthExcludedModels(): Promise<Record<string, string[]>> {
-    const data = await getConfigValue(OAUTH_EXCLUDED_MODELS_ENDPOINT, {});
-    return normalizeOauthExcludedModels(data);
+    return normalizeOauthExcludedModels(await readOauthMap('excluded-models'));
   },
 
   saveOauthExcludedModels: (provider: string, models: string[]) =>
@@ -647,8 +653,7 @@ export const authFilesApi = {
 
   // OAuth model aliases
   async getOauthModelAlias(): Promise<Record<string, OAuthModelAliasEntry[]>> {
-    const data = await getConfigValue(OAUTH_MODEL_ALIAS_ENDPOINT, {});
-    return normalizeOauthModelAlias(data);
+    return normalizeOauthModelAlias(await readOauthMap('model-alias'));
   },
 
   saveOauthModelAlias: async (channel: string, aliases: OAuthModelAliasEntry[]) => {

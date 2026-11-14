@@ -41,6 +41,7 @@ type compactRequest struct {
 	path    string
 	status  int
 	latency time.Duration
+	account string
 }
 
 type compactTerminal struct {
@@ -101,7 +102,11 @@ func compactLine(entry *log.Entry, color bool) (string, bool) {
 			return "", false
 		}
 		status := paint(fmt.Sprintf("%d", request.status), statusColor(request.status), color)
-		return fmt.Sprintf("%s  %s  %-6s  %s %s", clock, status, shortLatency(request.latency), request.method, request.path), true
+		line := fmt.Sprintf("%s  %s  %-6s  %s %s", clock, status, shortLatency(request.latency), request.method, request.path)
+		if request.account != "" {
+			line += "  " + paint(request.account, ansiDim, color)
+		}
+		return line, true
 	}
 	if entry.Level > log.ErrorLevel {
 		return "", false

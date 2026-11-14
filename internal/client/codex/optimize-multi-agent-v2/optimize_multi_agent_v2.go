@@ -3,7 +3,8 @@ package multiagentv2
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -331,7 +333,7 @@ func loadCodexCatalogTemplates() (map[string]map[string]any, map[string]any, uin
 	raw, revision := registry.GetCodexClientModelsSnapshot()
 
 	var catalog codexClientModelsCatalog
-	errUnmarshal := json.Unmarshal(raw, &catalog)
+	errUnmarshal := json.Unmarshal(raw, &catalog, jsoncompat.Decode)
 	if errUnmarshal != nil || len(catalog.Models) == 0 {
 		codexCatalogTemplatesLoaded = true
 		codexCatalogTemplatesRevision = revision
@@ -443,7 +445,7 @@ func codexHomeAvailableModels(ctx context.Context, headers http.Header) []map[st
 
 func decodeCodexHomeAvailableModels(raw []byte) []map[string]any {
 	var sections map[string][]map[string]any
-	if err := json.Unmarshal(raw, &sections); err != nil || len(sections) == 0 {
+	if err := json.Unmarshal(raw, &sections, jsoncompat.Decode); err != nil || len(sections) == 0 {
 		return nil
 	}
 
@@ -483,7 +485,7 @@ func decodeCodexHomeAvailableModels(raw []byte) []map[string]any {
 
 func codexSpawnAgentModelsFromSources(availableModels []map[string]any, catalogJSON []byte, lookupModel func(string) *registry.ModelInfo) []codexSpawnAgentModel {
 	var catalog codexClientModelsCatalog
-	if err := json.Unmarshal(catalogJSON, &catalog); err != nil || len(catalog.Models) == 0 {
+	if err := json.Unmarshal(catalogJSON, &catalog, jsoncompat.Decode); err != nil || len(catalog.Models) == 0 {
 		return nil
 	}
 
@@ -845,16 +847,14 @@ func RestoreCodexMultiAgentV2Response(payload []byte, optimized bool) []byte {
 		return payload
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(payload))
-	decoder.UseNumber()
 	var value any
-	if errDecode := decoder.Decode(&value); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(payload)), &value, jsoncompat.DecodeUseNumber); errDecode != nil {
 		return payload
 	}
 	if !restoreCodexCollaborationValue(value) {
 		return payload
 	}
-	restored, errMarshal := json.Marshal(value)
+	restored, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return payload
 	}

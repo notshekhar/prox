@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/vertex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -45,7 +46,7 @@ func (h *Handler) ImportVertexCredential(c *gin.Context) {
 	}
 
 	var serviceAccount map[string]any
-	if err := json.Unmarshal(data, &serviceAccount); err != nil {
+	if err := json.Unmarshal(data, &serviceAccount, jsoncompat.Decode); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json", "message": err.Error()})
 		return
 	}

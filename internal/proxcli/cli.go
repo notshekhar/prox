@@ -21,6 +21,7 @@ const usage = `prox: use all your AI accounts through one local endpoint
   prox login <provider>   Add an account (claude, codex)
   prox accounts           List your accounts
   prox status             Show whether the proxy is running
+  prox doctor             Find out why routing or an account is not working
   prox dashboard          Open the dashboard
   prox service on|off     Run in the background and start at login
   prox upgrade [--force]  Update to the latest release
@@ -79,6 +80,8 @@ func runCommand(p Paths, cfg settings, args []string, out, errOut io.Writer) Out
 		return finished(openDashboard(cfg, out, errOut))
 	case "accounts", "status":
 		return showAccounts(p, cfg, command, out, errOut)
+	case "doctor":
+		return finished(doctor(p, cfg, out))
 	case "upgrade":
 		return finished(upgrade(cfg, rest, out, errOut))
 	case "service":
@@ -88,23 +91,35 @@ func runCommand(p Paths, cfg settings, args []string, out, errOut io.Writer) Out
 		return Outcome{ServerArgs: args}
 	}
 	if strings.HasPrefix(command, "-") {
-		return Outcome{ServerArgs: withConfig(p, args)}
+		return runServerFlags(p, cfg, args, errOut)
 	}
 	fmt.Fprintf(errOut, "Unknown command %q.\n\n%s", command, usage)
 	return finished(2)
 }
 
-func startServer(p Paths, cfg settings, errOut io.Writer) Outcome {
-	if isReachable(cfg) {
-		fmt.Fprintf(errOut, "prox is already running at %s\n", cfg.baseURL())
-		return finished(1)
-	}
+// unlock proves the master password before anything runs the server.
+func unlock(p Paths, cfg settings, errOut io.Writer) error {
 	input, err := startPasswordInput(errOut)
 	if err != nil {
+		return err
+	}
+	_, err = requireMasterPassword(p, cfg, input, errOut)
+	return err
+}
+
+func runServerFlags(p Paths, cfg settings, args []string, errOut io.Writer) Outcome {
+	if err := unlock(p, cfg, errOut); err != nil {
 		return fail(errOut, err)
 	}
-	if _, err = requireMasterPassword(p, cfg, input, errOut); err != nil {
-		return fail(errOut, err)
+	return Outcome{ServerArgs: withConfig(p, args)}
+}
+
+func startServer(p Paths, cfg settings, errOut io.Writer) Outcome {
+	if isReachable(cfg) {
+		return giveUp(errOut, fmt.Errorf("prox is already running at %s", cfg.baseURL()))
+	}
+	if err := unlock(p, cfg, errOut); err != nil {
+		return giveUp(errOut, err)
 	}
 	imported, err := importLegacyAccounts(p, cfg)
 	if err != nil {

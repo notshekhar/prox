@@ -14,8 +14,8 @@ type CooldownView struct {
 	Reason           string    `json:"reason"`
 	RetryAt          time.Time `json:"retry_at"`
 	RemainingSeconds int64     `json:"remaining_seconds"`
-	BackoffLevel     *int      `json:"backoff_level,omitempty"`
-	HTTPStatus       int       `json:"http_status,omitempty"`
+	BackoffLevel     *int      `json:"backoff_level,omitzero"`
+	HTTPStatus       int       `json:"http_status,omitzero"`
 }
 
 // CooldownSnapshotForAuth projects a detached auth snapshot without mutating it.

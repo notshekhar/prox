@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"reflect"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -149,7 +150,7 @@ func (d *homeRequestPrepareDispatcher) RPopAuth(context.Context, string, string,
 		Provider: "antigravity",
 		Status:   StatusActive,
 		Metadata: map[string]any{"access_token": "home-token", "source": "home"},
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*homeRequestPrepareDispatcher) AbortAmbiguousDispatch() {}
@@ -166,14 +167,14 @@ func (*homeErrorPriorityDispatcher) RPopAuth(_ context.Context, _ string, _ stri
 			Provider: "antigravity",
 			Status:   StatusActive,
 			Metadata: map[string]any{"access_token": "model-token", "project_id": "prepared-project"},
-		}})
+		}}, jsoncompat.Encode)
 	case 2:
 		return json.Marshal(homeAuthDispatchResponse{Auth: Auth{
 			ID:       "refresh-error-auth",
 			Provider: "antigravity",
 			Status:   StatusActive,
 			Metadata: map[string]any{"access_token": "refresh-token"},
-		}})
+		}}, jsoncompat.Encode)
 	default:
 		return json.Marshal(homeErrorEnvelope{Error: &homeErrorDetail{Code: homeRequestRetryExceededErrorCode, Message: "no more Home auths"}})
 	}

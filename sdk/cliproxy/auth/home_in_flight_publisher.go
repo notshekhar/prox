@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"sort"
 	"strings"
 	"time"
@@ -10,6 +10,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	log "github.com/sirupsen/logrus"
 )
@@ -129,7 +130,7 @@ func (m *Manager) StartHomeInFlightPublisher(ctx context.Context, transport Home
 			freeze := registry.FreezeInFlight(observedAt.UTC())
 			frames := encodeHomeInFlightFreeze(freeze, observedAt.UTC(), cfg)
 			for index := range frames {
-				raw, errMarshal := json.Marshal(frames[index])
+				raw, errMarshal := json.Marshal(frames[index], jsoncompat.Encode)
 				if errMarshal != nil {
 					log.Warn("failed to encode in-flight snapshot frame")
 					break
@@ -366,7 +367,7 @@ func homeInFlightPartFrame(freeze executionregistry.Freeze, observedAt time.Time
 }
 
 func homeInFlightFrameWithinPartLimit(frame home.InFlightSnapshotFrame, maxPartBytes int) bool {
-	raw, errMarshal := json.Marshal(frame)
+	raw, errMarshal := json.Marshal(frame, jsoncompat.Encode)
 	return errMarshal == nil && len(raw) <= maxPartBytes
 }
 
@@ -376,7 +377,7 @@ func homeInFlightFramesWithinBounds(frames []home.InFlightSnapshotFrame, cfg Hom
 	}
 	totalBytes := 0
 	for _, frame := range frames {
-		raw, errMarshal := json.Marshal(frame)
+		raw, errMarshal := json.Marshal(frame, jsoncompat.Encode)
 		if errMarshal != nil || len(raw) > cfg.MaxPartBytes {
 			return false
 		}

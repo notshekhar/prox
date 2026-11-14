@@ -1,11 +1,12 @@
 package interactions
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
@@ -129,7 +130,7 @@ func rewriteInteractionsFunctionNames(out []byte, functionNameMap map[string]str
 		allowedNames.ForEach(func(_, name ojson.Result) bool {
 			mappedName := util.MapSanitizedFunctionName(functionNameMap, name.String())
 			namesChanged = namesChanged || name.Type != ojson.String || mappedName != name.String()
-			mappedNameJSON, _ := json.Marshal(mappedName)
+			mappedNameJSON, _ := json.Marshal(mappedName, jsoncompat.Encode)
 			nameItems = append(nameItems, mappedNameJSON)
 			return true
 		})
@@ -1176,7 +1177,7 @@ func attachDefaultAntigravitySafetySettingsDoc(outDoc *ojson.Doc) {
 		{"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "OFF"},
 		{"category": "HARM_CATEGORY_CIVIC_INTEGRITY", "threshold": "BLOCK_NONE"},
 	}
-	raw, errMarshal := json.Marshal(settings)
+	raw, errMarshal := json.Marshal(settings, jsoncompat.Encode)
 	if errMarshal != nil {
 		return
 	}

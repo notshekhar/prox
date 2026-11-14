@@ -2,11 +2,12 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestConvertCodexResponseToGemini_IncompleteTerminal(t *testing.T) {
@@ -177,7 +178,7 @@ func TestConvertCodexResponseToGemini_ReasoningThoughtSignature(t *testing.T) {
 		var sdkPart struct {
 			ThoughtSignature []byte `json:"thoughtSignature"`
 		}
-		if err := json.Unmarshal([]byte(part.Raw), &sdkPart); err != nil {
+		if err := json.Unmarshal([]byte(part.Raw), &sdkPart, jsoncompat.Decode); err != nil {
 			t.Fatalf("SDK []byte decode of thoughtSignature failed: %v", err)
 		}
 		if got := decodeGeminiCodexThoughtSignature(part.Get("thoughtSignature").String()); got != signature {

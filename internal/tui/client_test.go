@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -71,7 +71,7 @@ func TestClient_RemoteServerInteraction(t *testing.T) {
 		requestedPath = r.URL.Path
 		authHeader = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
+		_ = json.MarshalWrite(w, map[string]any{"status": "ok"})
 	}))
 	defer ts.Close()
 
@@ -103,7 +103,7 @@ func TestClient_GetAuthFilesUsesV8CredentialsAndRendersRecoveryState(t *testing.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestedPath = r.URL.Path
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"files": []map[string]any{
 				{
 					"name":                    "codex-a.json",

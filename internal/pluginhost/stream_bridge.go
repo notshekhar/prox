@@ -51,7 +51,7 @@ type rpcStreamEmitRequest struct {
 	Error    string `json:"error,omitempty"`
 	// ErrorDetail optionally carries the structured plugin error (status, code,
 	// retry-after). It takes precedence over Error when present.
-	ErrorDetail *pluginabi.Error `json:"error_detail,omitempty"`
+	ErrorDetail *pluginabi.Error `json:"error_detail,omitzero"`
 }
 
 type rpcStreamCloseRequest struct {
@@ -59,7 +59,7 @@ type rpcStreamCloseRequest struct {
 	Error    string `json:"error,omitempty"`
 	// ErrorDetail optionally carries the structured plugin error (status, code,
 	// retry-after). It takes precedence over Error when present.
-	ErrorDetail *pluginabi.Error `json:"error_detail,omitempty"`
+	ErrorDetail *pluginabi.Error `json:"error_detail,omitzero"`
 }
 
 // rpcStreamError builds the error reported to the client for a plugin stream

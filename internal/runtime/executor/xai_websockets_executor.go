@@ -6,7 +6,8 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -19,6 +20,7 @@ import (
 	"github.com/gorilla/websocket"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -52,7 +54,7 @@ type xaiWebsocketIDState struct {
 	mu                               sync.Mutex
 	downstreamToUpstream             map[string]string
 	sequence                         int
-	transcriptInput                  []json.RawMessage
+	transcriptInput                  []jsontext.Value
 	replayCompactedTranscriptOnReset bool
 }
 
@@ -174,7 +176,7 @@ func (s *xaiWebsocketIDState) prependTranscriptInputDoc(doc *ojson.Doc) bool {
 		return false
 	}
 	s.mu.Lock()
-	prefix := make([]json.RawMessage, 0, len(s.transcriptInput))
+	prefix := make([]jsontext.Value, 0, len(s.transcriptInput))
 	for _, item := range s.transcriptInput {
 		prefix = append(prefix, bytes.Clone(item))
 	}
@@ -211,10 +213,10 @@ func (s *xaiWebsocketIDState) replaceTranscriptWithItems(items ...[]byte) {
 	if s == nil {
 		return
 	}
-	next := make([]json.RawMessage, 0, len(items))
+	next := make([]jsontext.Value, 0, len(items))
 	for _, item := range items {
 		item = bytes.TrimSpace(item)
-		if len(item) == 0 || !json.Valid(item) {
+		if len(item) == 0 || !jsontext.Value(item).IsValid(jsoncompat.Decode) {
 			continue
 		}
 		next = append(next, bytes.Clone(item))
@@ -245,7 +247,7 @@ func (s *xaiWebsocketIDState) prependCompactedTranscriptOnResetDoc(doc *ojson.Do
 		s.mu.Unlock()
 		return false
 	}
-	prefix := make([]json.RawMessage, 0, len(s.transcriptInput))
+	prefix := make([]jsontext.Value, 0, len(s.transcriptInput))
 	for _, item := range s.transcriptInput {
 		prefix = append(prefix, bytes.Clone(item))
 	}
@@ -256,15 +258,15 @@ func (s *xaiWebsocketIDState) prependCompactedTranscriptOnResetDoc(doc *ojson.Do
 	return doc.SetRawBytes("input", xaiMarshalRawMessages(merged)) == nil
 }
 
-func xaiJSONRawMessages(result ojson.Result) []json.RawMessage {
+func xaiJSONRawMessages(result ojson.Result) []jsontext.Value {
 	if !result.Exists() || !result.IsArray() {
 		return nil
 	}
 	items := result.Array()
-	out := make([]json.RawMessage, 0, len(items))
+	out := make([]jsontext.Value, 0, len(items))
 	for _, item := range items {
 		raw := bytes.TrimSpace([]byte(item.Raw))
-		if len(raw) == 0 || !json.Valid(raw) {
+		if len(raw) == 0 || !jsontext.Value(raw).IsValid(jsoncompat.Decode) {
 			continue
 		}
 		out = append(out, bytes.Clone(raw))
@@ -272,7 +274,7 @@ func xaiJSONRawMessages(result ojson.Result) []json.RawMessage {
 	return out
 }
 
-func xaiMarshalRawMessages(items []json.RawMessage) []byte {
+func xaiMarshalRawMessages(items []jsontext.Value) []byte {
 	var buf bytes.Buffer
 	buf.WriteByte('[')
 	for i, item := range items {
@@ -373,15 +375,13 @@ func rewriteXAIWebsocketDownstreamIDs(payload []byte, upstreamResponseID string,
 	}
 
 	var value any
-	decoder := json.NewDecoder(bytes.NewReader(payload))
-	decoder.UseNumber()
-	if errDecode := decoder.Decode(&value); errDecode != nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(bytes.NewReader(payload)), &value, jsoncompat.DecodeUseNumber); errDecode != nil {
 		return payload
 	}
 	if !rewriteXAIWebsocketDownstreamIDValue(value, upstreamResponseID, downstreamResponseID, upstreamPreviousID, downstreamPreviousID, "") {
 		return payload
 	}
-	out, errMarshal := json.Marshal(value)
+	out, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return payload
 	}
@@ -1048,7 +1048,7 @@ func (e *XAIWebsocketsExecutor) executeCompactionTriggerFromWebsocketContext(ctx
 }
 
 func validateXAIWebsocketCompactionResponse(data []byte) (string, []byte, error) {
-	if len(data) == 0 || !json.Valid(data) {
+	if len(data) == 0 || !jsontext.Value(data).IsValid(jsoncompat.Decode) {
 		return "", nil, statusErr{code: http.StatusBadGateway, msg: "xai websocket compaction returned invalid JSON"}
 	}
 	responseIDResult := ojson.GetBytesNoCopy(data, "id")

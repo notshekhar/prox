@@ -9,7 +9,7 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -21,6 +21,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	. "github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	responsesconverter "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/openai/openai/responses"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -328,7 +329,7 @@ func convertChatCompletionsResponseToCompletions(rawJSON []byte) []byte {
 	}
 
 	if len(choices) > 0 {
-		choicesJSON, _ := json.Marshal(choices)
+		choicesJSON, _ := json.Marshal(choices, jsoncompat.Encode)
 		_ = outDoc.SetRawBytes("choices", choicesJSON)
 	}
 
@@ -423,7 +424,7 @@ func convertChatCompletionsStreamChunkToCompletions(chunkData []byte) []byte {
 	}
 
 	if len(choices) > 0 {
-		choicesJSON, _ := json.Marshal(choices)
+		choicesJSON, _ := json.Marshal(choices, jsoncompat.Encode)
 		_ = outDoc.SetRawBytes("choices", choicesJSON)
 	}
 

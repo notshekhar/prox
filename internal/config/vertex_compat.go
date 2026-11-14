@@ -19,11 +19,11 @@ type VertexCompatKey struct {
 
 	// Priority controls selection preference when multiple credentials match.
 	// Higher values are preferred; defaults to 0.
-	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
+	Priority int `yaml:"priority,omitempty" json:"priority,omitzero"`
 
 	// Weight controls proportional selection under weighted-round-robin.
 	// An omitted value defaults to 1; non-positive values exclude this credential; maximum 1,000,000.
-	Weight *int `yaml:"weight,omitempty" json:"weight,omitempty"`
+	Weight *int `yaml:"weight,omitempty" json:"weight,omitzero"`
 
 	// Prefix optionally namespaces model aliases for this credential (e.g., "teamA/vertex-pro").
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
@@ -42,7 +42,7 @@ type VertexCompatKey struct {
 	// ConnectionPool configures upstream connection reuse for this credential.
 	// Omitted disables pooling (preserving the fresh-transport-per-request default);
 	// pools stay per credential, so opting in never shares connections with another key.
-	ConnectionPool *ProxyConnectionPoolConfig `yaml:"connection-pool,omitempty" json:"connection-pool,omitempty"`
+	ConnectionPool *ProxyConnectionPoolConfig `yaml:"connection-pool,omitempty" json:"connection-pool,omitzero"`
 
 	// Headers optionally adds extra HTTP headers for requests sent with this key.
 	// Commonly used for cookies, user-agent, and other authentication headers.
@@ -56,17 +56,17 @@ type VertexCompatKey struct {
 
 	// DisableCooling overrides the global cooling policy for this credential when set.
 	// True disables auth/model cooldowns; false explicitly enables them.
-	DisableCooling *bool `yaml:"disable-cooling,omitempty" json:"disable-cooling,omitempty"`
+	DisableCooling *bool `yaml:"disable-cooling,omitempty" json:"disable-cooling,omitzero"`
 
 	// RequestRetry optionally overrides the global request-retry for this credential.
 	// Nil or a negative value means "use the global request-retry". 0 disables additional retry rounds.
-	RequestRetry *int `yaml:"request-retry,omitempty" json:"request-retry,omitempty"`
+	RequestRetry *int `yaml:"request-retry,omitempty" json:"request-retry,omitzero"`
 
 	// Interactions optionally enables native Vertex Interactions API routing for this key.
-	Interactions *bool `yaml:"interactions,omitempty" json:"interactions,omitempty"`
+	Interactions *bool `yaml:"interactions,omitempty" json:"interactions,omitzero"`
 
 	// OpenAPI overrides automatic OpenAI-compatible endpoint selection.
-	OpenAPI *bool `yaml:"openapi,omitempty" json:"openapi,omitempty"`
+	OpenAPI *bool `yaml:"openapi,omitempty" json:"openapi,omitzero"`
 
 	// OpenAPILocation overrides the location used for OpenAPI requests.
 	OpenAPILocation string `yaml:"openapi-location,omitempty" json:"openapi-location,omitempty"`
@@ -90,13 +90,13 @@ type VertexCompatModel struct {
 	DisplayName string `yaml:"display-name,omitempty" json:"display-name,omitempty"`
 
 	// ForceMapping rewrites upstream response model fields back to Alias.
-	ForceMapping bool `yaml:"force-mapping,omitempty" json:"force-mapping,omitempty"`
+	ForceMapping bool `yaml:"force-mapping,omitempty" json:"force-mapping,omitzero"`
 
 	// OpenAPI overrides endpoint selection for this model.
-	OpenAPI *bool `yaml:"openapi,omitempty" json:"openapi,omitempty"`
+	OpenAPI *bool `yaml:"openapi,omitempty" json:"openapi,omitzero"`
 
 	// Thinking configures the thinking/reasoning capability for this model.
-	Thinking *registry.ThinkingSupport `yaml:"thinking,omitempty" json:"thinking,omitempty"`
+	Thinking *registry.ThinkingSupport `yaml:"thinking,omitempty" json:"thinking,omitzero"`
 }
 
 func (m VertexCompatModel) GetOpenAPI() *bool { return m.OpenAPI }

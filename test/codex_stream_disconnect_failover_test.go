@@ -2,7 +2,7 @@ package test
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
@@ -189,7 +190,7 @@ func TestCodexStreamDisconnectExhaustionNotInvalidRequestError(t *testing.T) {
 			Code    string `json:"code"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal([]byte(body), &errorResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(body), &errorResp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to unmarshal JSON error response (body: %s): %v", body, errUnmarshal)
 	}
 

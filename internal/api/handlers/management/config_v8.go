@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"io"
 	"net/http"
 	"os"
@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -102,7 +103,7 @@ func (h *Handler) ConfigV8(c *gin.Context) {
 			c.JSON(clienterror.HTTPStatusFromErrorOr(errRead, http.StatusBadRequest), gin.H{"error": "invalid_body"})
 			return
 		}
-		if !yamlRequest && !json.Valid(body) {
+		if !yamlRequest && !jsontext.Value(body).IsValid(jsoncompat.Decode) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_json"})
 			return
 		}

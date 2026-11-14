@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/google/uuid"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
@@ -2170,7 +2172,7 @@ func buildXAINamespaceDispatcherTool(tool ojson.Result, extraDeclarations ...ojs
 		},
 	}
 
-	raw, errMarshal := json.Marshal(dispatcher)
+	raw, errMarshal := json.Marshal(dispatcher, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil
 	}
@@ -2303,18 +2305,18 @@ func clampXAIToolsLimitDoc(doc *ojson.Doc, maxTools int, refs map[string]xaiName
 		return false
 	}
 	allTools := tools.Array()
-	var dispatcherTools []json.RawMessage
-	var regularTools []json.RawMessage
+	var dispatcherTools []jsontext.Value
+	var regularTools []jsontext.Value
 	for _, tool := range allTools {
 		name := strings.TrimSpace(tool.Get("name").String())
 		if ref, ok := refs[name]; ok && ref.isDispatcher {
-			dispatcherTools = append(dispatcherTools, json.RawMessage(tool.Raw))
+			dispatcherTools = append(dispatcherTools, jsontext.Value(tool.Raw))
 		} else {
-			regularTools = append(regularTools, json.RawMessage(tool.Raw))
+			regularTools = append(regularTools, jsontext.Value(tool.Raw))
 		}
 	}
 
-	capped := make([]json.RawMessage, 0, maxTools)
+	capped := make([]jsontext.Value, 0, maxTools)
 	if len(dispatcherTools) >= maxTools {
 		capped = append(capped, dispatcherTools[:maxTools]...)
 	} else {
@@ -2327,7 +2329,7 @@ func clampXAIToolsLimitDoc(doc *ojson.Doc, maxTools int, refs map[string]xaiName
 		}
 	}
 
-	raw, errMarshal := json.Marshal(capped)
+	raw, errMarshal := json.Marshal(capped, jsoncompat.Encode)
 	if errMarshal != nil {
 		return false
 	}
@@ -2376,11 +2378,11 @@ func promoteXAIAdditionalToolsDoc(doc *ojson.Doc) bool {
 	}
 
 	inputItems := input.Array()
-	remainingInput := make([]json.RawMessage, 0, len(inputItems))
+	remainingInput := make([]jsontext.Value, 0, len(inputItems))
 	promotedTools := make([]ojson.Result, 0)
 	for _, item := range inputItems {
 		if item.Get("type").String() != "additional_tools" {
-			remainingInput = append(remainingInput, json.RawMessage(item.Raw))
+			remainingInput = append(remainingInput, jsontext.Value(item.Raw))
 			continue
 		}
 		for _, tool := range item.Get("tools").Array() {
@@ -2391,7 +2393,7 @@ func promoteXAIAdditionalToolsDoc(doc *ojson.Doc) bool {
 		return false
 	}
 
-	rawInput, errMarshalInput := json.Marshal(remainingInput)
+	rawInput, errMarshalInput := json.Marshal(remainingInput, jsoncompat.Encode)
 	if errMarshalInput != nil {
 		return false
 	}
@@ -2401,7 +2403,7 @@ func promoteXAIAdditionalToolsDoc(doc *ojson.Doc) bool {
 
 	topLevelTools := doc.Get("tools")
 	topLevelArray := topLevelTools.Array()
-	tools := make([]json.RawMessage, 0, len(topLevelArray)+len(promotedTools))
+	tools := make([]jsontext.Value, 0, len(topLevelArray)+len(promotedTools))
 	seenNames := make(map[string]struct{}, len(topLevelArray)+len(promotedTools))
 	if topLevelTools.IsArray() {
 		for _, tool := range topLevelArray {
@@ -2411,7 +2413,7 @@ func promoteXAIAdditionalToolsDoc(doc *ojson.Doc) bool {
 				}
 				seenNames[name] = struct{}{}
 			}
-			tools = append(tools, json.RawMessage(tool.Raw))
+			tools = append(tools, jsontext.Value(tool.Raw))
 		}
 	}
 	for _, tool := range promotedTools {
@@ -2421,9 +2423,9 @@ func promoteXAIAdditionalToolsDoc(doc *ojson.Doc) bool {
 			}
 			seenNames[name] = struct{}{}
 		}
-		tools = append(tools, json.RawMessage(tool.Raw))
+		tools = append(tools, jsontext.Value(tool.Raw))
 	}
-	rawTools, errMarshalTools := json.Marshal(tools)
+	rawTools, errMarshalTools := json.Marshal(tools, jsoncompat.Encode)
 	if errMarshalTools != nil {
 		return false
 	}
@@ -2903,7 +2905,7 @@ func normalizeXAIInputCustomToolCallsDoc(doc *ojson.Doc) bool {
 
 	changed := false
 	inputArray := input.Array()
-	items := make([]json.RawMessage, 0, len(inputArray))
+	items := make([]jsontext.Value, 0, len(inputArray))
 	for _, item := range inputArray {
 		var normalized []byte
 		switch item.Get("type").String() {
@@ -2930,17 +2932,17 @@ func normalizeXAIInputCustomToolCallsDoc(doc *ojson.Doc) bool {
 			_ = itemDoc.Set("output", xaiCustomToolCallOutput(item.Get("output")))
 			normalized = itemDoc.Bytes()
 		default:
-			items = append(items, json.RawMessage(item.Raw))
+			items = append(items, jsontext.Value(item.Raw))
 			continue
 		}
-		items = append(items, json.RawMessage(normalized))
+		items = append(items, jsontext.Value(normalized))
 		changed = true
 	}
 	if !changed {
 		return false
 	}
 
-	rawInput, errMarshal := json.Marshal(items)
+	rawInput, errMarshal := json.Marshal(items, jsoncompat.Encode)
 	if errMarshal != nil {
 		return false
 	}
@@ -2960,7 +2962,7 @@ func xaiCustomToolCallArguments(input ojson.Result) string {
 				return parsed.Raw
 			}
 		}
-		encoded, errMarshal := json.Marshal(text)
+		encoded, errMarshal := json.Marshal(text, jsoncompat.Encode)
 		if errMarshal != nil {
 			return "{}"
 		}

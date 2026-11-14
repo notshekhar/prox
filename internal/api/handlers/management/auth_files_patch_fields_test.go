@@ -2,7 +2,8 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	fileauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -100,7 +102,7 @@ func TestPatchAuthFileFields_MergeHeadersAndDeleteEmptyValues(t *testing.T) {
 
 	headersMeta, ok := updated.Metadata["headers"].(map[string]any)
 	if !ok {
-		raw, _ := json.Marshal(updated.Metadata["headers"])
+		raw, _ := json.Marshal(updated.Metadata["headers"], jsoncompat.Encode)
 		t.Fatalf("metadata.headers = %T (%s), want map[string]any", updated.Metadata["headers"], string(raw))
 	}
 	if got := headersMeta["X-Old"]; got != "new" {
@@ -437,7 +439,7 @@ func TestPatchAuthFileFields_RequestRetryRoundTrip(t *testing.T) {
 				RequestRetry *int   `json:"request_retry"`
 			} `json:"files"`
 		}
-		if errDecode := json.Unmarshal(response.Body.Bytes(), &payload); errDecode != nil {
+		if errDecode := json.Unmarshal(response.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 			t.Fatalf("decode GET response: %v", errDecode)
 		}
 		if len(payload.Files) != 1 || payload.Files[0].Name != fileName {
@@ -549,11 +551,11 @@ func TestAuthFileRequestRetryFromJSON(t *testing.T) {
 }
 
 func TestNormalizeAuthFilePatchFieldsCanonicalizesLegacyRoots(t *testing.T) {
-	fields := map[string]json.RawMessage{
-		"request-retry":             json.RawMessage(`2`),
-		" disable-cooling ":         json.RawMessage(`true`),
-		"fingerprint-profile.value": json.RawMessage(`"x"`),
-		"provider-specific":         json.RawMessage(`"preserved"`),
+	fields := map[string]jsontext.Value{
+		"request-retry":             jsontext.Value(`2`),
+		" disable-cooling ":         jsontext.Value(`true`),
+		"fingerprint-profile.value": jsontext.Value(`"x"`),
+		"provider-specific":         jsontext.Value(`"preserved"`),
 	}
 
 	normalized, errNormalize := normalizeAuthFilePatchFields(fields)
@@ -566,9 +568,9 @@ func TestNormalizeAuthFilePatchFieldsCanonicalizesLegacyRoots(t *testing.T) {
 		}
 	}
 
-	canonicalWins, errCanonicalWins := normalizeAuthFilePatchFields(map[string]json.RawMessage{
-		"request-retry": json.RawMessage(`2`),
-		"request_retry": json.RawMessage(`3`),
+	canonicalWins, errCanonicalWins := normalizeAuthFilePatchFields(map[string]jsontext.Value{
+		"request-retry": jsontext.Value(`2`),
+		"request_retry": jsontext.Value(`3`),
 	})
 	if errCanonicalWins != nil {
 		t.Fatalf("normalizeAuthFilePatchFields() canonical precedence error = %v", errCanonicalWins)
@@ -577,9 +579,9 @@ func TestNormalizeAuthFilePatchFieldsCanonicalizesLegacyRoots(t *testing.T) {
 		t.Fatalf("normalized request_retry = %s, want canonical value 3", got)
 	}
 
-	_, errNestedDuplicate := normalizeAuthFilePatchFields(map[string]json.RawMessage{
-		"disable_cooling.value":   json.RawMessage(`true`),
-		"disable_cooling . value": json.RawMessage(`false`),
+	_, errNestedDuplicate := normalizeAuthFilePatchFields(map[string]jsontext.Value{
+		"disable_cooling.value":   jsontext.Value(`true`),
+		"disable_cooling . value": jsontext.Value(`false`),
 	})
 	if errNestedDuplicate == nil {
 		t.Fatal("normalizeAuthFilePatchFields() accepted equivalent nested paths")
@@ -747,7 +749,7 @@ func TestPatchAuthFileFields_IDTokenMissingPlanTypeDefaultsToFree(t *testing.T) 
 			"chatgpt_account_id": "acc-12345",
 		},
 	}
-	payloadBytes, _ := json.Marshal(claimsMap)
+	payloadBytes, _ := json.Marshal(claimsMap, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	testIDToken := header + "." + claims + "."
 

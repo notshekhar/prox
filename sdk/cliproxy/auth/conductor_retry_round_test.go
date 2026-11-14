@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"sort"
 	"sync"
@@ -10,6 +10,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -364,7 +365,7 @@ func (d *retryRoundHomeDispatcher) RPopAuthWithRetryRoundConstraints(_ context.C
 		return json.Marshal(homeAuthDispatchResponse{
 			RequestRetry: func() *int { value := maxRetry; return &value }(),
 			Auth:         Auth{ID: id, Provider: "retry-round-home", Status: StatusActive, Metadata: map[string]any{"request_retry": d.limits[id]}},
-		})
+		}, jsoncompat.Encode)
 	}
 	return nil, home.ErrAuthNotFound
 }

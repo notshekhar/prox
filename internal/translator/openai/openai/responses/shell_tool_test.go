@@ -2,7 +2,7 @@ package responses
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"

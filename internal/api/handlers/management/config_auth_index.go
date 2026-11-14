@@ -49,16 +49,16 @@ type openAICompatibilityAPIKeyWithAuthIndex struct {
 
 type openAICompatibilityWithAuthIndex struct {
 	Name                  string                                   `json:"name"`
-	Priority              int                                      `json:"priority,omitempty"`
+	Priority              int                                      `json:"priority,omitzero"`
 	Disabled              bool                                     `json:"disabled"`
 	Prefix                string                                   `json:"prefix,omitempty"`
 	BaseURL               string                                   `json:"base-url"`
 	APIKeyEntries         []openAICompatibilityAPIKeyWithAuthIndex `json:"api-key-entries,omitempty"`
 	Models                []config.OpenAICompatibilityModel        `json:"models,omitempty"`
 	Headers               map[string]string                        `json:"headers,omitempty"`
-	SupportPromptCacheKey bool                                     `json:"support-prompt-cache-key,omitempty"`
-	DisableCooling        *bool                                    `json:"disable-cooling,omitempty"`
-	RequestRetry          *int                                     `json:"request-retry,omitempty"`
+	SupportPromptCacheKey bool                                     `json:"support-prompt-cache-key,omitzero"`
+	DisableCooling        *bool                                    `json:"disable-cooling,omitzero"`
+	RequestRetry          *int                                     `json:"request-retry,omitzero"`
 	RequestScopedErrors   []config.RequestScopedErrorRule          `json:"request-scoped-errors,omitempty"`
 	AuthIndex             string                                   `json:"auth-index,omitempty"`
 }

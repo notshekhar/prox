@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +14,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/browser"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
@@ -67,7 +68,7 @@ func ResolveSIWCBindPath(cfg *config.Config, target string) (string, error) {
 		return "", fmt.Errorf("siwc-bind: failed to read credential file %s: %w", candidate, errRead)
 	}
 	var parsed map[string]any
-	if errUnmarshal := json.Unmarshal(data, &parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &parsed, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("siwc-bind: invalid credential JSON in %s", candidate)
 	}
 	if errValidate := validateSIWCBindCredential(parsed); errValidate != nil {
@@ -96,7 +97,7 @@ func ensureSIWCDeviceIDFromFile(authFilePath string) (string, error) {
 		return "", fmt.Errorf("failed to read credential file: %w", errRead)
 	}
 	var parsed map[string]any
-	if errUnmarshal := json.Unmarshal(data, &parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &parsed, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("invalid credential JSON: %w", errUnmarshal)
 	}
 	if siwcMap, ok := parsed["siwc"].(map[string]any); ok && len(siwcMap) > 0 {
@@ -118,7 +119,7 @@ func saveSIWCToCodexCredentialFile(authFilePath string, siwcData *codex.CodexSIW
 			return fmt.Errorf("failed to read existing credential file: %w", errRead)
 		}
 		var diskMap map[string]any
-		if errUnmarshal := json.Unmarshal(existingBytes, &diskMap); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(existingBytes, &diskMap, jsoncompat.Decode); errUnmarshal != nil {
 			return fmt.Errorf("failed to parse existing credential file: %w", errUnmarshal)
 		}
 		if errValidate := validateSIWCBindCredential(diskMap); errValidate != nil {

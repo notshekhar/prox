@@ -3,11 +3,12 @@ package modelconfig
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -108,7 +109,7 @@ func normalizeModalities(raw []string) []string {
 }
 
 func thinkingHashSuffix(support *registry.ThinkingSupport) string {
-	data, _ := json.Marshal(support)
+	data, _ := json.Marshal(support, jsoncompat.Encode)
 	return "|thinking=" + string(data)
 }
 

@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,6 +13,7 @@ import (
 
 	codexauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -201,7 +202,7 @@ func (e *CodexExecutor) refreshLocked(ctx context.Context, auth *cliproxyauth.Au
 			return nil, fmt.Errorf("codex executor: read credential file %s: %w", diskPath, errRead)
 		}
 		var diskMap map[string]any
-		if errUnmarshal := json.Unmarshal(existingBytes, &diskMap); errUnmarshal != nil || len(diskMap) == 0 {
+		if errUnmarshal := json.Unmarshal(existingBytes, &diskMap, jsoncompat.Decode); errUnmarshal != nil || len(diskMap) == 0 {
 			return nil, fmt.Errorf("codex executor: invalid credential JSON in %s: %w", diskPath, errUnmarshal)
 		}
 		diskBaseline = cloneSIWCMap(diskMap)
@@ -488,7 +489,7 @@ func (e *CodexExecutor) refreshLocked(ctx context.Context, auth *cliproxyauth.Au
 			return auth, fmt.Errorf("codex executor: re-read credential file %s before write: %w", diskPath, errReadLatest)
 		}
 		var latestDisk map[string]any
-		if errUnmarshal := json.Unmarshal(latestBytes, &latestDisk); errUnmarshal != nil || len(latestDisk) == 0 {
+		if errUnmarshal := json.Unmarshal(latestBytes, &latestDisk, jsoncompat.Decode); errUnmarshal != nil || len(latestDisk) == 0 {
 			return auth, fmt.Errorf("codex executor: invalid credential JSON in %s before write: %w", diskPath, errUnmarshal)
 		}
 		mergedDisk := patch.Apply(latestDisk)

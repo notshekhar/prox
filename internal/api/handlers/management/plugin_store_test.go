@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"html"
 	"io"
 	"net/http"
@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
 )
 
@@ -53,7 +54,7 @@ func TestListPluginStoreMergesInstalledStatus(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if !body.PluginsEnabled {
@@ -145,7 +146,7 @@ func TestListPluginStoreUsesVersionFromInstalledFilename(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -203,7 +204,7 @@ func TestListPluginStoreUsesConfiguredStoreVersionWhenFilesCoexist(t *testing.T)
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -261,7 +262,7 @@ func TestListPluginStoreEscapesRegistryStrings(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -334,7 +335,7 @@ func TestListPluginStorePassesThroughLocales(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -381,7 +382,7 @@ func TestListPluginStoreShowsLatestReleaseVersionAndCaches(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 		var body pluginStoreListResponse
-		if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+		if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 			t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 		}
 		return body
@@ -429,7 +430,7 @@ func TestListPluginStoreFallsBackToRegistryVersion(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -478,7 +479,7 @@ func TestListPluginStoreIncludesThirdPartySources(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Sources) != 2 {
@@ -549,7 +550,7 @@ func TestListPluginStoreMatchesInstalledStatusToManifestSource(t *testing.T) {
 			UpdateAvailable     bool   `json:"update_available"`
 		} `json:"plugins"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 2 {
@@ -689,7 +690,7 @@ func TestListPluginStoreIncludesDirectMetadataAndAuth(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -741,7 +742,7 @@ func TestListPluginStoreReportsVersionArtifactAuth(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -785,7 +786,7 @@ func TestListPluginStoreReportsGitHubMetadataAuth(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if len(body.Plugins) != 1 {
@@ -892,7 +893,7 @@ plugins:
 		t.Fatalf("reload config = handler config %p, want independent snapshot", h.cfg)
 	}
 	var body pluginInstallResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.Status != "installed" || body.ID != "sample-provider" || body.Version != "0.1.0" {
@@ -975,7 +976,7 @@ func TestInstallPluginFromStoreInstallsDirectArtifact(t *testing.T) {
 	waitForAsyncReload(t, reloads)
 	waitForReloadDone(t, reloadDone)
 	var body pluginInstallResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.InstallType != pluginstore.InstallTypeDirect || body.Version != "0.4.0" {
@@ -1038,7 +1039,7 @@ func TestInstallPluginFromStoreHonorsDirectQueryVersion(t *testing.T) {
 	waitForAsyncReload(t, reloads)
 	waitForReloadDone(t, reloadDone)
 	var body pluginInstallResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.InstallType != pluginstore.InstallTypeDirect || body.Version != "0.3.0" {
@@ -1110,7 +1111,7 @@ func TestInstallPluginFromStoreUsesRequestedThirdPartySource(t *testing.T) {
 		t.Fatalf("reload config = handler config %p, want independent snapshot", h.cfg)
 	}
 	var body pluginInstallResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("Unmarshal() error = %v; body=%s", errDecode, rec.Body.String())
 	}
 	if body.SourceID != communitySourceID || body.Version != "0.3.0" {

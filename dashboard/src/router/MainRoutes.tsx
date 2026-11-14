@@ -18,8 +18,9 @@ import { useAuthStore } from '@/stores';
 const createMainRoutes = (supportsPlugin: boolean) => [
   { path: '/', element: <DashboardPage /> },
   { path: '/dashboard', element: <DashboardPage /> },
-  { path: '/api-keys', element: <ProvidersWorkbenchPage /> },
-  { path: '/api-keys/*', element: <Navigate to="/api-keys" replace /> },
+  { path: '/provider-keys', element: <ProvidersWorkbenchPage /> },
+  { path: '/provider-keys/*', element: <Navigate to="/provider-keys" replace /> },
+  { path: '/api-keys/*', element: <Navigate to="/provider-keys" replace /> },
   { path: '/accounts', element: <AuthFilesPage /> },
   { path: '/accounts/oauth-excluded', element: <AuthFilesOAuthExcludedEditPage /> },
   { path: '/accounts/oauth-model-alias', element: <AuthFilesOAuthModelAliasEditPage /> },

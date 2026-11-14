@@ -1,11 +1,12 @@
 package misc
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"path/filepath"
 	"strings"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -38,11 +39,11 @@ func MergeMetadata(source any, metadata map[string]any) (map[string]any, error) 
 		}
 	} else if source != nil {
 		// Slow path: marshal to JSON and back to map to respect JSON tags
-		temp, errMarshal := json.Marshal(source)
+		temp, errMarshal := json.Marshal(source, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, fmt.Errorf("failed to marshal source: %w", errMarshal)
 		}
-		if errUnmarshal := json.Unmarshal(temp, &data); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(temp, &data, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, fmt.Errorf("failed to unmarshal to map: %w", errUnmarshal)
 		}
 	}

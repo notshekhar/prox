@@ -1,13 +1,14 @@
 package auth
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"regexp"
 	"strconv"
 	"strings"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
 
@@ -80,8 +81,8 @@ func extractRequestScopedErrorRules(auth *Auth, cfg *internalconfig.Config) []in
 				}
 			case []any:
 				var rules []internalconfig.RequestScopedErrorRule
-				if data, errMarshal := json.Marshal(typed); errMarshal == nil {
-					if errUnmarshal := json.Unmarshal(data, &rules); errUnmarshal == nil && len(rules) > 0 {
+				if data, errMarshal := json.Marshal(typed, jsoncompat.Encode); errMarshal == nil {
+					if errUnmarshal := json.Unmarshal(data, &rules, jsoncompat.Decode); errUnmarshal == nil && len(rules) > 0 {
 						return rules
 					}
 				}

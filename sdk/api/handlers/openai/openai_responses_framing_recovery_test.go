@@ -2,7 +2,7 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 
@@ -85,7 +85,7 @@ func TestResponsesSSEFramerRecoversFragmentedJSON(t *testing.T) {
 					if tc.name == "colon-before-string-field" {
 						wantMarker = "data: private"
 					}
-					if !ok || !json.Valid(payload) || ojson.GetBytesNoCopy(payload, "type").String() != "response.metadata" || ojson.GetBytesNoCopy(payload, "metadata.marker").String() != wantMarker {
+					if !ok || !jsontext.Value(payload).IsValid() || ojson.GetBytesNoCopy(payload, "type").String() != "response.metadata" || ojson.GetBytesNoCopy(payload, "metadata.marker").String() != wantMarker {
 						t.Fatalf("Codex metadata was corrupted: %q", got)
 					}
 					if strings.Contains(strings.Join(tc.chunks, ""), ": keepalive") && !strings.Contains(got, ": keepalive") {
@@ -172,7 +172,7 @@ func TestSSEFrameAccumulatorRecoversFragmentedJSON(t *testing.T) {
 				t.Fatalf("frames = %q, want one", frames)
 			}
 			payload, ok := responsesSSEDataPayload(frames[0])
-			if !ok || !json.Valid(payload) || ojson.GetBytesNoCopy(payload, "type").String() != "response.completed" {
+			if !ok || !jsontext.Value(payload).IsValid() || ojson.GetBytesNoCopy(payload, "type").String() != "response.completed" {
 				t.Fatalf("image response was corrupted: %q", frames[0])
 			}
 			if strings.Contains(strings.Join(tc.chunks, ""), ": keepalive") && !bytes.Contains(frames[0], []byte(": keepalive")) {

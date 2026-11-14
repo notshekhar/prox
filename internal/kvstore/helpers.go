@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -28,7 +29,7 @@ func KVGetJSONRequired(ctx context.Context, key string, out any) (bool, bool, er
 	if errGet != nil || !found {
 		return true, false, errGet
 	}
-	if errUnmarshal := json.Unmarshal(raw, out); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, out, jsoncompat.Decode); errUnmarshal != nil {
 		return true, false, errUnmarshal
 	}
 	return true, true, nil
@@ -36,7 +37,7 @@ func KVGetJSONRequired(ctx context.Context, key string, out any) (bool, bool, er
 
 // KVSetJSONRequired marshals value as JSON and writes it to the active KV store if KV mode is enabled.
 func KVSetJSONRequired(ctx context.Context, key string, value any, ttl time.Duration) (bool, error) {
-	raw, errMarshal := json.Marshal(value)
+	raw, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return false, errMarshal
 	}
@@ -101,7 +102,7 @@ func KVGetJSONBestEffort(ctx context.Context, key string, out any) (bool, bool) 
 
 // KVSetJSONBestEffort marshals and stores value in the active KV store, logging and swallowing errors.
 func KVSetJSONBestEffort(ctx context.Context, key string, value any, ttl time.Duration) bool {
-	raw, errMarshal := json.Marshal(value)
+	raw, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		log.Errorf("home kv best-effort set failed prefix=%s: %v", kvLogPrefix(key), errMarshal)
 		return false

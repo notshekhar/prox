@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // Client wraps HTTP calls to the management API.
@@ -118,7 +120,7 @@ func (c *Client) getJSON(path string) (map[string]any, error) {
 		return nil, err
 	}
 	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
+	if err := json.Unmarshal(data, &result, jsoncompat.Decode); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -126,7 +128,7 @@ func (c *Client) getJSON(path string) (map[string]any, error) {
 
 // postJSON sends a JSON body via POST and checks for errors.
 func (c *Client) postJSON(path string, body any) error {
-	jsonBody, err := json.Marshal(body)
+	jsonBody, err := json.Marshal(body, jsoncompat.Encode)
 	if err != nil {
 		return err
 	}
@@ -192,7 +194,7 @@ func (c *Client) DeleteAuthFile(name string) error {
 
 // ToggleAuthFile enables or disables an auth file.
 func (c *Client) ToggleAuthFile(name string, disabled bool) error {
-	body, _ := json.Marshal(map[string]any{"name": name, "disabled": disabled})
+	body, _ := json.Marshal(map[string]any{"name": name, "disabled": disabled}, jsoncompat.Encode)
 	_, err := c.patch("/v0/management/auth-files/status", strings.NewReader(string(body)))
 	return err
 }
@@ -200,7 +202,7 @@ func (c *Client) ToggleAuthFile(name string, disabled bool) error {
 // PatchAuthFileFields updates editable fields on an auth file.
 func (c *Client) PatchAuthFileFields(name string, fields map[string]any) error {
 	fields["name"] = name
-	body, _ := json.Marshal(fields)
+	body, _ := json.Marshal(fields, jsoncompat.Encode)
 	_, err := c.patch("/v0/management/auth-files/fields", strings.NewReader(string(body)))
 	return err
 }
@@ -238,11 +240,11 @@ func (c *Client) GetLogs(after int64, limit int) ([]string, int64, error) {
 
 	lines := []string{}
 	if rawLines, ok := wrapper["lines"]; ok && rawLines != nil {
-		rawJSON, errMarshal := json.Marshal(rawLines)
+		rawJSON, errMarshal := json.Marshal(rawLines, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, after, errMarshal
 		}
-		if errUnmarshal := json.Unmarshal(rawJSON, &lines); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(rawJSON, &lines, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, after, errUnmarshal
 		}
 	}
@@ -252,7 +254,7 @@ func (c *Client) GetLogs(after int64, limit int) ([]string, int64, error) {
 		switch value := rawLatest.(type) {
 		case float64:
 			latest = int64(value)
-		case json.Number:
+		case jsoncompat.Number:
 			if parsed, errParse := value.Int64(); errParse == nil {
 				latest = parsed
 			}
@@ -280,12 +282,12 @@ func (c *Client) GetAPIKeys() ([]string, error) {
 	if !ok {
 		return nil, nil
 	}
-	raw, err := json.Marshal(arr)
+	raw, err := json.Marshal(arr, jsoncompat.Encode)
 	if err != nil {
 		return nil, err
 	}
 	var result []string
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := json.Unmarshal(raw, &result, jsoncompat.Decode); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -294,7 +296,7 @@ func (c *Client) GetAPIKeys() ([]string, error) {
 // AddAPIKey adds a new API key by sending old=nil, new=key which appends.
 func (c *Client) AddAPIKey(key string) error {
 	body := map[string]any{"old": nil, "new": key}
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, _ := json.Marshal(body, jsoncompat.Encode)
 	_, err := c.patch("/v0/management/api-keys", strings.NewReader(string(jsonBody)))
 	return err
 }
@@ -302,7 +304,7 @@ func (c *Client) AddAPIKey(key string) error {
 // EditAPIKey replaces an API key at the given index.
 func (c *Client) EditAPIKey(index int, newValue string) error {
 	body := map[string]any{"index": index, "value": newValue}
-	jsonBody, _ := json.Marshal(body)
+	jsonBody, _ := json.Marshal(body, jsoncompat.Encode)
 	_, err := c.patch("/v0/management/api-keys", strings.NewReader(string(jsonBody)))
 	return err
 }
@@ -371,12 +373,12 @@ func extractList(wrapper map[string]any, key string) ([]map[string]any, error) {
 	if !ok || arr == nil {
 		return nil, nil
 	}
-	raw, err := json.Marshal(arr)
+	raw, err := json.Marshal(arr, jsoncompat.Encode)
 	if err != nil {
 		return nil, err
 	}
 	var result []map[string]any
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := json.Unmarshal(raw, &result, jsoncompat.Decode); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -434,21 +436,21 @@ func (c *Client) CancelAuthSession(state string) error {
 
 // PutBoolField updates a boolean config field.
 func (c *Client) PutBoolField(path string, value bool) error {
-	body, _ := json.Marshal(map[string]any{"value": value})
+	body, _ := json.Marshal(map[string]any{"value": value}, jsoncompat.Encode)
 	_, err := c.put("/v0/management/"+path, strings.NewReader(string(body)))
 	return err
 }
 
 // PutIntField updates an integer config field.
 func (c *Client) PutIntField(path string, value int) error {
-	body, _ := json.Marshal(map[string]any{"value": value})
+	body, _ := json.Marshal(map[string]any{"value": value}, jsoncompat.Encode)
 	_, err := c.put("/v0/management/"+path, strings.NewReader(string(body)))
 	return err
 }
 
 // PutStringField updates a string config field.
 func (c *Client) PutStringField(path string, value string) error {
-	body, _ := json.Marshal(map[string]any{"value": value})
+	body, _ := json.Marshal(map[string]any{"value": value}, jsoncompat.Encode)
 	_, err := c.put("/v0/management/"+path, strings.NewReader(string(body)))
 	return err
 }

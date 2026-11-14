@@ -2,7 +2,7 @@ package cliproxy
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"runtime"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 )
@@ -172,7 +173,7 @@ func TestServiceRebalanceReleaseOwnershipAcrossCancellation(t *testing.T) {
 					t.Fatal("release was not sent to the membership owner")
 				}
 				var frame home.ConcurrencyReleaseFrame
-				if errJSON := json.Unmarshal([]byte(args[2]), &frame); errJSON != nil {
+				if errJSON := json.Unmarshal([]byte(args[2]), &frame, jsoncompat.Decode); errJSON != nil {
 					t.Fatal(errJSON)
 				}
 				if frame != (home.ConcurrencyReleaseFrame{CredentialID: "credential-a", Model: "test-model", ReleaseSeq: 1}) {

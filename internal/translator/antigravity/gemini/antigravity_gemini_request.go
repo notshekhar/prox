@@ -6,11 +6,13 @@
 package gemini
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/translator/gemini/common"
@@ -169,7 +171,7 @@ func ConvertGeminiRequestToAntigravity(modelName string, inputRawJSON []byte, _ 
 
 	common.AttachDefaultSafetySettingsDoc(reqDoc, "safetySettings")
 
-	modelJSON, _ := json.Marshal(modelName)
+	modelJSON, _ := json.Marshal(modelName, jsoncompat.Encode)
 	out := make([]byte, 0, 34+len(modelJSON)+reqDoc.Len())
 	out = append(out, `{"project":"","request":`...)
 	out = reqDoc.AppendTo(out)
@@ -429,7 +431,7 @@ func rewriteGeminiFunctionNamesDocAt(doc *ojson.Doc, prefix string, functionName
 			allowedNames.ForEach(func(_, name ojson.Result) bool {
 				mappedName := util.MapSanitizedFunctionName(functionNameMap, name.String())
 				namesChanged = namesChanged || name.Type != ojson.String || mappedName != name.String()
-				mappedNameJSON, _ := json.Marshal(mappedName)
+				mappedNameJSON, _ := json.Marshal(mappedName, jsoncompat.Encode)
 				nameItems = append(nameItems, mappedNameJSON)
 				return true
 			})
@@ -494,9 +496,7 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 
 		for partIndex, partResult := range partsArray {
 			var part map[string]any
-			decoder := json.NewDecoder(strings.NewReader(partResult.Raw))
-			decoder.UseNumber()
-			if err := decoder.Decode(&part); err != nil {
+			if err := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(partResult.Raw)), &part, jsoncompat.DecodeUseNumber); err != nil {
 				rewrittenParts = append(rewrittenParts, []byte(partResult.Raw))
 				continue
 			}
@@ -510,7 +510,7 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 					contentChanged = true
 					deleteAntigravityClaudeGeminiPartThoughtSignatureFields(part)
 					logAntigravityClaudeGeminiSignatureSanitize(modelName, "drop_signature", "functionResponse parts cannot replay Claude thinking signatures", contentIndex, partIndex, rawSignature)
-					partBytes, _ := json.Marshal(part)
+					partBytes, _ := json.Marshal(part, jsoncompat.Encode)
 					rewrittenParts = append(rewrittenParts, partBytes)
 				} else {
 					rewrittenParts = append(rewrittenParts, []byte(partResult.Raw))
@@ -524,7 +524,7 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 					contentChanged = true
 					deleteAntigravityClaudeGeminiPartThoughtSignatureFields(part)
 					logAntigravityClaudeGeminiSignatureSanitize(modelName, "drop_signature", "non-model parts cannot replay Claude thinking signatures", contentIndex, partIndex, rawSignature)
-					partBytes, _ := json.Marshal(part)
+					partBytes, _ := json.Marshal(part, jsoncompat.Encode)
 					rewrittenParts = append(rewrittenParts, partBytes)
 				} else {
 					rewrittenParts = append(rewrittenParts, []byte(partResult.Raw))
@@ -554,7 +554,7 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 				}
 				deleteAntigravityClaudeGeminiPartThoughtSignatureFields(part)
 				part["thoughtSignature"] = normalized
-				partBytes, _ := json.Marshal(part)
+				partBytes, _ := json.Marshal(part, jsoncompat.Encode)
 				rewrittenParts = append(rewrittenParts, partBytes)
 				continue
 			}
@@ -564,7 +564,7 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 				contentChanged = true
 				deleteAntigravityClaudeGeminiPartThoughtSignatureFields(part)
 				logAntigravityClaudeGeminiSignatureSanitize(modelName, "drop_signature", "non-thinking parts should not carry Claude thinking signatures", contentIndex, partIndex, rawSignature)
-				partBytes, _ := json.Marshal(part)
+				partBytes, _ := json.Marshal(part, jsoncompat.Encode)
 				rewrittenParts = append(rewrittenParts, partBytes)
 			} else {
 				rewrittenParts = append(rewrittenParts, []byte(partResult.Raw))
@@ -591,20 +591,19 @@ func SanitizeAntigravityClaudeGeminiRequestSignaturesDocAt(modelName string, doc
 }
 
 func antigravityClaudeGeminiPartHasThoughtSignatureKeyInRaw(raw string) bool {
-	dec := json.NewDecoder(strings.NewReader(raw))
-	dec.UseNumber()
+	dec := jsontext.NewDecoder(strings.NewReader(raw), jsoncompat.Decode)
 	var stack []bool
 	expectKey := false
 
 	for {
-		t, err := dec.Token()
+		t, err := dec.ReadToken()
 		if err != nil {
 			break
 		}
 
-		switch v := t.(type) {
-		case json.Delim:
-			switch v {
+		switch kind := t.Kind(); kind {
+		case '{', '}', '[', ']':
+			switch kind {
 			case '{':
 				stack = append(stack, true)
 				expectKey = true
@@ -630,9 +629,9 @@ func antigravityClaudeGeminiPartHasThoughtSignatureKeyInRaw(raw string) bool {
 					expectKey = false
 				}
 			}
-		case string:
+		case '"':
 			if expectKey && len(stack) > 0 && stack[len(stack)-1] {
-				if v == "thoughtSignature" || v == "thought_signature" {
+				if v := t.String(); v == "thoughtSignature" || v == "thought_signature" {
 					return true
 				}
 				expectKey = false

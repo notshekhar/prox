@@ -57,7 +57,8 @@ import "C"
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -85,9 +86,9 @@ const (
 var currentConfig atomic.Value
 
 type envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *envelopeError  `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitempty"`
+	Error  *envelopeError `json:"error,omitzero"`
 }
 
 type envelopeError struct {
@@ -394,7 +395,7 @@ type hostModelExecutionRequest struct {
 	HostCallbackID string `json:"host_callback_id,omitempty"`
 }
 
-func callHost(method string, payload any) (json.RawMessage, error) {
+func callHost(method string, payload any) (jsontext.Value, error) {
 	rawPayload, errMarshal := json.Marshal(payload)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("marshal host callback %s: %w", method, errMarshal)
@@ -437,7 +438,7 @@ func callHost(method string, payload any) (json.RawMessage, error) {
 	if callCode != 0 {
 		return nil, fmt.Errorf("host callback %s returned code=%d", method, int(callCode))
 	}
-	return append(json.RawMessage(nil), env.Result...), nil
+	return append(jsontext.Value(nil), env.Result...), nil
 }
 
 func hostHTTPStatusFromError(err error) int {

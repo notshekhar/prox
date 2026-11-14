@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"sync"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	cliproxysession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
@@ -31,7 +32,7 @@ func (d *sessionAliasCaptureDispatcher) RPopAuth(_ context.Context, _ string, se
 		ID:       "home-session-alias-auth",
 		Provider: "home-session-alias",
 		Status:   StatusActive,
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*sessionAliasCaptureDispatcher) AbortAmbiguousDispatch() {}
@@ -404,7 +405,7 @@ func (d *hierarchyCaptureDispatcher) RPopAuthWithSessionHierarchy(_ context.Cont
 		ID:       "hierarchy-auth",
 		Provider: "hierarchy-provider",
 		Status:   StatusActive,
-	}})
+	}}, jsoncompat.Encode)
 }
 
 func (*hierarchyCaptureDispatcher) AbortAmbiguousDispatch() {}

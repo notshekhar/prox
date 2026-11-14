@@ -2,13 +2,15 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -225,7 +227,7 @@ func TestMarshalRPCErrorPreservesHTTPStatus(t *testing.T) {
 	for _, status := range []int{http.StatusTooManyRequests, http.StatusServiceUnavailable} {
 		raw := marshalRPCError("host_call_failed", "synthetic", status)
 		var env pluginabi.Envelope
-		if errUnmarshal := json.Unmarshal(raw, &env); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &env, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal envelope: %v", errUnmarshal)
 		}
 		if env.OK {
@@ -308,7 +310,7 @@ func TestCallPluginSchedulerPickCompatibility(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			env := pluginabi.Envelope{
 				OK:     true,
-				Result: json.RawMessage(tc.resultJSON),
+				Result: jsontext.Value(tc.resultJSON),
 			}
 			raw, errMarshal := json.Marshal(env)
 			if errMarshal != nil {

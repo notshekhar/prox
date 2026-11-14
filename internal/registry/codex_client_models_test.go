@@ -2,10 +2,12 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestEmbeddedCodexClientModelsCatalogIsValid(t *testing.T) {
@@ -203,7 +205,7 @@ func testCodexClientModel(slug string, priority int) map[string]any {
 
 func testCodexClientCatalog(t *testing.T, models ...map[string]any) []byte {
 	t.Helper()
-	data, err := json.Marshal(map[string]any{"models": models})
+	data, err := json.Marshal(map[string]any{"models": models}, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("marshal test Codex client catalog: %v", err)
 	}

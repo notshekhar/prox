@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -568,7 +569,7 @@ func readClaudeDeviceProfileValueFromHome(ctx context.Context, client claudeDevi
 		return ClaudeDeviceProfile{}, false, errGet
 	}
 	var value claudeDeviceProfileKVValue
-	if errUnmarshal := json.Unmarshal(raw, &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &value, jsoncompat.Decode); errUnmarshal != nil {
 		return ClaudeDeviceProfile{}, false, errUnmarshal
 	}
 	profile := value.ToProfile()
@@ -579,7 +580,7 @@ func readClaudeDeviceProfileValueFromHome(ctx context.Context, client claudeDevi
 }
 
 func writeClaudeDeviceProfileToHome(ctx context.Context, client claudeDeviceProfileKVClient, key string, profile ClaudeDeviceProfile) error {
-	raw, errMarshal := json.Marshal(claudeDeviceProfileKVValueFromProfile(profile))
+	raw, errMarshal := json.Marshal(claudeDeviceProfileKVValueFromProfile(profile), jsoncompat.Encode)
 	if errMarshal != nil {
 		return errMarshal
 	}

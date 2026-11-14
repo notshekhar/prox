@@ -100,7 +100,7 @@ func newOAuthTabModel(client *Client) oauthTabModel {
 	ti := textinput.New()
 	ti.Placeholder = "http://localhost:.../auth/callback?code=...&state=..."
 	ti.CharLimit = 2048
-	ti.Prompt = "  回调 URL: "
+	ti.Prompt = "  Callback URL: "
 	return oauthTabModel{
 		client:        client,
 		callbackInput: ti,
@@ -113,9 +113,6 @@ func (m oauthTabModel) Init() tea.Cmd {
 
 func (m oauthTabModel) Update(msg tea.Msg) (oauthTabModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		m.viewport.SetContent(m.renderContent())
-		return m, nil
 	case oauthStartMsg:
 		if !shouldAcceptOAuthStart(msg, m.pollGeneration) {
 			// Stale start after Esc/restart: cancel server session so credentials are not saved.

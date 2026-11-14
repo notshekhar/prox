@@ -1,13 +1,15 @@
 package executor
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator/builtin"
 )
@@ -77,7 +79,7 @@ func TestIssue7000AntigravityClaudeStructuredOutputUsesPromptAndAutoTools(t *tes
 
 					translated := sdktranslator.TranslateRequest(tc.format, sdktranslator.FormatAntigravity, model, payload, false)
 					body := buildRequestBodyFromRawPayload(t, model, translated)
-					encoded, errMarshal := json.Marshal(body)
+					encoded, errMarshal := json.Marshal(body, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatalf("marshal outbound request: %v", errMarshal)
 					}
@@ -105,7 +107,7 @@ func TestIssue7000AntigravityClaudeStructuredOutputUsesPromptAndAutoTools(t *tes
 							continue
 						}
 						var schema map[string]any
-						if errDecode := json.NewDecoder(strings.NewReader(prompt[offset:])).Decode(&schema); errDecode == nil && reflect.DeepEqual(schema, wantSchema) {
+						if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(prompt[offset:])), &schema); errDecode == nil && reflect.DeepEqual(schema, wantSchema) {
 							foundSchema = true
 							break
 						}

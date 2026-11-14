@@ -3,7 +3,7 @@ package management
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -353,12 +354,12 @@ func requestedAuthFileNamesForDelete(c *gin.Context) ([]string, error) {
 	}
 	if body[0] == '[' {
 		var arrayBody []string
-		if err := json.Unmarshal(body, &arrayBody); err != nil {
+		if err := json.Unmarshal(body, &arrayBody, jsoncompat.Decode); err != nil {
 			return nil, fmt.Errorf("invalid request body")
 		}
 		return uniqueAuthFileNames(arrayBody), nil
 	}
-	if err := json.Unmarshal(body, &objectBody); err != nil {
+	if err := json.Unmarshal(body, &objectBody, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("invalid request body")
 	}
 
@@ -543,7 +544,7 @@ func (h *Handler) buildAuthFromFileData(path string, data []byte) (*coreauth.Aut
 		}
 	}
 	metadata := make(map[string]any)
-	if err := json.Unmarshal(data, &metadata); err != nil {
+	if err := json.Unmarshal(data, &metadata, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("%w: %w", errInvalidAuthFile, err)
 	}
 	coreauth.NormalizeCredentialMetadata(metadata)

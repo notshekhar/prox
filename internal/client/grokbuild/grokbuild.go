@@ -20,7 +20,7 @@ type ModelEntry struct {
 	ID               string            `json:"id"`
 	Model            string            `json:"model"`
 	Name             string            `json:"name"`
-	ContextWindow    int               `json:"context_window,omitempty"`
+	ContextWindow    int               `json:"context_window,omitzero"`
 	APIBackend       string            `json:"api_backend"`
 	SupportedInAPI   bool              `json:"supported_in_api"`
 	ReasoningEfforts []ReasoningEffort `json:"reasoning_efforts,omitempty"`

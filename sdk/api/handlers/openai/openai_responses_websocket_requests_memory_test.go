@@ -2,7 +2,8 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -10,6 +11,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -190,15 +193,15 @@ func TestMergeResponsesWebsocketInputReturnsCompatibleErrors(t *testing.T) {
 				t.Fatalf("error = %q, want prefix %q", errGot, test.wantPrefix+": ")
 			}
 			if test.wantSyntaxError {
-				var syntaxError *json.SyntaxError
+				var syntaxError *jsontext.SyntacticError
 				if !errors.As(errGot, &syntaxError) {
-					t.Fatalf("error cause = %T, want *json.SyntaxError", errGot)
+					t.Fatalf("error cause = %T, want *jsontext.SyntacticError", errGot)
 				}
 				return
 			}
-			var typeError *json.UnmarshalTypeError
+			var typeError *json.SemanticError
 			if !errors.As(errGot, &typeError) {
-				t.Fatalf("error cause = %T, want *json.UnmarshalTypeError", errGot)
+				t.Fatalf("error cause = %T, want *json.SemanticError", errGot)
 			}
 		})
 	}
@@ -244,7 +247,7 @@ func generatedResponsesWebsocketInput(t *testing.T, random *rand.Rand, count int
 		}
 		items = append(items, item)
 	}
-	out, errMarshal := json.Marshal(items)
+	out, errMarshal := json.Marshal(items, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal generated input: %v", errMarshal)
 	}
@@ -419,7 +422,7 @@ func responsesWebsocketManyItemsTranscriptFixture(transcriptSize int) ([]byte, [
 // preceded the allocation optimization. Explicit compatibility scenarios above
 // remain the independent specification for important merge behavior.
 type referenceResponsesWebsocketInputItem struct {
-	raw      json.RawMessage
+	raw      jsontext.Value
 	itemType string
 	id       string
 	callID   string
@@ -427,9 +430,9 @@ type referenceResponsesWebsocketInputItem struct {
 
 func mergeResponsesWebsocketInputReference(lastRequest []byte, lastResponseOutput []byte, appendRaw string) (string, error) {
 	var previousRequest struct {
-		Input []json.RawMessage `json:"input"`
+		Input []jsontext.Value `json:"input"`
 	}
-	if errUnmarshal := json.Unmarshal(lastRequest, &previousRequest); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(lastRequest, &previousRequest, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("invalid previous request input: %w", errUnmarshal)
 	}
 	items, errExisting := appendReferenceResponsesWebsocketRawInputItems(nil, previousRequest.Input)
@@ -437,10 +440,10 @@ func mergeResponsesWebsocketInputReference(lastRequest []byte, lastResponseOutpu
 		return "", fmt.Errorf("invalid previous request input: %w", errExisting)
 	}
 
-	var responseItems []json.RawMessage
+	var responseItems []jsontext.Value
 	trimmedResponse := bytes.TrimSpace(lastResponseOutput)
-	if len(trimmedResponse) > 0 && trimmedResponse[0] == '[' && json.Valid(trimmedResponse) {
-		if errUnmarshal := json.Unmarshal(trimmedResponse, &responseItems); errUnmarshal != nil {
+	if len(trimmedResponse) > 0 && trimmedResponse[0] == '[' && jsontext.Value(trimmedResponse).IsValid(jsoncompat.Decode) {
+		if errUnmarshal := json.Unmarshal(trimmedResponse, &responseItems, jsoncompat.Decode); errUnmarshal != nil {
 			return "", fmt.Errorf("invalid previous response output: %w", errUnmarshal)
 		}
 	}
@@ -453,8 +456,8 @@ func mergeResponsesWebsocketInputReference(lastRequest []byte, lastResponseOutpu
 	if appendRaw == "" {
 		appendRaw = "[]"
 	}
-	var appendItems []json.RawMessage
-	if errUnmarshal := json.Unmarshal([]byte(appendRaw), &appendItems); errUnmarshal != nil {
+	var appendItems []jsontext.Value
+	if errUnmarshal := json.Unmarshal([]byte(appendRaw), &appendItems, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("invalid request input: %w", errUnmarshal)
 	}
 	items, errAppend := appendReferenceResponsesWebsocketRawInputItems(items, appendItems)
@@ -464,28 +467,28 @@ func mergeResponsesWebsocketInputReference(lastRequest []byte, lastResponseOutpu
 
 	items = dedupeReferenceResponsesWebsocketFunctionCalls(items)
 	items = dedupeReferenceResponsesWebsocketInputItems(items)
-	rawItems := make([]json.RawMessage, len(items))
+	rawItems := make([]jsontext.Value, len(items))
 	for index := range items {
 		rawItems[index] = items[index].raw
 	}
-	out, errMarshal := json.Marshal(rawItems)
+	out, errMarshal := json.Marshal(rawItems, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", errMarshal
 	}
 	return string(out), nil
 }
 
-func appendReferenceResponsesWebsocketRawInputItems(items []referenceResponsesWebsocketInputItem, rawItems []json.RawMessage) ([]referenceResponsesWebsocketInputItem, error) {
+func appendReferenceResponsesWebsocketRawInputItems(items []referenceResponsesWebsocketInputItem, rawItems []jsontext.Value) ([]referenceResponsesWebsocketInputItem, error) {
 	for _, rawItem := range rawItems {
 		item := referenceResponsesWebsocketInputItem{raw: rawItem}
 		trimmed := bytes.TrimSpace(rawItem)
 		if len(trimmed) > 0 && trimmed[0] == '{' {
 			var metadata struct {
-				Type   json.RawMessage `json:"type"`
-				ID     json.RawMessage `json:"id"`
-				CallID json.RawMessage `json:"call_id"`
+				Type   jsontext.Value `json:"type"`
+				ID     jsontext.Value `json:"id"`
+				CallID jsontext.Value `json:"call_id"`
 			}
-			if errUnmarshal := json.Unmarshal(trimmed, &metadata); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(trimmed, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 				return nil, errUnmarshal
 			}
 			item.itemType = responsesWebsocketMetadataString(metadata.Type)
@@ -551,22 +554,18 @@ func dedupeReferenceResponsesWebsocketInputItems(items []referenceResponsesWebso
 
 func assertJSONSemanticallyEqual(t *testing.T, got []byte, want string) {
 	t.Helper()
-	if !json.Valid(got) {
+	if !jsontext.Value(got).IsValid(jsoncompat.Decode) {
 		t.Fatalf("invalid actual JSON:\n%s", got)
 	}
 	var gotValue any
-	gotDecoder := json.NewDecoder(bytes.NewReader(got))
-	gotDecoder.UseNumber()
-	if errUnmarshal := gotDecoder.Decode(&gotValue); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(got, &gotValue, jsoncompat.DecodeUseNumber); errUnmarshal != nil {
 		t.Fatalf("invalid actual JSON: %v\n%s", errUnmarshal, got)
 	}
-	if !json.Valid([]byte(want)) {
+	if !jsontext.Value(want).IsValid(jsoncompat.Decode) {
 		t.Fatalf("invalid expected JSON:\n%s", want)
 	}
 	var wantValue any
-	wantDecoder := json.NewDecoder(strings.NewReader(want))
-	wantDecoder.UseNumber()
-	if errUnmarshal := wantDecoder.Decode(&wantValue); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(want), &wantValue, jsoncompat.DecodeUseNumber); errUnmarshal != nil {
 		t.Fatalf("invalid reference JSON: %v\n%s", errUnmarshal, want)
 	}
 	if !reflect.DeepEqual(gotValue, wantValue) {

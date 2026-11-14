@@ -3,7 +3,8 @@ package api
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ import (
 	codexmodels "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/models"
 	proxyconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
@@ -233,7 +235,7 @@ func (d *codexSearchHomeDispatcher) RPopAuth(_ context.Context, model string, _ 
 			"credential_id": authID,
 			"model":         model,
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (d *codexSearchHomeDispatcher) RPopAuthWithPolicy(ctx context.Context, model string, sessionID string, headers http.Header, count int, policy string) ([]byte, error) {
@@ -704,7 +706,7 @@ func TestHealthz(t *testing.T) {
 		var resp struct {
 			Status string `json:"status"`
 		}
-		if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		if err := json.Unmarshal(rr.Body.Bytes(), &resp, jsoncompat.Decode); err != nil {
 			t.Fatalf("failed to parse response JSON: %v; body=%s", err, rr.Body.String())
 		}
 		if resp.Status != "ok" {
@@ -840,7 +842,7 @@ func TestRealtimeStandardRoutesAndClientSecretAuth(t *testing.T) {
 			Code string `json:"code"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(unauthorizedSecretRecorder.Body.Bytes(), &unauthorizedResponse); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(unauthorizedSecretRecorder.Body.Bytes(), &unauthorizedResponse, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal unauthorized response: %v", errUnmarshal)
 	}
 	if unauthorizedResponse.Error.Type != "authentication_error" || unauthorizedResponse.Error.Code != "invalid_api_key" {
@@ -857,7 +859,7 @@ func TestRealtimeStandardRoutesAndClientSecretAuth(t *testing.T) {
 	var secretResponse struct {
 		Value string `json:"value"`
 	}
-	if errUnmarshal := json.Unmarshal(secretRecorder.Body.Bytes(), &secretResponse); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(secretRecorder.Body.Bytes(), &secretResponse, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal client secret: %v", errUnmarshal)
 	}
 	if secretResponse.Value == "" {
@@ -1154,7 +1156,7 @@ func TestCodexAlphaSearchSanitizesResponsesOnlyFields(t *testing.T) {
 			if rr.Code != http.StatusOK {
 				t.Fatalf("status = %d, want %d; body=%s", rr.Code, http.StatusOK, rr.Body.String())
 			}
-			var upstreamBody map[string]json.RawMessage
+			var upstreamBody map[string]jsontext.Value
 			if errUnmarshal := json.Unmarshal(executor.body, &upstreamBody); errUnmarshal != nil {
 				t.Fatalf("unmarshal upstream body: %v; body=%s", errUnmarshal, executor.body)
 			}
@@ -1271,7 +1273,7 @@ func TestCodexAlphaSearchOptInAPIKeyUsesConfiguredEndpoint(t *testing.T) {
 	if got := executor.request.Header.Get("Authorization"); got != "Bearer codex-alpha-key" {
 		t.Fatalf("Authorization = %q, want API key bearer", got)
 	}
-	var upstreamBody map[string]json.RawMessage
+	var upstreamBody map[string]jsontext.Value
 	if errUnmarshal := json.Unmarshal(executor.body, &upstreamBody); errUnmarshal != nil {
 		t.Fatalf("unmarshal upstream body: %v", errUnmarshal)
 	}
@@ -1317,7 +1319,7 @@ func TestCodexAlphaSearchOptInAPIKeyStripsCredentialPrefix(t *testing.T) {
 	if executor.request == nil {
 		t.Fatal("Codex executor did not receive a request")
 	}
-	var upstreamBody map[string]json.RawMessage
+	var upstreamBody map[string]jsontext.Value
 	if errUnmarshal := json.Unmarshal(executor.body, &upstreamBody); errUnmarshal != nil {
 		t.Fatalf("unmarshal upstream body: %v", errUnmarshal)
 	}
@@ -1377,7 +1379,7 @@ func TestCodexAlphaSearchOptInAPIKeyResolvesModelAlias(t *testing.T) {
 	if executor.request == nil {
 		t.Fatal("Codex executor did not receive a request")
 	}
-	var upstreamBody map[string]json.RawMessage
+	var upstreamBody map[string]jsontext.Value
 	if errUnmarshal := json.Unmarshal(executor.body, &upstreamBody); errUnmarshal != nil {
 		t.Fatalf("unmarshal upstream body: %v", errUnmarshal)
 	}
@@ -1393,7 +1395,7 @@ func TestCodexAlphaSearchOptInAPIKeyResolvesModelAlias(t *testing.T) {
 func TestRewriteCodexAlphaSearchModel(t *testing.T) {
 	original := []byte(`{"id":"search-1","model":"vendor/gpt-5.6-sol","commands":{"search_query":[{"q":"golang"}]}}`)
 	rewritten := rewriteCodexAlphaSearchModel(original, "gpt-5.6-sol")
-	var payload map[string]json.RawMessage
+	var payload map[string]jsontext.Value
 	if errUnmarshal := json.Unmarshal(rewritten, &payload); errUnmarshal != nil {
 		t.Fatalf("unmarshal rewritten body: %v", errUnmarshal)
 	}
@@ -1690,7 +1692,7 @@ func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
 		t.Fatalf("authenticated status = %d, want %d body=%s", authRR.Code, http.StatusOK, authRR.Body.String())
 	}
 
-	var payload []json.RawMessage
+	var payload []jsontext.Value
 	if errUnmarshal := json.Unmarshal(authRR.Body.Bytes(), &payload); errUnmarshal != nil {
 		t.Fatalf("unmarshal response: %v body=%s", errUnmarshal, authRR.Body.String())
 	}
@@ -1701,7 +1703,7 @@ func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
 		var record struct {
 			ID int `json:"id"`
 		}
-		if errUnmarshal := json.Unmarshal(raw, &record); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &record, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal record %d: %v", i, errUnmarshal)
 		}
 		if record.ID != i+1 {
@@ -1740,7 +1742,7 @@ func TestManagementPluginsRouteRegistered(t *testing.T) {
 		PluginsEnabled bool  `json:"plugins_enabled"`
 		Plugins        []any `json:"plugins"`
 	}
-	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal response: %v body=%s", errUnmarshal, rr.Body.String())
 	}
 	if payload.Plugins == nil {
@@ -1758,7 +1760,7 @@ func TestManagementPluginsRouteRegistered(t *testing.T) {
 		Enabled  bool `json:"enabled"`
 		Priority int  `json:"priority"`
 	}
-	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &configPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &configPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal config response: %v body=%s", errUnmarshal, rr.Body.String())
 	}
 	if !configPayload.Enabled || configPayload.Priority != 4 {
@@ -2002,7 +2004,7 @@ func TestModelsDispatchByAnthropicVersionHeader(t *testing.T) {
 			HasMore *bool            `json:"has_more"`
 			Data    []map[string]any `json:"data"`
 		}
-		if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		if err := json.Unmarshal(rr.Body.Bytes(), &resp, jsoncompat.Decode); err != nil {
 			t.Fatalf("failed to parse response JSON: %v; body=%s", err, rr.Body.String())
 		}
 		if resp.Object == "list" {
@@ -2054,7 +2056,7 @@ func TestModelsDispatchByAnthropicVersionHeader(t *testing.T) {
 			Object string           `json:"object"`
 			Data   []map[string]any `json:"data"`
 		}
-		if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		if err := json.Unmarshal(rr.Body.Bytes(), &resp, jsoncompat.Decode); err != nil {
 			t.Fatalf("failed to parse response JSON: %v; body=%s", err, rr.Body.String())
 		}
 		if resp.Object != "list" {
@@ -2107,7 +2109,7 @@ func TestClaudeModelListCloakingConfigHotReload(t *testing.T) {
 				ID string `json:"id"`
 			} `json:"data"`
 		}
-		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("decode response: %v", errUnmarshal)
 		}
 		for _, model := range response.Data {
@@ -2193,7 +2195,7 @@ func TestModelsWithClientVersionReturnsCodexCatalog(t *testing.T) {
 		Object string           `json:"object"`
 		Data   []any            `json:"data"`
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to parse response JSON: %v; body=%s", err, rr.Body.String())
 	}
 	if resp.Object != "" || resp.Data != nil {
@@ -2353,7 +2355,7 @@ func TestModelsWithClientVersion_DevinDisplayName(t *testing.T) {
 	var resp struct {
 		Models []map[string]any `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &resp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &resp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to parse response JSON: %v", errUnmarshal)
 	}
 
@@ -2455,7 +2457,7 @@ func TestCodexClientModelsEndpoint_FiltersMaxAndUltraForOlderClientVersion(t *te
 	var respOld struct {
 		Models []map[string]any `json:"models"`
 	}
-	if err := json.Unmarshal(rrOld.Body.Bytes(), &respOld); err != nil {
+	if err := json.Unmarshal(rrOld.Body.Bytes(), &respOld, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to parse response JSON: %v", err)
 	}
 
@@ -2493,7 +2495,7 @@ func TestCodexClientModelsEndpoint_FiltersMaxAndUltraForOlderClientVersion(t *te
 	var respNew struct {
 		Models []map[string]any `json:"models"`
 	}
-	if err := json.Unmarshal(rrNew.Body.Bytes(), &respNew); err != nil {
+	if err := json.Unmarshal(rrNew.Body.Bytes(), &respNew, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to parse response JSON: %v", err)
 	}
 
@@ -2531,7 +2533,7 @@ func TestCodexClientModelsEndpoint_FiltersMaxAndUltraForOlderClientVersion(t *te
 		var respUnparsed struct {
 			Models []map[string]any `json:"models"`
 		}
-		if err := json.Unmarshal(rrUnparsed.Body.Bytes(), &respUnparsed); err != nil {
+		if err := json.Unmarshal(rrUnparsed.Body.Bytes(), &respUnparsed, jsoncompat.Decode); err != nil {
 			t.Fatalf("path %q parse error: %v", path, err)
 		}
 
@@ -2569,7 +2571,7 @@ func codexClientTestMaxTemplatePriority(t *testing.T) int {
 	var payload struct {
 		Models []map[string]any `json:"models"`
 	}
-	if err := json.Unmarshal(registry.GetCodexClientModelsJSON(), &payload); err != nil {
+	if err := json.Unmarshal(registry.GetCodexClientModelsJSON(), &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("parse Codex client model templates: %v", err)
 	}
 	maxPriority := 0
@@ -2883,7 +2885,7 @@ func TestHomeGeminiModelsIncludeTokenLimits(t *testing.T) {
 	var listPayload struct {
 		Models []map[string]any `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(listRecorder.Body.Bytes(), &listPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal /v1beta/models response: %v", errUnmarshal)
 	}
 	if len(listPayload.Models) != 1 {
@@ -3382,7 +3384,7 @@ func TestModelsForCPAClientSerializesWebSearchCapabilities(t *testing.T) {
 	var response struct {
 		Models []map[string]any `json:"models"`
 	}
-	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode response: %v; body=%s", errUnmarshal, recorder.Body.String())
 	}
 	entries := make(map[string]map[string]any, len(response.Models))
@@ -3563,7 +3565,7 @@ func newHomeCatalogClient(t *testing.T, payload string) *home.Client {
 							t.Error("invalid Home GET request")
 							return
 						}
-						if errUnmarshal := json.Unmarshal(args[1], &request); errUnmarshal != nil || request.Type != "models" {
+						if errUnmarshal := json.Unmarshal(args[1], &request, jsoncompat.Decode); errUnmarshal != nil || request.Type != "models" {
 							t.Errorf("unexpected Home request %q: %v", args[1], errUnmarshal)
 							return
 						}
@@ -3640,7 +3642,7 @@ func TestModelsWithClientVersionHomeApplyPatchRouting(t *testing.T) {
 			var response struct {
 				Models []map[string]any `json:"models"`
 			}
-			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("decode Home catalog: %v", errUnmarshal)
 			}
 			entries := make(map[string]map[string]any)
@@ -3681,7 +3683,7 @@ func TestModelsWithClientVersionHomeApplyPatchRouting(t *testing.T) {
 		var response struct {
 			Models []map[string]any `json:"models"`
 		}
-		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("decode Home catalog: %v", errUnmarshal)
 		}
 		for _, entry := range response.Models {
@@ -3764,7 +3766,7 @@ func TestModelsWithClientVersionHomeSearchToolRouting(t *testing.T) {
 			var response struct {
 				Models []map[string]any `json:"models"`
 			}
-			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("decode Home catalog: %v", errUnmarshal)
 			}
 			want := make(map[string]bool, len(tc.want))
@@ -3809,7 +3811,7 @@ func TestModelsWithClientVersionApplyPatchRequiresExecutor(t *testing.T) {
 		var response struct {
 			Models []map[string]any `json:"models"`
 		}
-		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("decode catalog: %v", errUnmarshal)
 		}
 		for _, entry := range response.Models {

@@ -10,13 +10,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
@@ -917,9 +919,7 @@ func normalizeToolParameters(raw string) string {
 		return `{"type":"object","properties":{}}`
 	}
 	var root map[string]any
-	decoder := json.NewDecoder(strings.NewReader(raw))
-	decoder.UseNumber()
-	if errDecode := decoder.Decode(&root); errDecode != nil || root == nil {
+	if errDecode := json.UnmarshalDecode(jsontext.NewDecoder(strings.NewReader(raw)), &root, jsoncompat.DecodeUseNumber); errDecode != nil || root == nil {
 		return `{"type":"object","properties":{}}`
 	}
 
@@ -951,13 +951,11 @@ func normalizeToolParameters(raw string) string {
 		}
 	}
 
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if errEncode := enc.Encode(root); errEncode != nil {
+	out, errEncode := json.Marshal(root, jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return `{"type":"object","properties":{}}`
 	}
-	return strings.TrimSpace(buf.String())
+	return string(out)
 }
 
 func stripDialectKeywordsFromSchema(v any) {

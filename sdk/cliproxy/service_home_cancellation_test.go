@@ -2,13 +2,14 @@ package cliproxy
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
@@ -88,7 +89,7 @@ func TestServiceNormalReplacementDrainsAndFlushesAccountedExecution(t *testing.T
 		t.Fatal("normal replacement did not send its final release")
 	}
 	var frame home.ConcurrencyReleaseFrame
-	if errJSON := json.Unmarshal([]byte(args[2]), &frame); errJSON != nil {
+	if errJSON := json.Unmarshal([]byte(args[2]), &frame, jsoncompat.Decode); errJSON != nil {
 		t.Fatal(errJSON)
 	}
 	want := home.ConcurrencyReleaseFrame{CredentialID: "credential-a", Model: "test-model", ReleaseSeq: 1}

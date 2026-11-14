@@ -4,7 +4,8 @@ package live
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
@@ -549,7 +551,7 @@ func prepareCallRequest(body []byte, contentType string) ([]byte, string, string
 	return body, contentType, model, nil
 }
 
-func applyClientSecretCallSession(body []byte, contentType, model string, session json.RawMessage) ([]byte, string, string, error) {
+func applyClientSecretCallSession(body []byte, contentType, model string, session jsontext.Value) ([]byte, string, string, error) {
 	if len(session) == 0 {
 		return body, contentType, model, nil
 	}
@@ -564,12 +566,12 @@ func applyClientSecretCallSession(body []byte, contentType, model string, sessio
 	if errMediaType != nil || !strings.EqualFold(mediaType, "application/json") {
 		return nil, "", "", errors.New("Realtime client secrets require an SDP or JSON call request")
 	}
-	var payload map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	var payload map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, "", "", fmt.Errorf("failed to decode Realtime call request: %w", errUnmarshal)
 	}
-	payload["session"] = append(json.RawMessage(nil), session...)
-	encoded, errMarshal := json.Marshal(payload)
+	payload["session"] = append(jsontext.Value(nil), session...)
+	encoded, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, "", "", fmt.Errorf("failed to encode Realtime call request: %w", errMarshal)
 	}
@@ -582,29 +584,29 @@ func rewriteCallRequestModel(body []byte, contentType, model string) ([]byte, st
 	if errMediaType != nil || !strings.EqualFold(mediaType, "application/json") || len(bytes.TrimSpace(body)) == 0 {
 		return body, upstreamModel, nil
 	}
-	var payload map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	var payload map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, "", fmt.Errorf("failed to decode Realtime call request: %w", errUnmarshal)
 	}
 	changed := false
 	if sessionJSON, ok := payload["session"]; ok && len(sessionJSON) > 0 {
-		var session map[string]json.RawMessage
-		if errUnmarshal := json.Unmarshal(sessionJSON, &session); errUnmarshal != nil {
+		var session map[string]jsontext.Value
+		if errUnmarshal := json.Unmarshal(sessionJSON, &session, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, "", fmt.Errorf("failed to decode Realtime session: %w", errUnmarshal)
 		}
-		encodedModel, errMarshal := json.Marshal(upstreamModel)
+		encodedModel, errMarshal := json.Marshal(upstreamModel, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, "", fmt.Errorf("failed to encode Realtime model: %w", errMarshal)
 		}
 		session["model"] = encodedModel
-		encodedSession, errMarshal := json.Marshal(session)
+		encodedSession, errMarshal := json.Marshal(session, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, "", fmt.Errorf("failed to encode Realtime session: %w", errMarshal)
 		}
 		payload["session"] = encodedSession
 		changed = true
 	} else if _, ok := payload["model"]; ok {
-		encodedModel, errMarshal := json.Marshal(upstreamModel)
+		encodedModel, errMarshal := json.Marshal(upstreamModel, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, "", fmt.Errorf("failed to encode Realtime model: %w", errMarshal)
 		}
@@ -614,7 +616,7 @@ func rewriteCallRequestModel(body []byte, contentType, model string) ([]byte, st
 	if !changed {
 		return body, upstreamModel, nil
 	}
-	encoded, errMarshal := json.Marshal(payload)
+	encoded, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, "", fmt.Errorf("failed to encode Realtime call request: %w", errMarshal)
 	}
@@ -628,7 +630,7 @@ func multipartCallRequest(body []byte, boundary string) ([]byte, string, string,
 
 	reader := multipart.NewReader(bytes.NewReader(body), boundary)
 	var sdp *string
-	var session json.RawMessage
+	var session jsontext.Value
 	model := ""
 	for {
 		part, errPart := reader.NextPart()
@@ -652,10 +654,10 @@ func multipartCallRequest(body []byte, boundary string) ([]byte, string, string,
 			value := string(partBody)
 			sdp = &value
 		case "session":
-			if !json.Valid(partBody) {
+			if !jsontext.Value(partBody).IsValid(jsoncompat.Decode) {
 				return nil, "", "", errors.New("Codex live session field must contain valid JSON")
 			}
-			session = append(json.RawMessage(nil), partBody...)
+			session = append(jsontext.Value(nil), partBody...)
 			model = modelFromJSON(partBody)
 		}
 	}
@@ -673,15 +675,15 @@ func multipartCallRequest(body []byte, boundary string) ([]byte, string, string,
 	return encoded, "application/json", model, nil
 }
 
-func encodeCallRequest(sdp string, session json.RawMessage) ([]byte, error) {
+func encodeCallRequest(sdp string, session jsontext.Value) ([]byte, error) {
 	payload := struct {
-		SDP     string          `json:"sdp"`
-		Session json.RawMessage `json:"session,omitempty"`
+		SDP     string         `json:"sdp"`
+		Session jsontext.Value `json:"session,omitzero"`
 	}{
 		SDP:     sdp,
 		Session: session,
 	}
-	encoded, errMarshal := json.Marshal(payload)
+	encoded, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("failed to encode Codex live request: %w", errMarshal)
 	}
@@ -702,7 +704,7 @@ func callRequestSDP(body []byte, contentType string) (string, error) {
 	var payload struct {
 		SDP string `json:"sdp"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("failed to decode Codex live call request: %w", errUnmarshal)
 	}
 	if strings.TrimSpace(payload.SDP) == "" {
@@ -723,16 +725,16 @@ func replaceCallRequestSDP(body []byte, contentType, sdp string) ([]byte, string
 	if errMediaType != nil || !strings.EqualFold(mediaType, "application/json") {
 		return nil, "", errors.New("Codex live media relay requires an SDP or JSON call request")
 	}
-	var payload map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	var payload map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, "", fmt.Errorf("failed to decode Codex live call request: %w", errUnmarshal)
 	}
-	encodedSDP, errMarshal := json.Marshal(sdp)
+	encodedSDP, errMarshal := json.Marshal(sdp, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, "", fmt.Errorf("failed to encode Codex live SDP offer: %w", errMarshal)
 	}
 	payload["sdp"] = encodedSDP
-	encoded, errMarshal := json.Marshal(payload)
+	encoded, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, "", fmt.Errorf("failed to encode Codex live call request: %w", errMarshal)
 	}
@@ -745,7 +747,7 @@ func callResponseSDP(body []byte, contentType string) (string, error) {
 		var payload struct {
 			SDP string `json:"sdp"`
 		}
-		if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 			return "", fmt.Errorf("failed to decode Codex live response: %w", errUnmarshal)
 		}
 		if strings.TrimSpace(payload.SDP) == "" {
@@ -766,7 +768,7 @@ func modelFromJSON(body []byte) string {
 			Model string `json:"model"`
 		} `json:"session"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		return ""
 	}
 	if model := strings.TrimSpace(payload.Session.Model); model != "" {

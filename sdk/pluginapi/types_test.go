@@ -2,11 +2,13 @@ package pluginapi
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type compileTimePlugin struct{}
@@ -71,12 +73,12 @@ func TestAuthParseResponseSupportsMultipleAuths(t *testing.T) {
 		},
 	}
 
-	raw, errMarshal := json.Marshal(resp)
+	raw, errMarshal := json.Marshal(resp, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
 	var decoded AuthParseResponse
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("Unmarshal() error = %v", errUnmarshal)
 	}
 	if !decoded.Handled || len(decoded.Auths) != 2 || decoded.Auths[1].ID != "primary-project-a.json" {
@@ -100,12 +102,12 @@ func TestAuthLoginPollResponseSupportsMultipleAuths(t *testing.T) {
 		},
 	}
 
-	raw, errMarshal := json.Marshal(resp)
+	raw, errMarshal := json.Marshal(resp, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("Marshal() error = %v", errMarshal)
 	}
 	var decoded AuthLoginPollResponse
-	if errUnmarshal := json.Unmarshal(raw, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("Unmarshal() error = %v", errUnmarshal)
 	}
 	if decoded.Status != AuthLoginStatusSuccess || len(decoded.Auths) != 2 {
@@ -164,7 +166,7 @@ func TestHostInjectedHTTPClientIsNotEncodedInPluginJSON(t *testing.T) {
 	}
 
 	for _, tt := range requests {
-		raw, errMarshal := json.Marshal(tt.req)
+		raw, errMarshal := json.Marshal(tt.req, jsoncompat.Encode)
 		if errMarshal != nil {
 			t.Fatalf("%s marshal error = %v", tt.name, errMarshal)
 		}
@@ -194,7 +196,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		Path:           "/v1/messages",
 		CallerScope:    "opaque-caller-scope-123",
 	}
-	rawRequest, errMarshalRequest := json.Marshal(request)
+	rawRequest, errMarshalRequest := json.Marshal(request, jsoncompat.Encode)
 	if errMarshalRequest != nil {
 		t.Fatalf("marshal HostModelExecutionRequest: %v", errMarshalRequest)
 	}
@@ -205,7 +207,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		}
 	}
 	var decodedRequest HostModelExecutionRequest
-	if errUnmarshalRequest := json.Unmarshal(rawRequest, &decodedRequest); errUnmarshalRequest != nil {
+	if errUnmarshalRequest := json.Unmarshal(rawRequest, &decodedRequest, jsoncompat.Decode); errUnmarshalRequest != nil {
 		t.Fatalf("unmarshal HostModelExecutionRequest: %v", errUnmarshalRequest)
 	}
 	if decodedRequest.EntryProtocol != request.EntryProtocol ||
@@ -232,7 +234,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		Headers:    http.Header{"Content-Type": []string{"application/json"}},
 		Body:       []byte(`{"ok":true}`),
 	}
-	rawResponse, errMarshalResponse := json.Marshal(response)
+	rawResponse, errMarshalResponse := json.Marshal(response, jsoncompat.Encode)
 	if errMarshalResponse != nil {
 		t.Fatalf("marshal HostModelExecutionResponse: %v", errMarshalResponse)
 	}
@@ -243,7 +245,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		}
 	}
 	var decodedResponse HostModelExecutionResponse
-	if errUnmarshalResponse := json.Unmarshal(rawResponse, &decodedResponse); errUnmarshalResponse != nil {
+	if errUnmarshalResponse := json.Unmarshal(rawResponse, &decodedResponse, jsoncompat.Decode); errUnmarshalResponse != nil {
 		t.Fatalf("unmarshal HostModelExecutionResponse: %v", errUnmarshalResponse)
 	}
 	if decodedResponse.StatusCode != response.StatusCode ||
@@ -257,7 +259,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		Headers:    http.Header{"Content-Type": []string{"text/event-stream"}},
 		StreamID:   "stream-1",
 	}
-	rawStreamResponse, errMarshalStreamResponse := json.Marshal(streamResponse)
+	rawStreamResponse, errMarshalStreamResponse := json.Marshal(streamResponse, jsoncompat.Encode)
 	if errMarshalStreamResponse != nil {
 		t.Fatalf("marshal HostModelStreamResponse: %v", errMarshalStreamResponse)
 	}
@@ -268,7 +270,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		}
 	}
 	var decodedStreamResponse HostModelStreamResponse
-	if errUnmarshalStreamResponse := json.Unmarshal(rawStreamResponse, &decodedStreamResponse); errUnmarshalStreamResponse != nil {
+	if errUnmarshalStreamResponse := json.Unmarshal(rawStreamResponse, &decodedStreamResponse, jsoncompat.Decode); errUnmarshalStreamResponse != nil {
 		t.Fatalf("unmarshal HostModelStreamResponse: %v", errUnmarshalStreamResponse)
 	}
 	if decodedStreamResponse.StatusCode != streamResponse.StatusCode ||
@@ -286,7 +288,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		t.Fatalf("HostModelStreamReadRequest JSON missing stream_id: %s", rawReadRequest)
 	}
 	var decodedReadRequest HostModelStreamReadRequest
-	if errUnmarshalReadRequest := json.Unmarshal(rawReadRequest, &decodedReadRequest); errUnmarshalReadRequest != nil {
+	if errUnmarshalReadRequest := json.Unmarshal(rawReadRequest, &decodedReadRequest, jsoncompat.Decode); errUnmarshalReadRequest != nil {
 		t.Fatalf("unmarshal HostModelStreamReadRequest: %v", errUnmarshalReadRequest)
 	}
 	if decodedReadRequest.StreamID != readRequest.StreamID {
@@ -309,7 +311,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		}
 	}
 	var decodedReadResponse HostModelStreamReadResponse
-	if errUnmarshalReadResponse := json.Unmarshal(rawReadResponse, &decodedReadResponse); errUnmarshalReadResponse != nil {
+	if errUnmarshalReadResponse := json.Unmarshal(rawReadResponse, &decodedReadResponse, jsoncompat.Decode); errUnmarshalReadResponse != nil {
 		t.Fatalf("unmarshal HostModelStreamReadResponse: %v", errUnmarshalReadResponse)
 	}
 	if string(decodedReadResponse.Payload) != string(readResponse.Payload) ||
@@ -327,7 +329,7 @@ func TestHostModelTypesPreserveFields(t *testing.T) {
 		t.Fatalf("HostModelStreamCloseRequest JSON missing stream_id: %s", rawCloseRequest)
 	}
 	var decodedCloseRequest HostModelStreamCloseRequest
-	if errUnmarshalCloseRequest := json.Unmarshal(rawCloseRequest, &decodedCloseRequest); errUnmarshalCloseRequest != nil {
+	if errUnmarshalCloseRequest := json.Unmarshal(rawCloseRequest, &decodedCloseRequest, jsoncompat.Decode); errUnmarshalCloseRequest != nil {
 		t.Fatalf("unmarshal HostModelStreamCloseRequest: %v", errUnmarshalCloseRequest)
 	}
 	if decodedCloseRequest.StreamID != closeRequest.StreamID {
@@ -477,7 +479,7 @@ func TestSchedulerPickResponseUnmarshalJSONCompatibility(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			var resp SchedulerPickResponse
-			if errUnmarshal := json.Unmarshal([]byte(tc.payload), &resp); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal([]byte(tc.payload), &resp, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("json.Unmarshal() error = %v", errUnmarshal)
 			}
 			if resp.AuthID != tc.wantAuthID {
@@ -514,7 +516,7 @@ func TestSchedulerPickResponseUnmarshalJSONOverwritesExistingFields(t *testing.T
 	}
 
 	payload := `{"handled":false,"reject":false,"auth_id":"","delegate_builtin":"","reject_code":"","reject_reason":""}`
-	if errUnmarshal := json.Unmarshal([]byte(payload), &resp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(payload), &resp, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("json.Unmarshal() error = %v", errUnmarshal)
 	}
 
@@ -542,7 +544,7 @@ func TestSchedulerPickResponseUnmarshalJSONOverwritesExistingFields(t *testing.T
 		AuthID:  "keep-auth",
 		Handled: true,
 	}
-	if errUnmarshal := json.Unmarshal([]byte(`{"reject":true}`), &resp2); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(`{"reject":true}`), &resp2, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("json.Unmarshal() error = %v", errUnmarshal)
 	}
 	if resp2.AuthID != "keep-auth" {
@@ -763,7 +765,7 @@ func TestHostAffinityLookupTypes(t *testing.T) {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}
 	var decodedReq HostAffinityLookupRequest
-	if errUnmarshal := json.Unmarshal(data, &decodedReq); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &decodedReq, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal request: %v", errUnmarshal)
 	}
 	if decodedReq != req {
@@ -781,7 +783,7 @@ func TestHostAffinityLookupTypes(t *testing.T) {
 		t.Fatalf("marshal response: %v", errRespMarshal)
 	}
 	var decodedResp HostAffinityLookupResponse
-	if errRespUnmarshal := json.Unmarshal(respData, &decodedResp); errRespUnmarshal != nil {
+	if errRespUnmarshal := json.Unmarshal(respData, &decodedResp, jsoncompat.Decode); errRespUnmarshal != nil {
 		t.Fatalf("unmarshal response: %v", errRespUnmarshal)
 	}
 	if decodedResp.Status != resp.Status || decodedResp.AuthIndex != resp.AuthIndex || decodedResp.Disabled != resp.Disabled {
@@ -811,7 +813,7 @@ func TestBaseURLInUsageRecordAndHostAuthFileEntry(t *testing.T) {
 		t.Fatalf("marshaled json does not contain base_url key: %s", string(data))
 	}
 	var decoded HostAuthFileEntry
-	if errUnmarshal := json.Unmarshal(data, &decoded); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal HostAuthFileEntry: %v", errUnmarshal)
 	}
 	if decoded.BaseURL != "https://custom-auth.example.com/v1" {
@@ -889,7 +891,7 @@ func TestQuotaPayloadJSON(t *testing.T) {
 	}`)
 
 	var respCamel QuotaFetchResponse
-	if err := json.Unmarshal(camelJSON, &respCamel); err != nil {
+	if err := json.Unmarshal(camelJSON, &respCamel, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal camelCase JSON failed: %v", err)
 	}
 	if respCamel.Subscription == nil || respCamel.Subscription.TierName != "Tier 1" || respCamel.Subscription.TierID != "t-1" {
@@ -923,7 +925,7 @@ func TestQuotaPayloadJSON(t *testing.T) {
 	}`)
 
 	var respSnake QuotaFetchResponse
-	if err := json.Unmarshal(snakeJSON, &respSnake); err != nil {
+	if err := json.Unmarshal(snakeJSON, &respSnake, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal snake_case JSON failed: %v", err)
 	}
 	if respSnake.Subscription == nil || respSnake.Subscription.TierName != "Tier Free" || respSnake.Subscription.TierID != "t-free" {
@@ -944,7 +946,7 @@ func TestQuotaBucketZeroRemainingFractionPreserved(t *testing.T) {
 	// remainingFraction is 0 (exhausted), while remaining_fraction has a fallback value
 	rawJSON := []byte(`{"remainingFraction":0,"remaining_fraction":0.8}`)
 	var bucket QuotaBucket
-	if err := json.Unmarshal(rawJSON, &bucket); err != nil {
+	if err := json.Unmarshal(rawJSON, &bucket, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal error: %v", err)
 	}
 	if bucket.RemainingFraction != 0 {
@@ -967,7 +969,7 @@ func TestHostAuthModelsTypes(t *testing.T) {
 		t.Fatalf("marshal request: %v", errMarshalReq)
 	}
 	var decodedReq HostAuthModelsRequest
-	if errUnmarshalReq := json.Unmarshal(reqData, &decodedReq); errUnmarshalReq != nil {
+	if errUnmarshalReq := json.Unmarshal(reqData, &decodedReq, jsoncompat.Decode); errUnmarshalReq != nil {
 		t.Fatalf("unmarshal request: %v", errUnmarshalReq)
 	}
 	if decodedReq != req {
@@ -989,7 +991,7 @@ func TestHostAuthModelsTypes(t *testing.T) {
 		t.Fatalf("marshal response: %v", errMarshalResp)
 	}
 	var decodedResp HostAuthModelsResponse
-	if errUnmarshalResp := json.Unmarshal(respData, &decodedResp); errUnmarshalResp != nil {
+	if errUnmarshalResp := json.Unmarshal(respData, &decodedResp, jsoncompat.Decode); errUnmarshalResp != nil {
 		t.Fatalf("unmarshal response: %v", errUnmarshalResp)
 	}
 	if len(decodedResp.Credentials) != 1 ||

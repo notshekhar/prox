@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"net/http"
 	"reflect"
 	"strings"
@@ -147,7 +147,7 @@ func TestGetRequestDetails_UnknownModelErrorResistsJSONInjection(t *testing.T) {
 				t.Fatalf("status = %d, want %d", errMsg.StatusCode, http.StatusBadRequest)
 			}
 			body := errMsg.Error.Error()
-			if !json.Valid([]byte(body)) {
+			if !jsontext.Value(body).IsValid() {
 				t.Fatalf("error body is not valid JSON: %s", body)
 			}
 			if got := ojson.Get(body, "error.code").String(); got != "model_not_found" {

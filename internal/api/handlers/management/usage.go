@@ -1,23 +1,25 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 )
 
 type usageQueueRecord []byte
 
 func (r usageQueueRecord) MarshalJSON() ([]byte, error) {
-	if json.Valid(r) {
+	if jsontext.Value(r).IsValid(jsoncompat.Decode) {
 		return append([]byte(nil), r...), nil
 	}
-	return json.Marshal(string(r))
+	return json.Marshal(string(r), jsoncompat.Encode)
 }
 
 // GetUsageQueue pops queued usage records from the usage queue.

@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,8 +64,8 @@ type tavilySearchRequest struct {
 	APIKey        string `json:"api_key"`
 	Query         string `json:"query"`
 	SearchDepth   string `json:"search_depth,omitempty"`
-	MaxResults    int    `json:"max_results,omitempty"`
-	IncludeAnswer bool   `json:"include_answer,omitempty"`
+	MaxResults    int    `json:"max_results,omitzero"`
+	IncludeAnswer bool   `json:"include_answer,omitzero"`
 }
 
 type tavilySearchResponse struct {

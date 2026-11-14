@@ -2,13 +2,15 @@ package redisqueue
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -415,7 +417,7 @@ func newTestGinContext(t *testing.T, method, path string, status int) *gin.Conte
 	return ginCtx
 }
 
-func popSinglePayload(t *testing.T) map[string]json.RawMessage {
+func popSinglePayload(t *testing.T) map[string]jsontext.Value {
 	t.Helper()
 
 	items := PopOldest(10)
@@ -423,14 +425,14 @@ func popSinglePayload(t *testing.T) map[string]json.RawMessage {
 		t.Fatalf("PopOldest() items = %d, want 1", len(items))
 	}
 
-	var payload map[string]json.RawMessage
+	var payload map[string]jsontext.Value
 	if err := json.Unmarshal(items[0], &payload); err != nil {
 		t.Fatalf("unmarshal payload: %v", err)
 	}
 	return payload
 }
 
-func waitForSinglePayload(t *testing.T, timeout time.Duration) map[string]json.RawMessage {
+func waitForSinglePayload(t *testing.T, timeout time.Duration) map[string]jsontext.Value {
 	t.Helper()
 
 	deadline := time.Now().Add(timeout)
@@ -443,7 +445,7 @@ func waitForSinglePayload(t *testing.T, timeout time.Duration) map[string]json.R
 		if len(items) != 1 {
 			t.Fatalf("PopOldest() items = %d, want 1", len(items))
 		}
-		var payload map[string]json.RawMessage
+		var payload map[string]jsontext.Value
 		if err := json.Unmarshal(items[0], &payload); err != nil {
 			t.Fatalf("unmarshal payload: %v", err)
 		}
@@ -453,7 +455,7 @@ func waitForSinglePayload(t *testing.T, timeout time.Duration) map[string]json.R
 	return nil
 }
 
-func requireStringField(t *testing.T, payload map[string]json.RawMessage, key, want string) {
+func requireStringField(t *testing.T, payload map[string]jsontext.Value, key, want string) {
 	t.Helper()
 
 	raw, ok := payload[key]
@@ -469,7 +471,7 @@ func requireStringField(t *testing.T, payload map[string]json.RawMessage, key, w
 	}
 }
 
-func requireIntField(t *testing.T, payload map[string]json.RawMessage, key string, want int) {
+func requireIntField(t *testing.T, payload map[string]jsontext.Value, key string, want int) {
 	t.Helper()
 
 	raw, ok := payload[key]
@@ -485,7 +487,7 @@ func requireIntField(t *testing.T, payload map[string]json.RawMessage, key strin
 	}
 }
 
-func requireTokenBreakdown(t *testing.T, payload map[string]json.RawMessage, quality coreusage.TokenAccountingQuality, total int64) {
+func requireTokenBreakdown(t *testing.T, payload map[string]jsontext.Value, quality coreusage.TokenAccountingQuality, total int64) {
 	t.Helper()
 
 	raw, ok := payload["token_breakdown"]
@@ -493,7 +495,7 @@ func requireTokenBreakdown(t *testing.T, payload map[string]json.RawMessage, qua
 		t.Fatal("payload missing token_breakdown")
 	}
 	var breakdown coreusage.TokenBreakdown
-	if err := json.Unmarshal(raw, &breakdown); err != nil {
+	if err := json.Unmarshal(raw, &breakdown, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal token_breakdown: %v", err)
 	}
 	if !breakdown.Valid() || breakdown.Quality != quality || breakdown.TotalTokens != total {
@@ -501,7 +503,7 @@ func requireTokenBreakdown(t *testing.T, payload map[string]json.RawMessage, qua
 	}
 }
 
-func requireMissingField(t *testing.T, payload map[string]json.RawMessage, key string) {
+func requireMissingField(t *testing.T, payload map[string]jsontext.Value, key string) {
 	t.Helper()
 
 	if _, ok := payload[key]; ok {
@@ -515,7 +517,7 @@ func (fn pluginFunc) HandleUsage(ctx context.Context, record coreusage.Record) {
 	fn(ctx, record)
 }
 
-func requireBoolField(t *testing.T, payload map[string]json.RawMessage, key string, want bool) {
+func requireBoolField(t *testing.T, payload map[string]jsontext.Value, key string, want bool) {
 	t.Helper()
 
 	raw, ok := payload[key]
@@ -531,25 +533,25 @@ func requireBoolField(t *testing.T, payload map[string]json.RawMessage, key stri
 	}
 }
 
-func requireTokensPayload(t *testing.T, payload map[string]json.RawMessage) map[string]json.RawMessage {
+func requireTokensPayload(t *testing.T, payload map[string]jsontext.Value) map[string]jsontext.Value {
 	t.Helper()
 	raw, ok := payload["tokens"]
 	if !ok {
 		t.Fatal("payload missing tokens")
 	}
-	var tokens map[string]json.RawMessage
+	var tokens map[string]jsontext.Value
 	if errUnmarshal := json.Unmarshal(raw, &tokens); errUnmarshal != nil {
 		t.Fatalf("unmarshal tokens: %v", errUnmarshal)
 	}
 	return tokens
 }
 
-func requireTokensBoolField(t *testing.T, payload map[string]json.RawMessage, key string, want bool) {
+func requireTokensBoolField(t *testing.T, payload map[string]jsontext.Value, key string, want bool) {
 	t.Helper()
 	requireBoolField(t, requireTokensPayload(t, payload), key, want)
 }
 
-func requireFailField(t *testing.T, payload map[string]json.RawMessage, wantStatus int, wantBody string) {
+func requireFailField(t *testing.T, payload map[string]jsontext.Value, wantStatus int, wantBody string) {
 	t.Helper()
 
 	raw, ok := payload["fail"]
@@ -560,7 +562,7 @@ func requireFailField(t *testing.T, payload map[string]json.RawMessage, wantStat
 		StatusCode int    `json:"status_code"`
 		Body       string `json:"body"`
 	}
-	if err := json.Unmarshal(raw, &got); err != nil {
+	if err := json.Unmarshal(raw, &got, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal fail: %v", err)
 	}
 	if got.StatusCode != wantStatus || got.Body != wantBody {
@@ -568,7 +570,7 @@ func requireFailField(t *testing.T, payload map[string]json.RawMessage, wantStat
 	}
 }
 
-func requireHeaderField(t *testing.T, payload map[string]json.RawMessage, field, key string, want []string) {
+func requireHeaderField(t *testing.T, payload map[string]jsontext.Value, field, key string, want []string) {
 	t.Helper()
 
 	raw, ok := payload[field]
@@ -896,7 +898,7 @@ func TestUsageQueuePluginEmitsFailCode(t *testing.T) {
 			Body       string `json:"body"`
 			Code       string `json:"code"`
 		}
-		if errUnmarshal := json.Unmarshal(raw, &got); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &got, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("unmarshal fail: %v", errUnmarshal)
 		}
 		if got.Code != coreusage.FailureStreamTruncatedCode {

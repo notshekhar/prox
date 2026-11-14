@@ -1,10 +1,11 @@
 package util
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestIssue6897_RefSiblingConjunctions(t *testing.T) {
@@ -351,7 +352,7 @@ func TestIssue6897_RefSiblingUnevaluatedScope(t *testing.T) {
 					// Root declarations are not part of the validation assertions under test.
 					root := node.Value().(map[string]any)
 					delete(root, "$defs")
-					encoded, errMarshal := json.Marshal(root)
+					encoded, errMarshal := json.Marshal(root, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}

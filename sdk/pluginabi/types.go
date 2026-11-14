@@ -1,6 +1,11 @@
 package pluginabi
 
-import "encoding/json"
+import (
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
+)
 
 const (
 	// ABIVersion tracks the native C ABI shape (native plugin exports).
@@ -150,24 +155,24 @@ const (
 )
 
 type Envelope struct {
-	OK     bool            `json:"ok"`
-	Result json.RawMessage `json:"result,omitempty"`
-	Error  *Error          `json:"error,omitempty"`
+	OK     bool           `json:"ok"`
+	Result jsontext.Value `json:"result,omitzero"`
+	Error  *Error         `json:"error,omitzero"`
 }
 
 type Error struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
-	Retryable bool   `json:"retryable,omitempty"`
+	Retryable bool   `json:"retryable,omitzero"`
 	// HTTPStatus is the HTTP status code (e.g. 401, 403, 429) to surface to the client.
 	// When omitted or 0, CPA defaults to HTTP 500 (internal_server_error).
-	HTTPStatus int `json:"http_status,omitempty"`
+	HTTPStatus int `json:"http_status,omitzero"`
 	// RetryAfterSeconds carries upstream retry guidance for cooldown and response headers.
 	// It is an optional hint. Schema-version agreement does not negotiate support for
 	// this field, and older hosts silently ignore it, so plugins must not depend on it
 	// for correctness. The same pair is accepted as error_detail on host.stream.emit
 	// and host.stream.close.
-	RetryAfterSeconds int `json:"retry_after_seconds,omitempty"`
+	RetryAfterSeconds int `json:"retry_after_seconds,omitzero"`
 }
 
 // Error implements the error interface for Error.
@@ -204,5 +209,5 @@ func NewErrorEnvelope(code, message string, httpStatus ...int) ([]byte, error) {
 	return json.Marshal(Envelope{
 		OK:    false,
 		Error: NewError(code, message, httpStatus...),
-	})
+	}, jsoncompat.Encode)
 }

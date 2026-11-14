@@ -3,12 +3,13 @@ package vertex
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
+	json "encoding/json/v2"
 	"encoding/pem"
 	"fmt"
 	"strings"
 
 	"github.com/MoeForge/moego/base64"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // NormalizeServiceAccountJSON normalizes the given JSON-encoded service account payload.
@@ -19,14 +20,14 @@ func NormalizeServiceAccountJSON(raw []byte) ([]byte, error) {
 		return raw, nil
 	}
 	var payload map[string]any
-	if err := json.Unmarshal(raw, &payload); err != nil {
+	if err := json.Unmarshal(raw, &payload, jsoncompat.Decode); err != nil {
 		return raw, err
 	}
 	normalized, err := NormalizeServiceAccountMap(payload)
 	if err != nil {
 		return raw, err
 	}
-	out, err := json.Marshal(normalized)
+	out, err := json.Marshal(normalized, jsoncompat.Encode)
 	if err != nil {
 		return raw, err
 	}

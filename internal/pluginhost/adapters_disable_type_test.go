@@ -1,10 +1,11 @@
 package pluginhost
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/claude"
@@ -31,11 +32,11 @@ func TestPluginThinkingSupportDisableTypeJSONCompatibility(t *testing.T) {
 		t.Fatal(err)
 	}
 	var decoded pluginapi.ThinkingSupport
-	if err := json.Unmarshal(raw, &decoded); err != nil || decoded.DisableType != "between_tools" {
+	if err := json.Unmarshal(raw, &decoded, jsoncompat.Decode); err != nil || decoded.DisableType != "between_tools" {
 		t.Fatalf("round trip = %+v, err %v", decoded, err)
 	}
 	var old pluginapi.ThinkingSupport
-	if err := json.Unmarshal([]byte(`{"Levels":["low"],"ZeroAllowed":true}`), &old); err != nil || old.DisableType != "" {
+	if err := json.Unmarshal([]byte(`{"Levels":["low"],"ZeroAllowed":true}`), &old, jsoncompat.Decode); err != nil || old.DisableType != "" {
 		t.Fatalf("older plugin payload = %+v, err %v", old, err)
 	}
 }

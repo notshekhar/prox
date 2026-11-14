@@ -2,7 +2,7 @@ package live
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -182,7 +183,7 @@ func (d *homeDispatcher) RPopAuth(_ context.Context, model string, _ string, _ h
 			"credential_id": authID,
 			"model":         model,
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*homeDispatcher) AbortAmbiguousDispatch() {}
@@ -366,7 +367,7 @@ func TestHandlerRewritesLiveCallAndSchedulesOAuth(t *testing.T) {
 		SDP     string         `json:"sdp"`
 		Session map[string]any `json:"session"`
 	}
-	if errUnmarshal := json.Unmarshal(executor.body, &upstreamPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(executor.body, &upstreamPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal upstream body: %v; body=%s", errUnmarshal, executor.body)
 	}
 	if upstreamPayload.SDP != "v=0\r\na=setup:actpass" {
@@ -509,7 +510,7 @@ func TestHandlerRelaysWebRTCMediaSDP(t *testing.T) {
 	var upstreamPayload struct {
 		SDP string `json:"sdp"`
 	}
-	if errUnmarshal := json.Unmarshal(executor.body, &upstreamPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(executor.body, &upstreamPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal upstream body: %v", errUnmarshal)
 	}
 	if upstreamPayload.SDP != mediaRelay.upstreamOffer {
@@ -1116,7 +1117,7 @@ func TestPrepareCallRequestRewritesMultipart(t *testing.T) {
 		SDP     string         `json:"sdp"`
 		Session map[string]any `json:"session"`
 	}
-	if errUnmarshal := json.Unmarshal(encoded, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(encoded, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal encoded body: %v", errUnmarshal)
 	}
 	if payload.SDP != "v=0-offer" || payload.Session["instructions"] != "hi" {
@@ -1160,7 +1161,7 @@ func TestMediaRelayWrapsRawSDPForCodexBackend(t *testing.T) {
 	var payload struct {
 		SDP string `json:"sdp"`
 	}
-	if errUnmarshal := json.Unmarshal(prepared, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(prepared, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal prepared request: %v", errUnmarshal)
 	}
 	if payload.SDP != "v=0\r\no=gateway-offer\r\n" {

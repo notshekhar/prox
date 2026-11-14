@@ -2,7 +2,7 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -84,7 +85,7 @@ func (u *catalogUpdater) configure(ctx context.Context, source string) {
 type CatalogSourceStatus struct {
 	Source           string   `json:"source"`
 	Refreshed        bool     `json:"refreshed"`
-	Skipped          bool     `json:"skipped,omitempty"`
+	Skipped          bool     `json:"skipped,omitzero"`
 	ChangedProviders []string `json:"changed_providers,omitempty"`
 	Error            string   `json:"error,omitempty"`
 }
@@ -314,7 +315,7 @@ func catalogFetcher(embedded []byte, urls []string, validate func([]byte) error)
 
 func validateCatalogBytes(data []byte) error {
 	var parsed staticModelsJSON
-	if errUnmarshal := json.Unmarshal(data, &parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &parsed, jsoncompat.Decode); errUnmarshal != nil {
 		return errUnmarshal
 	}
 	return validateModelsCatalog(&parsed)
@@ -322,7 +323,7 @@ func validateCatalogBytes(data []byte) error {
 
 func publishCatalogBytes(data []byte) ([]string, error) {
 	var parsed staticModelsJSON
-	if errUnmarshal := json.Unmarshal(data, &parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &parsed, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	if errValidate := validateModelsCatalog(&parsed); errValidate != nil {

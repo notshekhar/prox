@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
@@ -20,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	devinauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/devin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
@@ -1252,7 +1254,7 @@ func (e *DevinExecutor) streamDevinFramesForAuth(
 			SignatureType: signatureType,
 			Usage:         finalUsage,
 		}
-		if summaryJSON, err := json.MarshalIndent(streamSummary, "", "  "); err == nil {
+		if summaryJSON, err := json.Marshal(streamSummary, jsoncompat.Encode, jsontext.WithIndent("  ")); err == nil {
 			helps.AppendAPIResponseChunk(ctx, e.cfg, []byte("\n=== DEVIN UPSTREAM RESPONSE SUMMARY ===\n"+string(summaryJSON)+"\n"))
 		}
 	}
@@ -1621,7 +1623,7 @@ func consumeDevinFramesToInteractionsForAuth(body io.Reader, model, chatModelUID
 		_ = fnDoc.Set("id", id)
 		_ = fnDoc.Set("call_id", id)
 		if tc.Arguments != "" {
-			if json.Valid([]byte(tc.Arguments)) {
+			if jsontext.Value(tc.Arguments).IsValid(jsoncompat.Decode) {
 				_ = fnDoc.SetRawBytes("arguments", []byte(tc.Arguments))
 			} else {
 				_ = setDevinStringWithoutHTMLEscapeDoc(fnDoc, "arguments", tc.Arguments)
@@ -2888,13 +2890,10 @@ func setDevinStringWithoutHTMLEscapeDoc(doc *ojson.Doc, path, value string) erro
 	if doc == nil {
 		return nil
 	}
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if errEncode := enc.Encode(value); errEncode != nil {
+	raw, errEncode := json.Marshal(value, jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return doc.Set(path, value)
 	}
-	raw := bytes.TrimRight(buf.Bytes(), "\n")
 	return doc.SetRawBytes(path, raw)
 }
 

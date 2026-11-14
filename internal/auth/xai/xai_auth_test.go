@@ -2,7 +2,7 @@ package xai
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -46,7 +46,7 @@ func TestRequestDeviceCodePostsClientIDAndScope(t *testing.T) {
 		}
 		gotForm = r.PostForm
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"device_code":               "device-abc",
 			"user_code":                 "ABCD-1234",
 			"verification_uri":          "https://accounts.x.ai/oauth2/device",
@@ -99,13 +99,13 @@ func TestPollForTokenExchangesDeviceCode(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		if count == 1 {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{
+			_ = json.MarshalWrite(w, map[string]string{
 				"error":             "authorization_pending",
 				"error_description": "User has not yet authorized",
 			})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "access-1",
 			"refresh_token": "refresh-1",
 			"token_type":    "Bearer",
@@ -148,7 +148,7 @@ func TestPollForTokenAccessDenied(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{
+		_ = json.MarshalWrite(w, map[string]string{
 			"error":             "access_denied",
 			"error_description": "The user rejected the request",
 		})
@@ -175,10 +175,10 @@ func TestPollForTokenSlowDownContinuesPolling(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		if count == 1 {
 			w.WriteHeader(http.StatusBadRequest)
-			_ = json.NewEncoder(w).Encode(map[string]string{"error": "slow_down"})
+			_ = json.MarshalWrite(w, map[string]string{"error": "slow_down"})
 			return
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "access-slow",
 			"refresh_token": "refresh-slow",
 			"token_type":    "Bearer",
@@ -232,7 +232,7 @@ func TestRefreshTokensPostsClientIDAndRefreshToken(t *testing.T) {
 		}
 		gotForm = r.PostForm
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "new-access",
 			"refresh_token": "new-refresh",
 			"token_type":    "Bearer",
@@ -274,7 +274,7 @@ func TestRefreshTokens_DeduplicatesConcurrentRefresh(t *testing.T) {
 		once.Do(func() { close(started) })
 		<-release
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]any{
+		_ = json.MarshalWrite(w, map[string]any{
 			"access_token":  "new-access",
 			"refresh_token": "new-refresh",
 			"token_type":    "Bearer",

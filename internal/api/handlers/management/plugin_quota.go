@@ -1,7 +1,8 @@
 package management
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"math"
@@ -13,6 +14,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -466,7 +468,7 @@ func (h *Handler) executeQuotaProbe(c *gin.Context, auth *coreauth.Auth, probe m
 		return pluginapi.QuotaFetchResponse{}, true, fmt.Errorf("probe returned status %d: %s", resp.StatusCode, string(respBytes))
 	}
 
-	if !json.Valid(respBytes) {
+	if !jsontext.Value(respBytes).IsValid(jsoncompat.Decode) {
 		return pluginapi.QuotaFetchResponse{}, true, fmt.Errorf("upstream probe response is not valid JSON")
 	}
 
@@ -488,16 +490,16 @@ func (h *Handler) executeQuotaProbe(c *gin.Context, auth *coreauth.Auth, probe m
 		return mappedResp, true, nil
 	}
 
-	var rawQuota map[string]json.RawMessage
-	if errRaw := json.Unmarshal(respBytes, &rawQuota); errRaw == nil {
+	var rawQuota map[string]jsontext.Value
+	if errRaw := json.Unmarshal(respBytes, &rawQuota, jsoncompat.Decode); errRaw == nil {
 		for key := range rawQuota {
 			if strings.EqualFold(key, "summary") {
 				delete(rawQuota, key) // Optional plugin data must not invalidate core quota fields.
 			}
 		}
-		if coreQuotaJSON, errMarshal := json.Marshal(rawQuota); errMarshal == nil {
+		if coreQuotaJSON, errMarshal := json.Marshal(rawQuota, jsoncompat.Encode); errMarshal == nil {
 			var quotaResp pluginapi.QuotaFetchResponse
-			if errJSON := json.Unmarshal(coreQuotaJSON, &quotaResp); errJSON == nil {
+			if errJSON := json.Unmarshal(coreQuotaJSON, &quotaResp, jsoncompat.Decode); errJSON == nil {
 				hasPlan := quotaResp.Subscription != nil && strings.TrimSpace(quotaResp.Subscription.Plan) != ""
 				// Filter groups to retain only buckets with an actual valid numeric remaining fraction in raw JSON
 				filteredGroups := make([]pluginapi.QuotaGroup, 0, len(quotaResp.Groups))
@@ -551,8 +553,8 @@ func (h *Handler) executeQuotaProbe(c *gin.Context, auth *coreauth.Auth, probe m
 }
 
 func filterUsableQuotaSummary(raw []byte) []pluginapi.QuotaMetric {
-	var rawQuota map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &rawQuota); err != nil {
+	var rawQuota map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &rawQuota, jsoncompat.Decode); err != nil {
 		return nil
 	}
 	rawSummary, ok := rawQuota["summary"]

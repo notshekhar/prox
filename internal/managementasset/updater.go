@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +20,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/httpfetch"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 	log "github.com/sirupsen/logrus"
@@ -361,7 +362,7 @@ func fetchLatestAsset(ctx context.Context, client *http.Client, releaseURL strin
 	}
 
 	var release releaseResponse
-	if err = json.Unmarshal(data, &release); err != nil {
+	if err = json.Unmarshal(data, &release, jsoncompat.Decode); err != nil {
 		return nil, "", fmt.Errorf("decode release response: %w", err)
 	}
 

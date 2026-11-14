@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -2799,7 +2800,7 @@ func isExplicitModelNotFoundError(err error, requestedModel string) bool {
 
 func isStructuredModelNotFoundError(message, requestedModel string) bool {
 	var payload any
-	if errJSON := json.Unmarshal([]byte(strings.TrimSpace(message)), &payload); errJSON != nil {
+	if errJSON := json.Unmarshal([]byte(strings.TrimSpace(message)), &payload, jsoncompat.Decode); errJSON != nil {
 		return false
 	}
 	return containsStructuredModelNotFound(payload, requestedModel)

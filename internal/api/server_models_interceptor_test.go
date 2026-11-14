@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -230,7 +231,7 @@ func TestModelsEndpoint_ExposesResponseToPluginInterceptors_CodexClientVersion(t
 						t.Fatalf("interceptor saw %d expected entries, want 2", seen)
 					}
 					parsed["intercepted_by_plugin"] = true
-					modified, errMarshal := json.Marshal(parsed)
+					modified, errMarshal := json.Marshal(parsed, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatalf("marshal intercepted catalog: %v", errMarshal)
 					}
@@ -274,7 +275,7 @@ func TestModelsEndpoint_ExposesResponseToPluginInterceptors_GrokShell(t *testing
 				t.Fatalf("failed to unmarshal grok models body: %v", err)
 			}
 			parsed["grok_intercepted"] = true
-			modified, _ := json.Marshal(parsed)
+			modified, _ := json.Marshal(parsed, jsoncompat.Encode)
 			return pluginapi.ResponseInterceptResponse{
 				Headers: req.ResponseHeaders,
 				Body:    modified,
@@ -320,7 +321,7 @@ func TestModelsEndpoint_NoPluginHost_ReturnsOriginalModels(t *testing.T) {
 	var parsed struct {
 		Object string `json:"object"`
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &parsed); err != nil {
+	if err := json.Unmarshal(rr.Body.Bytes(), &parsed, jsoncompat.Decode); err != nil {
 		t.Fatalf("failed to unmarshal models response: %v", err)
 	}
 	if parsed.Object != "list" {

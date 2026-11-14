@@ -4,11 +4,13 @@
 package claude
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
@@ -97,7 +99,7 @@ func (ts *ClaudeTokenStorage) SaveTokenToFile(authFilePath string) error {
 	}()
 
 	// Encode and write the token data as JSON
-	if err = json.NewEncoder(f).Encode(data); err != nil {
+	if err = json.MarshalEncode(jsontext.NewEncoder(f, jsoncompat.Encode), data); err != nil {
 		return fmt.Errorf("failed to write token to file: %w", err)
 	}
 	return nil

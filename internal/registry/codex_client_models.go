@@ -3,12 +3,13 @@ package registry
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"math"
 	"strings"
 	"sync"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -74,7 +75,7 @@ func loadCodexClientModelsFromBytes(data []byte, source string) (bool, error) {
 // complete Codex client model catalog.
 func ValidateCodexClientModelsJSON(data []byte) error {
 	var payload codexClientModelsPayload
-	if err := json.Unmarshal(data, &payload); err != nil {
+	if err := json.Unmarshal(data, &payload, jsoncompat.Decode); err != nil {
 		return fmt.Errorf("decode Codex client model catalog: %w", err)
 	}
 	if len(payload.Models) == 0 {

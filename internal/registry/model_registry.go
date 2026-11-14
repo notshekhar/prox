@@ -5,7 +5,7 @@ package registry
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	misc "github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
@@ -29,11 +30,11 @@ const (
 type NativeCapabilities struct {
 	// WebSearch reports explicit per-model support for native web search.
 	// nil means the catalog has not established support either way.
-	WebSearch *bool `json:"web_search,omitempty"`
+	WebSearch *bool `json:"web_search,omitzero"`
 	// ToolSearch reports whether every credential behind a Home route can take
 	// Codex tool_search as Anthropic native tool search. Home computes it per
 	// route; nil means unknown and is treated as unsupported.
-	ToolSearch *bool `json:"tool_search,omitempty"`
+	ToolSearch *bool `json:"tool_search,omitzero"`
 }
 
 // ModelInfo represents information about an available model
@@ -64,18 +65,18 @@ type ModelInfo struct {
 	// Description provides detailed information about the model
 	Description string `json:"description,omitempty"`
 	// InputTokenLimit is the maximum input token limit
-	InputTokenLimit int `json:"inputTokenLimit,omitempty"`
+	InputTokenLimit int `json:"inputTokenLimit,omitzero"`
 	// OutputTokenLimit is the maximum output token limit
-	OutputTokenLimit int `json:"outputTokenLimit,omitempty"`
+	OutputTokenLimit int `json:"outputTokenLimit,omitzero"`
 	// SupportedGenerationMethods lists supported generation methods
 	SupportedGenerationMethods []string `json:"supportedGenerationMethods,omitempty"`
 	// ContextLength is the context window size
-	ContextLength int `json:"context_length,omitempty"`
+	ContextLength int `json:"context_length,omitzero"`
 	// MaxContextLength is an explicit per-model context window override from configuration.
 	// It is carried internally for Codex client model catalog generation.
 	MaxContextLength int `json:"-"`
 	// MaxCompletionTokens is the maximum completion tokens
-	MaxCompletionTokens int `json:"max_completion_tokens,omitempty"`
+	MaxCompletionTokens int `json:"max_completion_tokens,omitzero"`
 	// SupportedParameters lists supported parameters
 	SupportedParameters []string `json:"supported_parameters,omitempty"`
 	// SupportedInputModalities lists supported input modalities (e.g., TEXT, IMAGE, VIDEO, AUDIO)
@@ -84,7 +85,7 @@ type ModelInfo struct {
 	SupportedOutputModalities []string `json:"supportedOutputModalities,omitempty"`
 	// SupportsWebSearch indicates this Antigravity model is listed by
 	// fetchAvailableModels.webSearchModelIds and can execute native googleSearch.
-	SupportsWebSearch bool `json:"supports_web_search,omitempty"`
+	SupportsWebSearch bool `json:"supports_web_search,omitzero"`
 
 	// SupportConfigurationUpdate reports internal support for configuration_update.
 	SupportConfigurationUpdate bool `json:"-"`
@@ -95,10 +96,10 @@ type ModelInfo struct {
 
 	// Thinking holds provider-specific reasoning/thinking budget capabilities.
 	// This is optional and currently used for Gemini thinking budget normalization.
-	Thinking *ThinkingSupport `json:"thinking,omitempty"`
+	Thinking *ThinkingSupport `json:"thinking,omitzero"`
 
 	// Config holds model-specific runtime overrides loaded from models.json.
-	Config *ModelConfig `json:"config,omitempty"`
+	Config *ModelConfig `json:"config,omitzero"`
 
 	// UserDefined indicates this model was defined through config file's models[]
 	// array (e.g., openai-compatibility.*.models[], *-api-key.models[]).
@@ -126,7 +127,7 @@ func (m *ModelInfo) UnmarshalJSON(data []byte) error {
 		NativeCapabilities         *NativeCapabilities `json:"native_capabilities"`
 		SupportConfigurationUpdate bool                `json:"support_configuration_update"`
 	}{modelInfoAlias: (*modelInfoAlias)(m)}
-	if errUnmarshal := json.Unmarshal(data, &aux); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &aux, jsoncompat.Decode); errUnmarshal != nil {
 		return errUnmarshal
 	}
 	m.NativeCapabilities = aux.NativeCapabilities
@@ -143,13 +144,13 @@ type availableModelsCacheEntry struct {
 // Values are interpreted in provider-native token units.
 type ThinkingSupport struct {
 	// Min is the minimum allowed thinking budget (inclusive).
-	Min int `json:"min,omitempty" yaml:"min,omitempty"`
+	Min int `json:"min,omitzero" yaml:"min,omitempty"`
 	// Max is the maximum allowed thinking budget (inclusive).
-	Max int `json:"max,omitempty" yaml:"max,omitempty"`
+	Max int `json:"max,omitzero" yaml:"max,omitempty"`
 	// ZeroAllowed indicates whether 0 is a valid value (to disable thinking).
-	ZeroAllowed bool `json:"zero_allowed,omitempty" yaml:"zero-allowed,omitempty"`
+	ZeroAllowed bool `json:"zero_allowed,omitzero" yaml:"zero-allowed,omitempty"`
 	// DynamicAllowed indicates whether -1 is a valid value (dynamic thinking budget).
-	DynamicAllowed bool `json:"dynamic_allowed,omitempty" yaml:"dynamic-allowed,omitempty"`
+	DynamicAllowed bool `json:"dynamic_allowed,omitzero" yaml:"dynamic-allowed,omitempty"`
 	// DisableType is the Claude thinking.type sent when thinking is turned off.
 	// Empty means "disabled"; claude-sonnet-5-5 needs "between_tools".
 	DisableType string `json:"disable_type,omitempty" yaml:"disable-type,omitempty"`

@@ -90,9 +90,6 @@ func (m keysTabModel) fetchKeys() tea.Msg {
 
 func (m keysTabModel) Update(msg tea.Msg) (keysTabModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		m.viewport.SetContent(m.renderContent())
-		return m, nil
 	case keysDataMsg:
 		if msg.err != nil {
 			m.err = msg.err

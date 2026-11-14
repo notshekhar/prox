@@ -1,7 +1,7 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"testing"
 
 	"gopkg.in/yaml.v3"

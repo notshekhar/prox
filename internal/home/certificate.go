@@ -10,7 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -24,6 +24,7 @@ import (
 
 	"github.com/MoeForge/moego/base64"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 const (
@@ -93,7 +94,7 @@ func parseHomeJWTClaims(rawJWT string) (homeJWTClaims, error) {
 	if errDecode != nil {
 		return claims, errDecode
 	}
-	if errUnmarshal := json.Unmarshal(payload, &claims); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(payload, &claims, jsoncompat.Decode); errUnmarshal != nil {
 		return claims, errUnmarshal
 	}
 	if strings.TrimSpace(claims.CertificateID) == "" {
@@ -328,7 +329,7 @@ func requestClientCertificate(ctx context.Context, claims homeJWTClaims, csrPEM 
 	if errRead != nil {
 		return response, errRead
 	}
-	if errUnmarshal := json.Unmarshal(raw, &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &response, jsoncompat.Decode); errUnmarshal != nil {
 		return response, errUnmarshal
 	}
 	if !response.OK {

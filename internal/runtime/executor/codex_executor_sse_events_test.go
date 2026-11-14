@@ -2,7 +2,8 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -59,7 +61,7 @@ func TestCodexExecuteStreamTreatsAnEventSplitAcrossDataLinesAsOneEvent(t *testin
 			if fmt.Sprintf("%q", got) != fmt.Sprintf("%q", want) {
 				t.Fatalf("split event chunks = %q\nwant the one-line chunks %q", got, want)
 			}
-			if terminal := want[len(want)-1]; !strings.Contains(terminal, `"response.completed"`) || !json.Valid([]byte(strings.TrimPrefix(terminal, "data: "))) {
+			if terminal := want[len(want)-1]; !strings.Contains(terminal, `"response.completed"`) || !jsontext.Value(strings.TrimPrefix(terminal, "data: ")).IsValid() {
 				t.Fatalf("last chunk = %q, want a valid response.completed", terminal)
 			}
 		})
@@ -111,10 +113,10 @@ func TestCodexExecuteNonStreamReadsAnEventSplitAcrossDataLines(t *testing.T) {
 		t.Fatalf("Execute error: %v", err)
 	}
 	var got struct {
-		ID     string            `json:"id"`
-		Output []json.RawMessage `json:"output"`
+		ID     string           `json:"id"`
+		Output []jsontext.Value `json:"output"`
 	}
-	if errDecode := json.Unmarshal(resp.Payload, &got); errDecode != nil || got.ID != "resp_split" || len(got.Output) != 1 {
+	if errDecode := json.Unmarshal(resp.Payload, &got, jsoncompat.Decode); errDecode != nil || got.ID != "resp_split" || len(got.Output) != 1 {
 		t.Fatalf("payload = %s (decode error %v), want the completed response", resp.Payload, errDecode)
 	}
 }
@@ -129,7 +131,7 @@ func TestCodexExecuteStreamKeepsAnInvalidSplitEventInvalid(t *testing.T) {
 	for _, line := range strings.Split(last, "\n") {
 		values = append(values, strings.TrimPrefix(strings.TrimPrefix(line, "data:"), " "))
 	}
-	if !strings.HasPrefix(last, "data: ") || strings.Count(last, "\ndata: ") != 1 || json.Valid([]byte(strings.Join(values, "\n"))) {
+	if !strings.HasPrefix(last, "data: ") || strings.Count(last, "\ndata: ") != 1 || jsontext.Value(strings.Join(values, "\n")).IsValid() {
 		t.Fatalf("last chunk = %q, want the invalid event's two data lines unchanged", last)
 	}
 }
@@ -155,7 +157,7 @@ func TestCodexExecuteStreamAssemblesSplitEventsWithAndWithoutBootstrapBuffering(
 				t.Fatalf("buffered=%t: %d fragments emitted, want the event assembled", buffered, count)
 			}
 			last := chunks[len(chunks)-1]
-			if !strings.Contains(last, `"response.completed"`) || !json.Valid([]byte(strings.TrimPrefix(last, "data: "))) {
+			if !strings.Contains(last, `"response.completed"`) || !jsontext.Value(strings.TrimPrefix(last, "data: ")).IsValid() {
 				t.Fatalf("last chunk = %q, want a valid response.completed", last)
 			}
 		})
@@ -173,7 +175,7 @@ func TestCodexExecuteStreamMinimalReproFromIssue6575(t *testing.T) {
 				t.Fatal("expected chunks, got none")
 			}
 			last := chunks[len(chunks)-1]
-			if !strings.Contains(last, `"response.completed"`) || !json.Valid([]byte(strings.TrimPrefix(last, "data: "))) {
+			if !strings.Contains(last, `"response.completed"`) || !jsontext.Value(strings.TrimPrefix(last, "data: ")).IsValid() {
 				t.Fatalf("last chunk = %q, want valid response.completed", last)
 			}
 		})
@@ -267,7 +269,7 @@ func TestCodexExecuteStreamEventExceedsBudgetWhileAssemblingReleasesStream(t *te
 	if !strings.Contains(inProgressChunk, `"key_at_boundary":123`) || !strings.Contains(inProgressChunk, `"key_after_boundary":456`) {
 		t.Fatalf("inProgressChunk = %q, want both key_at_boundary and key_after_boundary preserved", inProgressChunk)
 	}
-	if !json.Valid([]byte(strings.TrimPrefix(inProgressChunk, "data: "))) {
+	if !jsontext.Value(strings.TrimPrefix(inProgressChunk, "data: ")).IsValid() {
 		t.Fatalf("inProgressChunk = %q, want valid JSON without dropped lines", inProgressChunk)
 	}
 }

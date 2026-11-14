@@ -2,7 +2,7 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -260,7 +261,7 @@ func TestExecutorAdapterAppliesArrayIndexFilterOnlyOnceAcrossHostHTTP(t *testing
 			}
 			callbackID, closeCallback := host.openCallbackContext(ctx)
 			defer closeCallback()
-			raw, _ := json.Marshal(rpcHostHTTPRequest{HostCallbackID: callbackID, Method: http.MethodPost, URL: upstream.URL, Body: body})
+			raw, _ := json.Marshal(rpcHostHTTPRequest{HostCallbackID: callbackID, Method: http.MethodPost, URL: upstream.URL, Body: body}, jsoncompat.Encode)
 			if _, errCall := host.callFromPlugin(context.Background(), pluginabi.MethodHostHTTPDo, raw); errCall != nil {
 				t.Fatalf("host call error = %v", errCall)
 			}
@@ -304,7 +305,7 @@ func TestExecutorAdapterDoesNotMutateSameModelAuxiliaryHostHTTPRequest(t *testin
 				Method:         http.MethodPost,
 				URL:            upstream.URL,
 				Body:           []byte(telemetryBody),
-			})
+			}, jsoncompat.Encode)
 			if _, errCall := host.callFromPlugin(context.Background(), pluginabi.MethodHostHTTPDo, raw); errCall != nil {
 				t.Fatalf("host call error = %v", errCall)
 			}

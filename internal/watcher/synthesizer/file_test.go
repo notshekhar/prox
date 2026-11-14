@@ -2,7 +2,7 @@ package synthesizer
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"io/fs"
 	"os"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/MoeForge/moego/base64"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
@@ -85,7 +86,7 @@ func TestFileSynthesizer_Synthesize_ValidAuthFile(t *testing.T) {
 		"disable_cooling": true,
 		"request_retry":   2,
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	err := os.WriteFile(filepath.Join(tempDir, "claude-auth.json"), data, 0644)
 	if err != nil {
 		t.Fatalf("failed to write auth file: %v", err)
@@ -144,7 +145,7 @@ func TestFileSynthesizer_Synthesize_LegacyKimiFingerprintProfile(t *testing.T) {
 		"refresh_token":       "kimi-refresh-token",
 		"fingerprint-profile": "claude-code-cli",
 	}
-	data, errMarshal := json.Marshal(authData)
+	data, errMarshal := json.Marshal(authData, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal kimi auth: %v", errMarshal)
 	}
@@ -185,7 +186,7 @@ func TestFileSynthesizer_Synthesize_KimiAI(t *testing.T) {
 		"access_token":  "kimi-ai-token",
 		"refresh_token": "kimi-ai-refresh",
 	}
-	dataAI, errMarshal := json.Marshal(authDataAI)
+	dataAI, errMarshal := json.Marshal(authDataAI, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal kimi-ai auth: %v", errMarshal)
 	}
@@ -224,7 +225,7 @@ func TestFileSynthesizer_Synthesize_KimiDomainExplicitOverrides(t *testing.T) {
 		"domain":        "ai",
 		"access_token":  "token-1",
 		"refresh_token": "refresh-1",
-	})
+	}, jsoncompat.Encode)
 	if errMarshal1 != nil {
 		t.Fatalf("marshal error: %v", errMarshal1)
 	}
@@ -239,7 +240,7 @@ func TestFileSynthesizer_Synthesize_KimiDomainExplicitOverrides(t *testing.T) {
 		"domain":        "kimi.com",
 		"access_token":  "token-2",
 		"refresh_token": "refresh-2",
-	})
+	}, jsoncompat.Encode)
 	if errMarshal2 != nil {
 		t.Fatalf("marshal error: %v", errMarshal2)
 	}
@@ -293,7 +294,7 @@ func TestFileSynthesizer_Synthesize_IgnoresGeminiProviderFile(t *testing.T) {
 		"type":  "gemini",
 		"email": "gemini@example.com",
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	err := os.WriteFile(filepath.Join(tempDir, "gemini-auth.json"), data, 0644)
 	if err != nil {
 		t.Fatalf("failed to write auth file: %v", err)
@@ -533,7 +534,7 @@ func TestFileSynthesizer_Synthesize_SkipsInvalidFiles(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tempDir, "no-type.json"), []byte(`{"email": "test@example.com"}`), 0644)
 
 	// Create one valid file
-	validData, _ := json.Marshal(map[string]any{"type": "claude", "email": "valid@example.com"})
+	validData, _ := json.Marshal(map[string]any{"type": "claude", "email": "valid@example.com"}, jsoncompat.Encode)
 	_ = os.WriteFile(filepath.Join(tempDir, "valid.json"), validData, 0644)
 
 	synth := NewFileSynthesizer()
@@ -567,7 +568,7 @@ func TestFileSynthesizer_Synthesize_SkipsDirectories(t *testing.T) {
 	}
 
 	// Create a valid file in root
-	validData, _ := json.Marshal(map[string]any{"type": "claude"})
+	validData, _ := json.Marshal(map[string]any{"type": "claude"}, jsoncompat.Encode)
 	_ = os.WriteFile(filepath.Join(tempDir, "valid.json"), validData, 0644)
 
 	synth := NewFileSynthesizer()
@@ -591,7 +592,7 @@ func TestFileSynthesizer_Synthesize_RelativeID(t *testing.T) {
 	tempDir := t.TempDir()
 
 	authData := map[string]any{"type": "claude"}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	err := os.WriteFile(filepath.Join(tempDir, "my-auth.json"), data, 0644)
 	if err != nil {
 		t.Fatalf("failed to write auth file: %v", err)
@@ -639,7 +640,7 @@ func TestFileSynthesizer_Synthesize_PrefixValidation(t *testing.T) {
 				"type":   "claude",
 				"prefix": tt.prefix,
 			}
-			data, _ := json.Marshal(authData)
+			data, _ := json.Marshal(authData, jsoncompat.Encode)
 			_ = os.WriteFile(filepath.Join(tempDir, "auth.json"), data, 0644)
 
 			synth := NewFileSynthesizer()
@@ -697,7 +698,7 @@ func TestFileSynthesizer_Synthesize_PriorityParsing(t *testing.T) {
 				"type":     "claude",
 				"priority": tt.priority,
 			}
-			data, _ := json.Marshal(authData)
+			data, _ := json.Marshal(authData, jsoncompat.Encode)
 			errWriteFile := os.WriteFile(filepath.Join(tempDir, "auth.json"), data, 0644)
 			if errWriteFile != nil {
 				t.Fatalf("failed to write auth file: %v", errWriteFile)
@@ -757,7 +758,7 @@ func TestFileSynthesizer_Synthesize_WeightParsing(t *testing.T) {
 	for _, testCase := range tests {
 		t.Run(testCase.name, func(t *testing.T) {
 			tempDir := t.TempDir()
-			data, errMarshal := json.Marshal(map[string]any{"type": "claude", "weight": testCase.weight})
+			data, errMarshal := json.Marshal(map[string]any{"type": "claude", "weight": testCase.weight}, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("json.Marshal() error = %v", errMarshal)
 			}
@@ -799,7 +800,7 @@ func TestFileSynthesizer_Synthesize_OAuthExcludedModelsCredentialPriority(t *tes
 		"type":            "claude",
 		"excluded_models": []string{"custom-model", "MODEL-B"},
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	errWriteFile := os.WriteFile(filepath.Join(tempDir, "auth.json"), data, 0644)
 	if errWriteFile != nil {
 		t.Fatalf("failed to write auth file: %v", errWriteFile)
@@ -840,7 +841,7 @@ func TestFileSynthesizer_Synthesize_MetaOAuthExcludedModelsCredentialPriority(t 
 		"api_key":         "LLM|minted",
 		"excluded_models": []string{"muse-spark-1.2"},
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	errWriteFile := os.WriteFile(filepath.Join(tempDir, "meta.json"), data, 0644)
 	if errWriteFile != nil {
 		t.Fatalf("failed to write auth file: %v", errWriteFile)
@@ -888,7 +889,7 @@ func TestFileSynthesizer_Synthesize_OAuthModelAliases(t *testing.T) {
 			{"name": "", "alias": "ignored"},
 		},
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	errWriteFile := os.WriteFile(filepath.Join(tempDir, "codex-auth.json"), data, 0644)
 	if errWriteFile != nil {
 		t.Fatalf("failed to write auth file: %v", errWriteFile)
@@ -926,7 +927,7 @@ func TestFileSynthesizer_Synthesize_IgnoresGeminiOAuthFile(t *testing.T) {
 		"project_id": "project-a, project-b, project-c",
 		"priority":   " 10 ",
 	}
-	data, _ := json.Marshal(authData)
+	data, _ := json.Marshal(authData, jsoncompat.Encode)
 	err := os.WriteFile(filepath.Join(tempDir, "gemini-multi.json"), data, 0644)
 	if err != nil {
 		t.Fatalf("failed to write auth file: %v", err)
@@ -992,7 +993,7 @@ func TestFileSynthesizer_Synthesize_NoteParsing(t *testing.T) {
 				"type": "claude",
 				"note": tt.note,
 			}
-			data, _ := json.Marshal(authData)
+			data, _ := json.Marshal(authData, jsoncompat.Encode)
 			errWriteFile := os.WriteFile(filepath.Join(tempDir, "auth.json"), data, 0644)
 			if errWriteFile != nil {
 				t.Fatalf("failed to write auth file: %v", errWriteFile)
@@ -1043,7 +1044,7 @@ func makeTestCodexJWT(planType string) string {
 		"email":                       "user@example.com",
 		"https://api.openai.com/auth": authInfo,
 	}
-	payloadBytes, _ := json.Marshal(claimsMap)
+	payloadBytes, _ := json.Marshal(claimsMap, jsoncompat.Encode)
 	claims := base64.RawURLEncoding.EncodeToString(payloadBytes)
 	return header + "." + claims + "."
 }
@@ -1084,7 +1085,7 @@ func TestSynthesizeAuthFile_CodexPlanType(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tempDir := t.TempDir()
 			filePath := filepath.Join(tempDir, "codex.json")
-			data, errMarshal := json.Marshal(tt.fileJSON)
+			data, errMarshal := json.Marshal(tt.fileJSON, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("marshal error: %v", errMarshal)
 			}

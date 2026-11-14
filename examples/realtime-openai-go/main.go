@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
@@ -52,10 +52,10 @@ type realtimeServerEvent struct {
 		Message string `json:"message"`
 		Type    string `json:"type"`
 		Code    string `json:"code"`
-	} `json:"error,omitempty"`
+	} `json:"error,omitzero"`
 	Response *struct {
 		Status string `json:"status"`
-	} `json:"response,omitempty"`
+	} `json:"response,omitzero"`
 }
 
 func main() {

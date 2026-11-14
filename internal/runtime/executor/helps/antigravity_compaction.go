@@ -6,7 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"strings"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/MoeForge/moego/base64"
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	log "github.com/sirupsen/logrus"
@@ -270,7 +271,7 @@ func SealAntigravityCompaction(summary, modelName string) (string, error) {
 		Model:     modelName,
 		CreatedAt: time.Now().Unix(),
 	}
-	plaintext, errMarshal := json.Marshal(data)
+	plaintext, errMarshal := json.Marshal(data, jsoncompat.Encode)
 	if errMarshal != nil {
 		return "", fmt.Errorf("marshal compaction capsule: %w", errMarshal)
 	}
@@ -331,7 +332,7 @@ func UnsealAntigravityCompaction(encryptedContent string) (string, error) {
 	}
 
 	var data antigravityCompactionCapsuleData
-	if errUnmarshal := json.Unmarshal(plaintext, &data); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(plaintext, &data, jsoncompat.Decode); errUnmarshal != nil {
 		return "", fmt.Errorf("unmarshal compaction capsule: %w", errUnmarshal)
 	}
 	return data.Summary, nil

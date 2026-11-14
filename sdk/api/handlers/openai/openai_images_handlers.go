@@ -3,7 +3,7 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"io"
@@ -19,6 +19,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	log "github.com/sirupsen/logrus"
@@ -753,7 +754,7 @@ func (h *OpenAIAPIHandler) ImagesGenerations(c *gin.Context) {
 		})
 		return
 	}
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		c.JSON(http.StatusBadRequest, handlers.ErrorResponse{
 			Error: handlers.ErrorDetail{
 				Message: "Invalid request: body must be valid JSON",
@@ -1046,7 +1047,7 @@ func (h *OpenAIAPIHandler) imagesEditsFromJSON(c *gin.Context) {
 		})
 		return
 	}
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		c.JSON(http.StatusBadRequest, handlers.ErrorResponse{
 			Error: handlers.ErrorDetail{
 				Message: "Invalid request: body must be valid JSON",
@@ -1177,7 +1178,7 @@ func (h *OpenAIAPIHandler) imagesEditsFromJSON(c *gin.Context) {
 func buildImagesResponsesRequest(prompt string, images []string, toolJSON []byte) []byte {
 	reqDoc := ojson.NewDoc([]byte(`{"instructions":"","stream":true,"reasoning":{"effort":"medium","summary":"auto"},"parallel_tool_calls":true,"include":["reasoning.encrypted_content"],"model":"","store":false,"tool_choice":{"type":"image_generation"}}`))
 	mainModel := defaultImagesMainModel
-	if len(toolJSON) > 0 && json.Valid(toolJSON) {
+	if len(toolJSON) > 0 && jsontext.Value(toolJSON).IsValid(jsoncompat.Decode) {
 		toolModel := strings.TrimSpace(ojson.GetBytesNoCopy(toolJSON, "model").String())
 		if idx := strings.LastIndex(toolModel, "/"); idx > 0 && idx < len(toolModel)-1 {
 			prefix := strings.TrimSpace(toolModel[:idx])
@@ -1203,14 +1204,14 @@ func buildImagesResponsesRequest(prompt string, images []string, toolJSON []byte
 	_ = reqDoc.SetRawBytes("input", inputDoc.Bytes())
 
 	_ = reqDoc.SetRawBytes("tools", []byte(`[]`))
-	if len(toolJSON) > 0 && json.Valid(toolJSON) {
+	if len(toolJSON) > 0 && jsontext.Value(toolJSON).IsValid(jsoncompat.Decode) {
 		_ = reqDoc.SetRawBytes("tools.-1", toolJSON)
 	}
 	return reqDoc.Bytes()
 }
 
 func extractXAIImagesResponse(payload []byte) (results []xaiImageResult, createdAt int64, usageRaw []byte, err error) {
-	if !json.Valid(payload) {
+	if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return nil, 0, nil, fmt.Errorf("upstream returned invalid image response JSON")
 	}
 
@@ -1280,7 +1281,7 @@ func buildImagesAPIResponseFromXAI(payload []byte, responseFormat string) ([]byt
 		_ = outDoc.SetRawBytes("data.-1", itemDoc.Bytes())
 	}
 
-	if len(usageRaw) > 0 && json.Valid(usageRaw) {
+	if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 		_ = outDoc.SetRawBytes("usage", usageRaw)
 	}
 
@@ -1736,7 +1737,7 @@ func (h *OpenAIAPIHandler) streamImagesWithModel(c *gin.Context, imageReq []byte
 				} else {
 					_ = dataDoc.Set("url", img.URL)
 				}
-				if len(usageRaw) > 0 && json.Valid(usageRaw) {
+				if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 					_ = dataDoc.SetRawBytes("usage", usageRaw)
 				}
 				if strings.TrimSpace(eventName) != "" {
@@ -1789,7 +1790,7 @@ func collectImagesFromResponsesStream(ctx context.Context, data <-chan []byte, e
 		if !ok || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) {
 			return nil, false, nil
 		}
-		if !json.Valid(payload) {
+		if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 			return nil, false, &interfaces.ErrorMessage{StatusCode: http.StatusBadGateway, Error: fmt.Errorf("invalid SSE data JSON")}
 		}
 		payloadType := ojson.GetBytesNoCopy(payload, "type").String()
@@ -1930,7 +1931,7 @@ func buildImagesAPIResponse(results []imageCallResult, createdAt int64, usageRaw
 		_ = outDoc.Set("size", firstMeta.Size)
 	}
 
-	if len(usageRaw) > 0 && json.Valid(usageRaw) {
+	if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 		_ = outDoc.SetRawBytes("usage", usageRaw)
 	}
 
@@ -2063,7 +2064,7 @@ func (h *OpenAIAPIHandler) forwardImagesStream(ctx context.Context, c *gin.Conte
 		if !ok || len(payload) == 0 || bytes.Equal(payload, []byte("[DONE]")) {
 			return false, nil
 		}
-		if !json.Valid(payload) {
+		if !jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 			return true, &interfaces.ErrorMessage{StatusCode: http.StatusBadGateway, Error: fmt.Errorf("invalid SSE data JSON")}
 		}
 		payloadType := ojson.GetBytesNoCopy(payload, "type").String()
@@ -2108,7 +2109,7 @@ func (h *OpenAIAPIHandler) forwardImagesStream(ctx context.Context, c *gin.Conte
 				} else {
 					_ = dataDoc.Set("b64_json", img.Result)
 				}
-				if len(usageRaw) > 0 && json.Valid(usageRaw) {
+				if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 					_ = dataDoc.SetRawBytes("usage", usageRaw)
 				}
 				writeEvent(eventName, dataDoc.Bytes())

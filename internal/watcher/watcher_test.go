@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
@@ -122,7 +123,7 @@ func TestSnapshotCoreAuths_ConfigAndAuthFiles(t *testing.T) {
 		"proxy_url":  "https://proxy",
 	}
 	authFile := filepath.Join(authDir, "gemini.json")
-	data, err := json.Marshal(metadata)
+	data, err := json.Marshal(metadata, jsoncompat.Encode)
 	if err != nil {
 		t.Fatalf("failed to marshal metadata: %v", err)
 	}

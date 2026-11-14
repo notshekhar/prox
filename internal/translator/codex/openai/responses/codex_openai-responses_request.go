@@ -2,10 +2,12 @@ package responses
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strings"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
@@ -301,7 +303,7 @@ func convertSystemRoleToDeveloperDoc(inputResult ojson.Result, ensureDoc func() 
 	}
 
 	changed := false
-	rebuiltInput := make([]json.RawMessage, 0, len(inputItems))
+	rebuiltInput := make([]jsontext.Value, 0, len(inputItems))
 	for _, item := range inputItems {
 		itemRaw := []byte(item.Raw)
 		if item.IsObject() && item.Get("role").String() == "system" {
@@ -312,13 +314,13 @@ func convertSystemRoleToDeveloperDoc(inputResult ojson.Result, ensureDoc func() 
 			itemRaw = updatedItem
 			changed = true
 		}
-		rebuiltInput = append(rebuiltInput, json.RawMessage(itemRaw))
+		rebuiltInput = append(rebuiltInput, jsontext.Value(itemRaw))
 	}
 	if !changed {
 		return inputResult
 	}
 
-	inputRaw, errMarshalInput := json.Marshal(rebuiltInput)
+	inputRaw, errMarshalInput := json.Marshal(rebuiltInput, jsoncompat.Encode)
 	if errMarshalInput != nil {
 		return inputResult
 	}
@@ -348,7 +350,7 @@ func convertSystemRoleToDeveloperWithInput(rawJSON []byte, inputResult ojson.Res
 	}
 
 	changed := false
-	rebuiltInput := make([]json.RawMessage, 0, len(inputItems))
+	rebuiltInput := make([]jsontext.Value, 0, len(inputItems))
 	for _, item := range inputItems {
 		itemRaw := []byte(item.Raw)
 		if item.IsObject() && item.Get("role").String() == "system" {
@@ -359,13 +361,13 @@ func convertSystemRoleToDeveloperWithInput(rawJSON []byte, inputResult ojson.Res
 			itemRaw = updatedItem
 			changed = true
 		}
-		rebuiltInput = append(rebuiltInput, json.RawMessage(itemRaw))
+		rebuiltInput = append(rebuiltInput, jsontext.Value(itemRaw))
 	}
 	if !changed {
 		return rawJSON
 	}
 
-	inputRaw, errMarshalInput := json.Marshal(rebuiltInput)
+	inputRaw, errMarshalInput := json.Marshal(rebuiltInput, jsoncompat.Encode)
 	if errMarshalInput != nil {
 		return rawJSON
 	}

@@ -3,7 +3,7 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -377,7 +378,7 @@ func TestBuildErrorResponseBodyWithError_TerminalAuthEnforcesContractOnJSONInput
 			Retryable *bool  `json:"retryable"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error body: %v", errUnmarshal)
 	}
 	if payload.Error.Type != "authentication_error" {
@@ -409,7 +410,7 @@ func TestBuildErrorResponseBodyWithError_RequestTimeoutIsServerError(t *testing.
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error body: %v", errUnmarshal)
 	}
 	if payload.Error.Type != "server_error" {

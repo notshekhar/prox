@@ -1,11 +1,12 @@
 package responses
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestConvertOpenAIResponsesRequestToOpenAIChatCompletions_PreservesInstructionRoles(t *testing.T) {
@@ -26,7 +27,7 @@ func TestConvertOpenAIResponsesRequestToOpenAIChatCompletions_PreservesInstructi
 					}
 					input = append(input, map[string]any{"type": "message", "role": wantRoles[index], "content": content})
 				}
-				payload, errMarshal := json.Marshal(map[string]any{"instructions": wantTexts[0], "input": input})
+				payload, errMarshal := json.Marshal(map[string]any{"instructions": wantTexts[0], "input": input}, jsoncompat.Encode)
 				if errMarshal != nil {
 					t.Fatal(errMarshal)
 				}

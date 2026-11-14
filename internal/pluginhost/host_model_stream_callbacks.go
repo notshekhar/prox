@@ -2,15 +2,16 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
 func (h *Host) callHostModelExecuteStream(ctx context.Context, request []byte) ([]byte, error) {
 	var req rpcHostModelExecutionRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host model execution stream request: %w", errUnmarshal)
 	}
 	if !req.Stream {
@@ -79,7 +80,7 @@ func (h *Host) callHostModelExecuteStream(ctx context.Context, request []byte) (
 
 func (h *Host) callHostModelStreamRead(ctx context.Context, request []byte) ([]byte, error) {
 	var req pluginapi.HostModelStreamReadRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host model stream read request: %w", errUnmarshal)
 	}
 	if h == nil || h.modelStreams == nil {
@@ -102,7 +103,7 @@ func (h *Host) callHostModelStreamRead(ctx context.Context, request []byte) ([]b
 
 func (h *Host) callHostModelStreamClose(ctx context.Context, request []byte) ([]byte, error) {
 	var req pluginapi.HostModelStreamCloseRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("decode host model stream close request: %w", errUnmarshal)
 	}
 	if h != nil && h.modelStreams != nil {

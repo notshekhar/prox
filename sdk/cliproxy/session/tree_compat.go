@@ -20,8 +20,8 @@ type SessionTreeNode struct {
 	LastProvider    string         `json:"last_provider,omitempty"`
 	LastModel       string         `json:"last_model,omitempty"`
 	NodeKind        string         `json:"node_kind,omitempty"`
-	IsFork          bool           `json:"is_fork,omitempty"`
-	IsCompaction    bool           `json:"is_compaction,omitempty"`
+	IsFork          bool           `json:"is_fork,omitzero"`
+	IsCompaction    bool           `json:"is_compaction,omitzero"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	Metadata        map[string]any `json:"metadata,omitempty"`

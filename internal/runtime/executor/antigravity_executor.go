@@ -9,7 +9,8 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
 	antigravityclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/claude"
@@ -624,7 +626,7 @@ func normalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byte {
 		}
 
 		var calls, responses []functionRef
-		var responseParts, otherParts []json.RawMessage
+		var responseParts, otherParts []jsontext.Value
 		partCount := 0
 		hasOtherPart := false
 		parts.ForEach(func(_, part ojson.Result) bool {
@@ -634,10 +636,10 @@ func normalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byte {
 				calls = append(calls, functionRef{id: part.Get("functionCall.id").String(), name: part.Get("functionCall.name").String()})
 			case part.Get("functionResponse").Exists():
 				responses = append(responses, functionRef{id: part.Get("functionResponse.id").String(), name: part.Get("functionResponse.name").String()})
-				responseParts = append(responseParts, json.RawMessage(part.Raw))
+				responseParts = append(responseParts, jsontext.Value(part.Raw))
 			default:
 				hasOtherPart = true
-				otherParts = append(otherParts, json.RawMessage(part.Raw))
+				otherParts = append(otherParts, jsontext.Value(part.Raw))
 			}
 			return true
 		})
@@ -663,7 +665,7 @@ func normalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byte {
 		var contentDoc *ojson.Doc
 		contentChanged := false
 		if len(pending) > 0 && len(responses) > 0 {
-			ordered := make([]json.RawMessage, 0, partCount)
+			ordered := make([]jsontext.Value, 0, partCount)
 			used := make([]bool, len(responses))
 			for _, call := range pending {
 				for responseIndex, response := range responses {
@@ -684,7 +686,7 @@ func normalizeAntigravityGeminiFunctionResponseRoles(rawJSON []byte) []byte {
 			}
 			if len(ordered) == len(responseParts) {
 				ordered = append(ordered, otherParts...)
-				encoded, errMarshal := json.Marshal(ordered)
+				encoded, errMarshal := json.Marshal(ordered, jsoncompat.Encode)
 				if errMarshal == nil && !bytes.Equal(encoded, []byte(parts.Raw)) {
 					contentDoc = ojson.NewDoc([]byte(content.Raw))
 					if errSet := contentDoc.SetRawBytes("parts", encoded); errSet == nil {

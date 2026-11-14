@@ -3,7 +3,7 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"os"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type stubHomeRequestLogClient struct {
@@ -136,7 +137,7 @@ func TestFileRequestLogger_HomeEnabled_ForwardsWhenRequestLogEnabled(t *testing.
 		RequestID  string              `json:"request_id"`
 		RequestLog string              `json:"request_log"`
 	}
-	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v payload=%s", errUnmarshal, string(stub.pushed[0]))
 	}
 	if got.Headers == nil || got.Headers["Content-Type"][0] != "application/json" {
@@ -287,7 +288,7 @@ func TestFileRequestLogger_HomeEnabled_ForwardsSourceLogAndCleansParts(t *testin
 		RequestID  string `json:"request_id"`
 		RequestLog string `json:"request_log"`
 	}
-	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v payload=%s", errUnmarshal, string(stub.pushed[0]))
 	}
 	if got.RequestID != "home-ws-req-1" {
@@ -341,7 +342,7 @@ func TestFileRequestLogger_HomeEnabled_ForwardsStreamingRequestID(t *testing.T) 
 		RequestID  string `json:"request_id"`
 		RequestLog string `json:"request_log"`
 	}
-	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v payload=%s", errUnmarshal, string(stub.pushed[0]))
 	}
 	if got.RequestID != "stream-req-1" {
@@ -402,7 +403,7 @@ func TestFileRequestLogger_HomeEnabled_ForwardsStreamingAPIErrorResponses(t *tes
 	}
 
 	var got homeRequestLogPayload
-	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v", errUnmarshal)
 	}
 	if !strings.Contains(got.RequestLog, "=== API ERROR RESPONSE ===") {
@@ -612,7 +613,7 @@ func TestFileRequestLogger_UsesShortRequestIDForLocalAndFullForHome(t *testing.T
 	}
 
 	var got homeRequestLogPayload
-	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(stub.pushed[0], &got, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload failed: %v", errUnmarshal)
 	}
 	if got.RequestID != fullUUID {

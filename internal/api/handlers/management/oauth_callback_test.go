@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestPostOAuthCallbackCreatesMissingAuthDir(t *testing.T) {
@@ -42,7 +43,7 @@ func TestPostOAuthCallbackCreatesMissingAuthDir(t *testing.T) {
 	}
 
 	var payload oauthCallbackFilePayload
-	if errUnmarshal := json.Unmarshal(data, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode callback payload: %v", errUnmarshal)
 	}
 	if payload.State != state || payload.Code != "test-code" || payload.Error != "" {
@@ -78,7 +79,7 @@ func TestGetOAuthCallbackWritesPluginProviderCallback(t *testing.T) {
 	}
 
 	var payload oauthCallbackFilePayload
-	if errUnmarshal := json.Unmarshal(data, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("failed to decode callback payload: %v", errUnmarshal)
 	}
 	if payload.State != state || payload.Code != "test-code" || payload.Error != "" {
@@ -137,7 +138,7 @@ func TestWriteOAuthCallbackFileForPendingSessionCreatesMissingAuthDirForCallback
 			}
 
 			var payload oauthCallbackFilePayload
-			if errUnmarshal := json.Unmarshal(data, &payload); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(data, &payload, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("failed to decode callback payload: %v", errUnmarshal)
 			}
 			if payload.State != state || payload.Code != "code-"+provider || payload.Error != "" {

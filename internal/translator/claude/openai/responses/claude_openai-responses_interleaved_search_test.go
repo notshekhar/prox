@@ -1,12 +1,14 @@
 package responses
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // Regression for a production incident: a Claude turn that interleaved thinking
@@ -59,12 +61,12 @@ func TestInterleavedThinkingAndSearchSurvivesRoundTrip(t *testing.T) {
 			completed = data
 		}
 	}
-	var items []json.RawMessage
+	var items []jsontext.Value
 	completed.Get("response.output").ForEach(func(_, v ojson.Result) bool {
-		items = append(items, json.RawMessage(v.Raw))
+		items = append(items, jsontext.Value(v.Raw))
 		return true
 	})
-	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": items})
+	req, _ := json.Marshal(map[string]any{"model": "claude-test", "input": items}, jsoncompat.Encode)
 	out, _ := ConvertOpenAIResponsesRequestToClaude("claude-test", req, false)
 
 	got := claudeAssistantBlockTypes(t, out)

@@ -2,12 +2,13 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -38,7 +39,7 @@ func TestHostModelExecuteStreamDetachesFromCallbackParentCancel(t *testing.T) {
 			Body:          []byte(`{"stream":true}`),
 		},
 		HostCallbackID: callbackID,
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal request: %v", errMarshal)
 	}

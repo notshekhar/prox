@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -29,7 +29,7 @@ func TestSIWCFileMutationRejectsLateExchange(t *testing.T) {
 			}
 			switch operation {
 			case "upload":
-				w = siwcRequest(t, f.router, http.MethodPost, "/credentials?name=codex.json", json.RawMessage(original))
+				w = siwcRequest(t, f.router, http.MethodPost, "/credentials?name=codex.json", jsontext.Value(original))
 			case "delete":
 				w = siwcRequest(t, f.router, http.MethodDelete, "/credentials?name=codex.json", nil)
 			case "delete-all":

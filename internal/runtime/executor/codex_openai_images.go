@@ -4,7 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"io"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -560,7 +562,7 @@ func codexPrepareDirectOpenAIImagePayload(req cliproxyexecutor.Request, opts cli
 }
 
 func codexPrepareDirectOpenAIImageEditPayload(payload []byte, model string, contentType string, stream bool) ([]byte, string, error) {
-	if json.Valid(payload) {
+	if jsontext.Value(payload).IsValid(jsoncompat.Decode) {
 		return prepareOpenAICompatImagesPayload(payload, model, contentType, stream)
 	}
 
@@ -685,11 +687,11 @@ func codexOpenAIImageEditFormJSONValue(key string, value string) []byte {
 	switch strings.ToLower(strings.TrimSpace(key)) {
 	case "n", "output_compression", "partial_images":
 		if parsed, errParse := strconv.ParseInt(value, 10, 64); errParse == nil {
-			raw, _ := json.Marshal(parsed)
+			raw, _ := json.Marshal(parsed, jsoncompat.Encode)
 			return raw
 		}
 	}
-	raw, _ := json.Marshal(value)
+	raw, _ := json.Marshal(value, jsoncompat.Encode)
 	return raw
 }
 
@@ -709,7 +711,7 @@ func codexDirectOpenAIImageRouteModel(req cliproxyexecutor.Request, opts cliprox
 	// Multipart handlers supply the requested model separately from the raw form.
 	requestedModel := helps.PayloadRequestedModel(opts, "")
 	payloadModel := ""
-	if json.Valid(req.Payload) {
+	if jsontext.Value(req.Payload).IsValid(jsoncompat.Decode) {
 		payloadModel = ojson.GetBytesNoCopy(req.Payload, "model").String()
 	}
 	for _, model := range []string{requestedModel, payloadModel, req.Model} {
@@ -833,7 +835,7 @@ func codexPrepareOpenAIImageRequest(req cliproxyexecutor.Request, opts cliproxye
 }
 
 func codexPrepareOpenAIImageGenerationJSON(rawJSON []byte, routeModel string) (codexOpenAIImagePreparedRequest, error) {
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		return codexOpenAIImagePreparedRequest{}, fmt.Errorf("invalid OpenAI image generation request JSON")
 	}
 	prompt := strings.TrimSpace(ojson.GetBytesNoCopy(rawJSON, "prompt").String())
@@ -847,7 +849,7 @@ func codexPrepareOpenAIImageGenerationJSON(rawJSON []byte, routeModel string) (c
 }
 
 func codexPrepareOpenAIImageEditJSON(rawJSON []byte, routeModel string) (codexOpenAIImagePreparedRequest, error) {
-	if !json.Valid(rawJSON) {
+	if !jsontext.Value(rawJSON).IsValid(jsoncompat.Decode) {
 		return codexOpenAIImagePreparedRequest{}, fmt.Errorf("invalid OpenAI image edit request JSON")
 	}
 	prompt := strings.TrimSpace(ojson.GetBytesNoCopy(rawJSON, "prompt").String())
@@ -982,7 +984,7 @@ func codexBuildOpenAIImageTool(rawJSON []byte, routeModel string, action string,
 func codexBuildImagesResponsesRequest(prompt string, images []string, toolJSON []byte) []byte {
 	reqDoc := ojson.NewDoc([]byte(`{"instructions":"","stream":true,"reasoning":{"effort":"medium","summary":"auto"},"parallel_tool_calls":true,"include":["reasoning.encrypted_content"],"model":"","store":false,"tool_choice":{"type":"image_generation"},"tools":[]}`))
 	_ = reqDoc.Set("model", codexOpenAIImagesMainModel)
-	if len(toolJSON) > 0 && json.Valid(toolJSON) {
+	if len(toolJSON) > 0 && jsontext.Value(toolJSON).IsValid(jsoncompat.Decode) {
 		_ = reqDoc.SetRawBytes("tools", helps.JoinRawJSONArray([][]byte{toolJSON}))
 	}
 
@@ -1145,7 +1147,7 @@ func codexBuildImagesAPIResponse(results []codexImageCallResult, createdAt int64
 	if firstMeta.Size != "" {
 		_ = outDoc.Set("size", firstMeta.Size)
 	}
-	if len(usageRaw) > 0 && json.Valid(usageRaw) {
+	if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 		_ = outDoc.SetRawBytes("usage", usageRaw)
 	}
 
@@ -1189,7 +1191,7 @@ func codexBuildImageCompletedFrame(img codexImageCallResult, usageRaw []byte, re
 	eventName := strings.TrimSpace(streamPrefix) + ".completed"
 	dataDoc := ojson.NewDoc([]byte(`{"type":""}`))
 	_ = dataDoc.Set("type", eventName)
-	if len(usageRaw) > 0 && json.Valid(usageRaw) {
+	if len(usageRaw) > 0 && jsontext.Value(usageRaw).IsValid(jsoncompat.Decode) {
 		_ = dataDoc.SetRawBytes("usage", usageRaw)
 	}
 	if codexNormalizeImageResponseFormat(responseFormat) == "url" {

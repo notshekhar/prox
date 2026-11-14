@@ -1,7 +1,7 @@
 package helps
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"reflect"
 	"strconv"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -548,7 +549,7 @@ func normalizedPayloadResult(result ojson.Result) (any, bool) {
 	}
 	raw := strings.TrimSpace(result.Raw)
 	if raw == "" {
-		encoded, errMarshal := json.Marshal(result.Value())
+		encoded, errMarshal := json.Marshal(result.Value(), jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, false
 		}
@@ -558,7 +559,7 @@ func normalizedPayloadResult(result ojson.Result) (any, bool) {
 }
 
 func normalizedPayloadValue(value any) (any, bool) {
-	encoded, errMarshal := json.Marshal(value)
+	encoded, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, false
 	}
@@ -570,7 +571,7 @@ func normalizedPayloadJSON(data []byte) (any, bool) {
 		return nil, false
 	}
 	var out any
-	if errUnmarshal := json.Unmarshal(data, &out); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &out, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, false
 	}
 	return out, true
@@ -1138,7 +1139,7 @@ func payloadRawValue(value any) ([]byte, bool) {
 	case []byte:
 		return typed, true
 	default:
-		raw, errMarshal := json.Marshal(typed)
+		raw, errMarshal := json.Marshal(typed, jsoncompat.Encode)
 		if errMarshal != nil {
 			return nil, false
 		}

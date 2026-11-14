@@ -1,8 +1,11 @@
 package registry
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func testNativeCapabilities(value *bool) *NativeCapabilities {
@@ -107,11 +110,11 @@ func TestNativeCapabilitiesCloneIsolationAndJSONVisibility(t *testing.T) {
 		t.Fatal("registered metadata changed through output clone")
 	}
 
-	raw, err := json.Marshal(gotAgain[0])
+	raw, err := json.Marshal(gotAgain[0], jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(raw) == "" || json.Valid(raw) == false {
+	if string(raw) == "" || jsontext.Value(raw).IsValid() == false {
 		t.Fatalf("invalid JSON: %s", raw)
 	}
 	var exposed map[string]any
@@ -157,7 +160,7 @@ func TestModelInfoUnmarshalNativeCapabilitiesTriState(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var model ModelInfo
-			if err := json.Unmarshal([]byte(tt.raw), &model); err != nil {
+			if err := json.Unmarshal([]byte(tt.raw), &model, jsoncompat.Decode); err != nil {
 				t.Fatal(err)
 			}
 			present := model.NativeCapabilities != nil && model.NativeCapabilities.WebSearch != nil

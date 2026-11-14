@@ -3,11 +3,12 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
 
@@ -275,7 +276,7 @@ func streamPayloadCompletionFlags(payload []byte) (completed, incomplete bool) {
 
 func jsonObjectCompletionFlags(rawJSON []byte) (completed, incomplete bool) {
 	var obj map[string]any
-	if err := json.Unmarshal(rawJSON, &obj); err != nil || len(obj) == 0 {
+	if err := json.Unmarshal(rawJSON, &obj, jsoncompat.Decode); err != nil || len(obj) == 0 {
 		return false, false
 	}
 	if obj["error"] != nil {
@@ -362,7 +363,7 @@ func isCompletedExecutionPayload(payload []byte) bool {
 		return false
 	}
 	var obj map[string]any
-	if err := json.Unmarshal(trimmed, &obj); err != nil || len(obj) == 0 {
+	if err := json.Unmarshal(trimmed, &obj, jsoncompat.Decode); err != nil || len(obj) == 0 {
 		return false
 	}
 	if obj["error"] != nil || obj["incomplete_details"] != nil {

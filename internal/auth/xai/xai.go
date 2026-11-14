@@ -2,7 +2,7 @@ package xai
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/MoeForge/moego/base64"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/singleflight"
@@ -94,7 +95,7 @@ func (a *XAIAuth) Discover(ctx context.Context) (*Discovery, error) {
 		DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
 		TokenEndpoint               string `json:"token_endpoint"`
 	}
-	if err = json.Unmarshal(body, &payload); err != nil {
+	if err = json.Unmarshal(body, &payload, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("xai discovery: parse response: %w", err)
 	}
 	deviceAuthorizationEndpoint, err := ValidateOAuthEndpoint(payload.DeviceAuthorizationEndpoint, "device_authorization_endpoint")
@@ -160,7 +161,7 @@ func (a *XAIAuth) RequestDeviceCode(ctx context.Context, deviceAuthorizationEndp
 	}
 
 	var deviceCode DeviceCodeResponse
-	if err = json.Unmarshal(body, &deviceCode); err != nil {
+	if err = json.Unmarshal(body, &deviceCode, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("xai device code: parse response: %w", err)
 	}
 	if strings.TrimSpace(deviceCode.DeviceCode) == "" {
@@ -300,7 +301,7 @@ func (a *XAIAuth) exchangeDeviceCode(ctx context.Context, tokenEndpoint, deviceC
 		TokenType        string `json:"token_type"`
 		ExpiresIn        int    `json:"expires_in"`
 	}
-	if err = json.Unmarshal(body, &payload); err != nil {
+	if err = json.Unmarshal(body, &payload, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("xai device token: parse response: %w", err), interval, false
 	}
 
@@ -412,7 +413,7 @@ func (a *XAIAuth) postTokenForm(ctx context.Context, tokenEndpoint string, form 
 		TokenType    string `json:"token_type"`
 		ExpiresIn    int    `json:"expires_in"`
 	}
-	if err = json.Unmarshal(body, &payload); err != nil {
+	if err = json.Unmarshal(body, &payload, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("xai token response: parse body: %w", err)
 	}
 	if strings.TrimSpace(payload.AccessToken) == "" {
@@ -472,7 +473,7 @@ func parseJWTIdentity(token string) (email string, subject string) {
 		return "", ""
 	}
 	var claims map[string]any
-	if err = json.Unmarshal(raw, &claims); err != nil {
+	if err = json.Unmarshal(raw, &claims, jsoncompat.Decode); err != nil {
 		return "", ""
 	}
 	if v, ok := claims["email"].(string); ok {

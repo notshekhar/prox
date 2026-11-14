@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -11,6 +11,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -188,7 +189,7 @@ func TestHomeInFlightPublisherPinsLifetimeRegistry(t *testing.T) {
 	select {
 	case raw := <-transport.payloads:
 		var frame home.InFlightSnapshotFrame
-		if errUnmarshal := json.Unmarshal(raw, &frame); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &frame, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatal(errUnmarshal)
 		}
 		if frame.BarrierRevision != 14 {
@@ -206,7 +207,7 @@ func (homeInFlightModelDispatcher) RPopAuth(context.Context, string, string, htt
 	return json.Marshal(homeAuthDispatchResponse{
 		Model: "final-upstream-model",
 		Auth:  Auth{ID: "home-auth", Provider: "home-execution", Status: StatusActive},
-	})
+	}, jsoncompat.Encode)
 }
 func (homeInFlightModelDispatcher) AbortAmbiguousDispatch() {}
 
@@ -419,7 +420,7 @@ func TestHomeInFlightPublisherReplacementStopsOldLifetimeAndPinsDependencies(t *
 	}()
 	oldPayload := waitForHomeInFlightPublisherPayload(t, oldTransport.payloads)
 	var oldFrame home.InFlightSnapshotFrame
-	if errUnmarshal := json.Unmarshal(oldPayload.raw, &oldFrame); errUnmarshal != nil || oldFrame.BarrierRevision != 11 {
+	if errUnmarshal := json.Unmarshal(oldPayload.raw, &oldFrame, jsoncompat.Decode); errUnmarshal != nil || oldFrame.BarrierRevision != 11 {
 		t.Fatalf("old publisher frame = %#v, error = %v", oldFrame, errUnmarshal)
 	}
 	cancelOld()
@@ -437,7 +438,7 @@ func TestHomeInFlightPublisherReplacementStopsOldLifetimeAndPinsDependencies(t *
 	go manager.StartHomeInFlightPublisher(newCtx, newTransport, newRegistry)
 	newPayload := waitForHomeInFlightPublisherPayload(t, newTransport.payloads)
 	var newFrame home.InFlightSnapshotFrame
-	if errUnmarshal := json.Unmarshal(newPayload.raw, &newFrame); errUnmarshal != nil || newFrame.BarrierRevision != 22 {
+	if errUnmarshal := json.Unmarshal(newPayload.raw, &newFrame, jsoncompat.Decode); errUnmarshal != nil || newFrame.BarrierRevision != 22 {
 		t.Fatalf("new publisher frame = %#v, error = %v", newFrame, errUnmarshal)
 	}
 	time.Sleep(30 * time.Millisecond)

@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +17,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
 )
 
@@ -30,7 +31,7 @@ func listPluginStoreForTest(t *testing.T, h *Handler) pluginStoreListResponse {
 		t.Fatalf("status = %d; body=%s", rec.Code, rec.Body.String())
 	}
 	var body pluginStoreListResponse
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 		t.Fatal(errDecode)
 	}
 	return body
@@ -50,7 +51,7 @@ func TestListPluginStoreSkipsUninstalledReleases(t *testing.T) {
 			Version: version, Repository: fmt.Sprintf("https://github.com/test/plugin-%d", index),
 		})
 	}
-	data, errMarshal := json.Marshal(registry)
+	data, errMarshal := json.Marshal(registry, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatal(errMarshal)
 	}

@@ -2,10 +2,12 @@ package helps
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func resetUserIDCache() {
@@ -20,7 +22,7 @@ func TestGenerateFakeUserIDUsesClaudeCode220JSONShape(t *testing.T) {
 		t.Fatalf("user ID %q is not valid", userID)
 	}
 	var value claudeMetadataUserID
-	if errUnmarshal := json.Unmarshal([]byte(userID), &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(userID), &value, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal user ID: %v", errUnmarshal)
 	}
 	if value.AccountUUID != "" {
@@ -36,7 +38,7 @@ func TestCachedUserIDUsesCachedClaudeSessionID(t *testing.T) {
 	sessionID := CachedSessionID(key)
 	userID := CachedUserID(key)
 	var value claudeMetadataUserID
-	if errUnmarshal := json.Unmarshal([]byte(userID), &value); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(userID), &value, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal user ID: %v", errUnmarshal)
 	}
 	if value.SessionID != sessionID {

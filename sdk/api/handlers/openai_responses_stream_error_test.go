@@ -1,10 +1,12 @@
 package handlers
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestBuildOpenAIResponsesStreamErrorChunk(t *testing.T) {
@@ -67,7 +69,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkPreservesNestedError(t *testing.T) 
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if err := json.Unmarshal(chunk, &payload); err != nil {
+	if err := json.Unmarshal(chunk, &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if payload.Type != "error" {
@@ -98,7 +100,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkPreservesCustomAndEmptyFields(t *te
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if err := json.Unmarshal(emptyChunk, &emptyPayload); err != nil {
+	if err := json.Unmarshal(emptyChunk, &emptyPayload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if len(emptyPayload.Error) != 0 {
@@ -113,7 +115,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkPreservesCustomAndEmptyFields(t *te
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if err := json.Unmarshal(customChunk, &customPayload); err != nil {
+	if err := json.Unmarshal(customChunk, &customPayload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if customPayload.SequenceNumber != 5 {
@@ -138,7 +140,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkPrioritizesPayloadSequenceNumber(t 
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if err := json.Unmarshal(chunk, &payload); err != nil {
+	if err := json.Unmarshal(chunk, &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if payload.SequenceNumber != 7 {
@@ -165,7 +167,7 @@ func TestBuildOpenAIResponsesStreamFailedChunkPreservesNestedError(t *testing.T)
 			} `json:"error"`
 		} `json:"response"`
 	}
-	if err := json.Unmarshal(chunk, &payload); err != nil {
+	if err := json.Unmarshal(chunk, &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if payload.Type != "response.failed" {
@@ -199,7 +201,7 @@ func TestBuildOpenAIResponsesStreamFailedChunkPrioritizesPayloadSequenceNumber(t
 		Type           string `json:"type"`
 		SequenceNumber int    `json:"sequence_number"`
 	}
-	if err := json.Unmarshal(chunk, &payload); err != nil {
+	if err := json.Unmarshal(chunk, &payload, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if payload.SequenceNumber != 7 {
@@ -235,7 +237,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkRequestTimeoutIsServerError(t *test
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if errUnmarshal := json.Unmarshal(chunk, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(chunk, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal: %v", errUnmarshal)
 	}
 	if payload.Type != "error" {
@@ -256,7 +258,7 @@ func TestBuildOpenAIResponsesStreamErrorChunkRequestTimeoutIsServerError(t *test
 			Error  map[string]any `json:"error"`
 		} `json:"response"`
 	}
-	if errUnmarshal := json.Unmarshal(failedChunk, &failedPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(failedChunk, &failedPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal: %v", errUnmarshal)
 	}
 	if got := failedPayload.Response.Error["code"]; got != "request_timeout" {
@@ -275,7 +277,7 @@ func TestBuildOpenAIResponsesStreamChunksMapAnthropicPromptTooLongToContextLengt
 		Type  string         `json:"type"`
 		Error map[string]any `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(chunk, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(chunk, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error chunk: %v", errUnmarshal)
 	}
 	if got := payload.Error["code"]; got != "context_length_exceeded" {
@@ -296,7 +298,7 @@ func TestBuildOpenAIResponsesStreamChunksMapAnthropicPromptTooLongToContextLengt
 			Error  map[string]any `json:"error"`
 		} `json:"response"`
 	}
-	if errUnmarshal := json.Unmarshal(failedChunk, &failedPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(failedChunk, &failedPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal failed chunk: %v", errUnmarshal)
 	}
 	if got := failedPayload.Response.Error["code"]; got != "context_length_exceeded" {
@@ -317,7 +319,7 @@ func TestBuildOpenAIResponsesStreamChunksMapAnthropicPromptTooLongToContextLengt
 			Error map[string]any `json:"error"`
 		} `json:"response"`
 	}
-	if errUnmarshal := json.Unmarshal(withCode, &withCodePayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(withCode, &withCodePayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal withCode chunk: %v", errUnmarshal)
 	}
 	if got := withCodePayload.Response.Error["code"]; got != "custom_code" {
@@ -335,7 +337,7 @@ func TestBuildOpenAIResponsesStreamChunksMapAnthropicPromptTooLongToContextLengt
 			Error map[string]any `json:"error"`
 		} `json:"response"`
 	}
-	if errUnmarshal := json.Unmarshal(otherErr, &otherPayload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(otherErr, &otherPayload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal otherErr chunk: %v", errUnmarshal)
 	}
 	if _, hasCode := otherPayload.Response.Error["code"]; hasCode {

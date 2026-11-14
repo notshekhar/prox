@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -168,7 +170,7 @@ func readResponsesWebsocketInput(ctx context.Context, cancel context.CancelCause
 			}
 			// Control frames bypass response.create normalization. The original
 			// response_id, mode, and extension fields must reach upstream unchanged.
-			if json.Valid(payload) && ojson.GetBytesNoCopy(payload, "type").String() == "response.interrupt" {
+			if jsontext.Value(payload).IsValid(jsoncompat.Decode) && ojson.GetBytesNoCopy(payload, "type").String() == "response.interrupt" {
 				appendResponsesInterruptDiagnostic(timeline, payload, "")
 				errInterrupt := interrupt(payload)
 				switch {
@@ -216,7 +218,7 @@ func appendResponsesInterruptDiagnostic(timeline websocketTimelineAppender, payl
 		ResponseIDHash string `json:"response_id_hash"`
 		Outcome        string `json:"outcome,omitempty"`
 	}{Type: "response.interrupt", ResponseIDHash: fmt.Sprintf("%x", idHash[:8]), Outcome: outcome}
-	data, errMarshal := json.Marshal(diagnostic)
+	data, errMarshal := json.Marshal(diagnostic, jsoncompat.Encode)
 	if errMarshal != nil {
 		return
 	}

@@ -3,7 +3,7 @@ package devin
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"google.golang.org/protobuf/encoding/protowire"
 )
 
@@ -205,7 +206,7 @@ func TestLiveDevinUserStatus(t *testing.T) {
 	var authJSON struct {
 		APIKey string `json:"api_key"`
 	}
-	if err := json.Unmarshal(data, &authJSON); err != nil || authJSON.APIKey == "" {
+	if err := json.Unmarshal(data, &authJSON, jsoncompat.Decode); err != nil || authJSON.APIKey == "" {
 		t.Skip("invalid auths/devin-cli.json, skipping")
 	}
 

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"golang.org/x/net/context"
 )
 
@@ -214,6 +215,20 @@ func pinnedAuthIDFromContext(ctx context.Context) string {
 		return strings.TrimSpace(string(v))
 	default:
 		return ""
+	}
+}
+
+// accountRecordingCallback also notes the chosen account for the request log. A
+// retry calls it again, so the log names the account that finally served it.
+func accountRecordingCallback(ginCtx *gin.Context, next func(string)) func(string) {
+	if ginCtx == nil {
+		return next
+	}
+	return func(authID string) {
+		logging.SetSelectedAccount(ginCtx, authID)
+		if next != nil {
+			next(authID)
+		}
 	}
 }
 

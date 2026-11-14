@@ -2,13 +2,14 @@ package helps
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type countingPayloadMarshaler struct {
@@ -381,7 +382,7 @@ func TestApplyPayloadConfig_CodexAdditionalToolsFilter(t *testing.T) {
 				} `json:"tools"`
 			} `json:"input"`
 		}
-		if errUnmarshal := json.Unmarshal(output, &structured); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(output, &structured, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("failed to unmarshal output: %v", errUnmarshal)
 		}
 		if len(structured.Input) != 1 {

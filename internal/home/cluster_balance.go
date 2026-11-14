@@ -2,7 +2,7 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net"
@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -111,7 +112,7 @@ func (c *Client) syncClusterBalance(ctx context.Context) error {
 			OK           bool     `json:"ok"`
 			Capabilities []string `json:"capabilities"`
 		}
-		if errJSON := json.Unmarshal([]byte(raw), &response); errJSON != nil {
+		if errJSON := json.Unmarshal([]byte(raw), &response, jsoncompat.Decode); errJSON != nil {
 			return fmt.Errorf("decode Home rebalance ENABLE response: %w", errJSON)
 		}
 		if !response.OK {
@@ -137,7 +138,7 @@ func (c *Client) syncClusterBalance(ctx context.Context) error {
 	var response struct {
 		OK bool `json:"ok"`
 	}
-	if errJSON := json.Unmarshal([]byte(raw), &response); errJSON != nil {
+	if errJSON := json.Unmarshal([]byte(raw), &response, jsoncompat.Decode); errJSON != nil {
 		return fmt.Errorf("decode Home rebalance RESULT response: %w", errJSON)
 	}
 	if !response.OK {
@@ -156,7 +157,7 @@ func (c *Client) syncClusterBalance(ctx context.Context) error {
 // This lifetime keeps its original address; only the supervisor's replacement uses the target.
 func (c *Client) executeClusterRebalance(ctx context.Context, payload []byte) error {
 	var request rebalanceInstruction
-	if errJSON := json.Unmarshal(payload, &request); errJSON != nil {
+	if errJSON := json.Unmarshal(payload, &request, jsoncompat.Decode); errJSON != nil {
 		return fmt.Errorf("decode Home rebalance instruction: %w", errJSON)
 	}
 	request.Target.IP = strings.TrimSpace(request.Target.IP)
@@ -177,7 +178,7 @@ func (c *Client) executeClusterRebalance(ctx context.Context, payload []byte) er
 	var response struct {
 		OK bool `json:"ok"`
 	}
-	if errJSON := json.Unmarshal([]byte(raw), &response); errJSON != nil {
+	if errJSON := json.Unmarshal([]byte(raw), &response, jsoncompat.Decode); errJSON != nil {
 		return fmt.Errorf("decode Home rebalance CLAIM response: %w", errJSON)
 	}
 	if !response.OK {

@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -138,7 +139,7 @@ func useFakeAntigravityKVClient(t *testing.T, client *fakeAntigravityKVClient, h
 
 func mustAntigravityJSON(t *testing.T, value any) []byte {
 	t.Helper()
-	raw, errMarshal := json.Marshal(value)
+	raw, errMarshal := json.Marshal(value, jsoncompat.Encode)
 	if errMarshal != nil {
 		t.Fatalf("marshal value: %v", errMarshal)
 	}

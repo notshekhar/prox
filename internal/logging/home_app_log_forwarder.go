@@ -2,7 +2,7 @@ package logging
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"sync"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -252,7 +253,7 @@ func (f *HomeAppLogForwarder) forward(payload homeAppLogPayload) {
 	if !client.HeartbeatOK() {
 		return
 	}
-	raw, errMarshal := json.Marshal(&payload)
+	raw, errMarshal := json.Marshal(&payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return
 	}

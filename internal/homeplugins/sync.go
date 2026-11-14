@@ -39,7 +39,7 @@ type contextualPluginUnloader interface {
 
 type SyncReport struct {
 	SchemaVersion int                   `json:"schema_version"`
-	TaskID        uint                  `json:"task_id,omitempty"`
+	TaskID        uint                  `json:"task_id,omitzero"`
 	Task          string                `json:"task"`
 	NodeID        string                `json:"node_id,omitempty"`
 	Status        string                `json:"status"`
@@ -62,8 +62,8 @@ type PluginInstallStatus struct {
 	InstallStatus string `json:"install_status"`
 	LoadStatus    string `json:"load_status,omitempty"`
 	Path          string `json:"path,omitempty"`
-	Skipped       bool   `json:"skipped,omitempty"`
-	Overwritten   bool   `json:"overwritten,omitempty"`
+	Skipped       bool   `json:"skipped,omitzero"`
+	Overwritten   bool   `json:"overwritten,omitzero"`
 	Error         string `json:"error,omitempty"`
 }
 

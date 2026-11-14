@@ -7,7 +7,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"github.com/MoeForge/moego/base64"
 	"io"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"google.golang.org/protobuf/encoding/protowire"
@@ -103,8 +105,8 @@ type DevinUsage struct {
 	PromptTokens     int64             `json:"prompt_tokens"`
 	CompletionTokens int64             `json:"completion_tokens"`
 	CachedTokens     int64             `json:"cached_tokens"`
-	CacheWriteTokens int64             `json:"cache_write_tokens,omitempty"`
-	StatusCode       uint64            `json:"status_code,omitempty"`
+	CacheWriteTokens int64             `json:"cache_write_tokens,omitzero"`
+	StatusCode       uint64            `json:"status_code,omitzero"`
 	RequestID        string            `json:"request_id,omitempty"`
 	ModelName        string            `json:"model_name,omitempty"`
 	Headers          map[string]string `json:"headers,omitempty"`
@@ -980,7 +982,7 @@ func ParseDevinTrailerError(payload []byte) (statusCode int, err error) {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	if errUnmarshal := json.Unmarshal(trimmed, &trailer); errUnmarshal != nil || trailer.Error == nil {
+	if errUnmarshal := json.Unmarshal(trimmed, &trailer, jsoncompat.Decode); errUnmarshal != nil || trailer.Error == nil {
 		return 0, nil
 	}
 
@@ -1068,8 +1070,8 @@ type DevinUpstreamRequestLog struct {
 	SessionID    string               `json:"session_id,omitempty"`
 	CascadeID    string               `json:"cascade_id,omitempty"`
 	SystemPrompt string               `json:"system_prompt,omitempty"`
-	Temperature  *float64             `json:"temperature,omitempty"`
-	MaxTokens    int                  `json:"max_tokens,omitempty"`
+	Temperature  *float64             `json:"temperature,omitzero"`
+	MaxTokens    int                  `json:"max_tokens,omitzero"`
 	Prompts      []DevinPromptLogItem `json:"prompts,omitempty"`
 	Tools        []DevinToolLogItem   `json:"tools,omitempty"`
 }
@@ -1096,9 +1098,9 @@ type DevinImageLogItem struct {
 
 // DevinToolLogItem represents a tool declared in the request log.
 type DevinToolLogItem struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	Parameters  json.RawMessage `json:"parameters,omitempty"`
+	Name        string         `json:"name"`
+	Description string         `json:"description,omitempty"`
+	Parameters  jsontext.Value `json:"parameters,omitzero"`
 }
 
 func formatSignatureForLog(sig []byte) string {
@@ -1177,9 +1179,9 @@ func BuildDevinUpstreamLogBody(
 			desc = strings.ReplaceAll(desc, "Takes a task_id parameter identifying the task", "Takes a taskId parameter identifying the task")
 		}
 		desc = translatorcommon.SanitizeDevinToolDescription(t.Name, desc)
-		var params json.RawMessage
-		if len(t.Parameters) > 0 && json.Valid(t.Parameters) {
-			params = json.RawMessage(t.Parameters)
+		var params jsontext.Value
+		if len(t.Parameters) > 0 && jsontext.Value(t.Parameters).IsValid(jsoncompat.Decode) {
+			params = jsontext.Value(t.Parameters)
 		}
 		toolItems = append(toolItems, DevinToolLogItem{
 			Name:        t.Name,
@@ -1199,7 +1201,7 @@ func BuildDevinUpstreamLogBody(
 		Tools:        toolItems,
 	}
 
-	devinReqJSON, errDevin := json.MarshalIndent(devinReq, "", "  ")
+	devinReqJSON, errDevin := json.Marshal(devinReq, jsoncompat.Encode, jsontext.WithIndent("  "))
 	if errDevin != nil {
 		devinReqJSON = []byte(fmt.Sprintf(`{"model": %q}`, chatModelUID))
 	}
@@ -1207,9 +1209,9 @@ func BuildDevinUpstreamLogBody(
 	var buf bytes.Buffer
 	if !isInteractionsSource && len(interactionsPayload) > 0 {
 		buf.WriteString("=== INTERMEDIATE INTERACTIONS ===\n")
-		var prettyInteractions bytes.Buffer
-		if err := json.Indent(&prettyInteractions, interactionsPayload, "", "  "); err == nil {
-			buf.Write(prettyInteractions.Bytes())
+		prettyInteractions := jsontext.Value(bytes.Clone(interactionsPayload))
+		if err := prettyInteractions.Indent(jsontext.WithIndent("  ")); err == nil {
+			buf.Write(prettyInteractions)
 		} else {
 			buf.Write(interactionsPayload)
 		}
@@ -1231,7 +1233,7 @@ type DevinUpstreamResponseLog struct {
 	Signature             string                      `json:"signature,omitempty"`
 	SignatureType         string                      `json:"signature_type,omitempty"`
 	ToolCalls             []DevinToolCall             `json:"tool_calls,omitempty"`
-	Usage                 *DevinUsage                 `json:"usage,omitempty"`
+	Usage                 *DevinUsage                 `json:"usage,omitzero"`
 	UnknownFields         []int                       `json:"unknown_fields,omitempty"`
 	ApplyPatchDiagnostics *DevinApplyPatchDiagnostics `json:"-"`
 }
@@ -1244,7 +1246,7 @@ func BuildDevinUpstreamResponseLogBody(respLog *DevinUpstreamResponseLog, intera
 		if len(respLog.Signature) > 0 {
 			respLog.Signature = formatSignatureForLog([]byte(respLog.Signature))
 		}
-		respJSON, err := json.MarshalIndent(respLog, "", "  ")
+		respJSON, err := json.Marshal(respLog, jsoncompat.Encode, jsontext.WithIndent("  "))
 		if err == nil && len(respJSON) > 0 {
 			buf.WriteString("=== DEVIN UPSTREAM RESPONSE ===\n")
 			buf.Write(respJSON)
@@ -1253,9 +1255,9 @@ func BuildDevinUpstreamResponseLogBody(respLog *DevinUpstreamResponseLog, intera
 	}
 	if len(interactionsJSON) > 0 {
 		buf.WriteString("=== INTERMEDIATE INTERACTIONS ===\n")
-		var pretty bytes.Buffer
-		if err := json.Indent(&pretty, interactionsJSON, "", "  "); err == nil {
-			buf.Write(pretty.Bytes())
+		pretty := jsontext.Value(bytes.Clone(interactionsJSON))
+		if err := pretty.Indent(jsontext.WithIndent("  ")); err == nil {
+			buf.Write(pretty)
 		} else {
 			buf.Write(interactionsJSON)
 		}

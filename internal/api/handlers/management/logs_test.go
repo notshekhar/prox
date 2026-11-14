@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"net/http"
 	"net/http/httptest"
@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestDecodeLogCursorRejectsUnsafeFiles(t *testing.T) {
@@ -695,7 +696,7 @@ func performGetLogs(t *testing.T, h *Handler, target string) logsAPIResponse {
 		t.Fatalf("GetLogs status = %d, body = %s", status, body)
 	}
 	var resp logsAPIResponse
-	if err := json.Unmarshal([]byte(body), &resp); err != nil {
+	if err := json.Unmarshal([]byte(body), &resp, jsoncompat.Decode); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 	if resp.Lines == nil {

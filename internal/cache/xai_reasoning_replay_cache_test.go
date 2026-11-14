@@ -3,7 +3,7 @@ package cache
 import (
 	"context"
 	"crypto/sha256"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"github.com/MoeForge/moego/base64"
 	"testing"

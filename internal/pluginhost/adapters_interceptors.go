@@ -3,7 +3,7 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
@@ -641,7 +642,7 @@ func applyRequestBodyEdits(base []byte, edits []pluginapi.RequestBodyEdit) ([]by
 	if cursor < baseLen {
 		out = append(out, base[cursor:]...)
 	}
-	if !json.Valid(out) {
+	if !jsontext.Value(out).IsValid(jsoncompat.Decode) {
 		return base, false, fmt.Errorf("patched request body is not valid JSON")
 	}
 	return out, true, nil

@@ -2,7 +2,7 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestManagedSubscriberCancellationPreservesFinalRelease(t *testing.T) {
@@ -60,7 +61,7 @@ func TestManagedSubscriberCancellationPreservesFinalRelease(t *testing.T) {
 			for _, args := range commands.All() {
 				if len(args) == 3 && strings.EqualFold(args[0], "LPUSH") && args[1] == redisKeyConcurrencyRelease {
 					var sent ConcurrencyReleaseFrame
-					if errJSON := json.Unmarshal([]byte(args[2]), &sent); errJSON != nil {
+					if errJSON := json.Unmarshal([]byte(args[2]), &sent, jsoncompat.Decode); errJSON != nil {
 						t.Fatal(errJSON)
 					}
 					releases = append(releases, sent)

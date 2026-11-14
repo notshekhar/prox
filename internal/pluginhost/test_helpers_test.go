@@ -2,7 +2,7 @@ package pluginhost
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 	"gopkg.in/yaml.v3"
@@ -65,7 +66,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 		return marshalRPCResult(rpcIdentifierResponse{Identifier: l.active.Capabilities.ThinkingApplier.Identifier()})
 	case pluginabi.MethodThinkingApply:
 		var req pluginapi.ThinkingApplyRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errApply := l.active.Capabilities.ThinkingApplier.ApplyThinking(ctx, req)
@@ -78,7 +79,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing request interceptor")
 		}
 		var req pluginapi.RequestInterceptRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errIntercept := l.active.Capabilities.RequestInterceptor.InterceptRequestBeforeAuth(ctx, req)
@@ -91,7 +92,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing request interceptor")
 		}
 		var req pluginapi.RequestInterceptRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errIntercept := l.active.Capabilities.RequestInterceptor.InterceptRequestAfterAuth(ctx, req)
@@ -124,7 +125,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing request lifecycle plugin")
 		}
 		var req pluginapi.RequestCompletion
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		if errComplete := l.active.Capabilities.RequestLifecyclePlugin.HandleRequestComplete(ctx, req); errComplete != nil {
@@ -136,7 +137,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing response interceptor")
 		}
 		var req pluginapi.ResponseInterceptRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errIntercept := l.active.Capabilities.ResponseInterceptor.InterceptResponse(ctx, req)
@@ -149,7 +150,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing stream chunk interceptor")
 		}
 		var req pluginapi.StreamChunkInterceptRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errIntercept := l.active.Capabilities.StreamChunkInterceptor.InterceptStreamChunk(ctx, req)
@@ -212,7 +213,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing auth provider")
 		}
 		var req pluginapi.AuthLoginStartRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errStart := l.active.Capabilities.AuthProvider.StartLogin(ctx, req)
@@ -230,7 +231,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing frontend auth provider")
 		}
 		var req pluginapi.FrontendAuthRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errAuth := l.active.Capabilities.FrontendAuthProvider.Authenticate(ctx, req)
@@ -243,7 +244,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing scheduler")
 		}
 		var req pluginapi.SchedulerPickRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errPick := l.active.Capabilities.Scheduler.Pick(ctx, req)
@@ -256,7 +257,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing model router")
 		}
 		var req pluginapi.ModelRouteRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errRoute := l.active.Capabilities.ModelRouter.RouteModel(ctx, req)
@@ -269,7 +270,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return marshalRPCResult(rpcEmptyResponse{})
 		}
 		var record pluginapi.UsageRecord
-		if errUnmarshal := json.Unmarshal(request, &record); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &record, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		l.active.Capabilities.UsagePlugin.HandleUsage(ctx, record)
@@ -284,7 +285,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing quota provider")
 		}
 		var req pluginapi.QuotaDescribeRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errDescribe := l.active.Capabilities.QuotaProvider.DescribeQuota(ctx, req)
@@ -297,7 +298,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing quota provider")
 		}
 		var req rpcQuotaFetchRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errFetch := l.active.Capabilities.QuotaProvider.FetchQuota(ctx, req.QuotaFetchRequest)
@@ -310,7 +311,7 @@ func (l *testSymbolLookup) Call(ctx context.Context, method string, request []by
 			return nil, fmt.Errorf("missing quota provider")
 		}
 		var req rpcQuotaResetRequest
-		if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, errUnmarshal
 		}
 		resp, errReset := l.active.Capabilities.QuotaProvider.ResetQuota(ctx, req.QuotaResetRequest)
@@ -329,7 +330,7 @@ func (l *testSymbolLookup) Shutdown() {
 
 func (l *testSymbolLookup) callLifecycle(request []byte, reload bool) ([]byte, error) {
 	var req rpcLifecycleRequest
-	if errUnmarshal := json.Unmarshal(request, &req); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(request, &req, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, errUnmarshal
 	}
 	l.lastLifecycle = req
@@ -424,7 +425,7 @@ func (c testThinkingCapability) ApplyThinking(ctx context.Context, req pluginapi
 	}
 	payload["plugin"] = c.provider
 	payload["thinking_budget"] = req.Config.Budget
-	out, errMarshal := json.Marshal(payload)
+	out, errMarshal := json.Marshal(payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return pluginapi.PayloadResponse{}, errMarshal
 	}

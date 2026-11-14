@@ -1,12 +1,13 @@
 package claude
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
@@ -33,7 +34,7 @@ func TestClaudeModelsResponseUsesConfiguredDisplayName(t *testing.T) {
 			DisplayName string `json:"display_name"`
 		} `json:"data"`
 	}
-	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode response: %v", errUnmarshal)
 	}
 	for _, model := range response.Data {
@@ -70,7 +71,7 @@ func TestClaudeModelsResponseDisablesModelListCloaking(t *testing.T) {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode response: %v", errUnmarshal)
 	}
 	for _, model := range response.Data {

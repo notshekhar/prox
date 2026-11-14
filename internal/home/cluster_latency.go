@@ -2,7 +2,7 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"math/rand/v2"
 	"net"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -218,7 +219,7 @@ func (c *Client) reportClusterLatency(ctx context.Context, history *clusterLaten
 	payload, errJSON := json.Marshal(struct {
 		ProcessID string                 `json:"process_id"`
 		Samples   []clusterLatencySample `json:"samples"`
-	}{ProcessID: processID, Samples: history.report(time.Now())})
+	}{ProcessID: processID, Samples: history.report(time.Now())}, jsoncompat.Encode)
 	if errJSON != nil {
 		return fmt.Errorf("encode Home latency report: %w", errJSON)
 	}
@@ -237,7 +238,7 @@ func (c *Client) reportClusterLatency(ctx context.Context, history *clusterLaten
 		OK    bool         `json:"ok"`
 		Probe *clusterNode `json:"probe"`
 	}
-	if errDecode := json.Unmarshal([]byte(raw), &response); errDecode != nil {
+	if errDecode := json.Unmarshal([]byte(raw), &response, jsoncompat.Decode); errDecode != nil {
 		return fmt.Errorf("decode Home latency response: %w", errDecode)
 	}
 	if !response.OK {

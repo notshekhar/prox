@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestOAuthSessionStoreCompleteKeepsShortLivedSession(t *testing.T) {
@@ -151,7 +152,7 @@ func performOAuthStatusRequest(t *testing.T, router http.Handler, state string) 
 		t.Fatalf("status request returned %d, want %d; body=%s", w.Code, http.StatusOK, w.Body.String())
 	}
 	var response oauthStatusResponse
-	if errDecode := json.Unmarshal(w.Body.Bytes(), &response); errDecode != nil {
+	if errDecode := json.Unmarshal(w.Body.Bytes(), &response, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode status response: %v", errDecode)
 	}
 	return response
@@ -323,7 +324,7 @@ func performOAuthCancelRequest(t *testing.T, router http.Handler, state string) 
 		Error     string `json:"error"`
 	}
 	if w.Body.Len() > 0 {
-		if errDecode := json.Unmarshal(w.Body.Bytes(), &body); errDecode != nil {
+		if errDecode := json.Unmarshal(w.Body.Bytes(), &body, jsoncompat.Decode); errDecode != nil {
 			t.Fatalf("decode cancel response: %v body=%s", errDecode, w.Body.String())
 		}
 	}

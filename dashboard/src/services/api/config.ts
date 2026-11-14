@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from './client';
+import { readConfigDocument } from './configValue';
 import type { Config } from '@/types';
 import { normalizeConfigResponse } from './transformers';
 
@@ -11,7 +12,7 @@ export const configApi = {
    * 获取配置（会进行字段规范化）
    */
   async getConfig(): Promise<Config> {
-    const raw = await apiClient.get('/config');
+    const raw = await readConfigDocument();
     return normalizeConfigResponse(raw);
   },
 

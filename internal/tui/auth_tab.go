@@ -76,9 +76,6 @@ func (m authTabModel) fetchFiles() tea.Msg {
 
 func (m authTabModel) Update(msg tea.Msg) (authTabModel, tea.Cmd) {
 	switch msg := msg.(type) {
-	case localeChangedMsg:
-		m.viewport.SetContent(m.renderContent())
-		return m, nil
 	case authFilesMsg:
 		if msg.err != nil {
 			m.err = msg.err

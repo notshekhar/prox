@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +19,7 @@ import (
 	metaauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -105,7 +106,7 @@ type targetedTestClaudeOAuthService struct {
 func (s *targetedTestClaudeOAuthService) GenerateAuthURL(state string, _ *claude.PKCECodes) (string, string, error) {
 	if s.authDir != "" {
 		waitFile := filepath.Join(s.authDir, ".oauth-anthropic-"+state+".oauth")
-		payload, _ := json.Marshal(map[string]string{"state": state, "code": "claude-code-" + state})
+		payload, _ := json.Marshal(map[string]string{"state": state, "code": "claude-code-" + state}, jsoncompat.Encode)
 		_ = os.WriteFile(waitFile, payload, 0o600)
 	}
 	return "https://claude.ai/oauth/authorize?state=" + state, state, nil
@@ -294,7 +295,7 @@ func TestStartOAuthV8TargetedSessionRegistrationAcrossBuiltinProviders(t *testin
 	}
 
 	for _, tc := range targets {
-		raw, _ := json.Marshal(tc.meta)
+		raw, _ := json.Marshal(tc.meta, jsoncompat.Encode)
 		fullPath := filepath.Join(authDir, tc.fileName)
 		if errWrite := os.WriteFile(fullPath, raw, 0o600); errWrite != nil {
 			t.Fatalf("write %s: %v", tc.fileName, errWrite)
@@ -318,7 +319,7 @@ func TestStartOAuthV8TargetedSessionRegistrationAcrossBuiltinProviders(t *testin
 				"provider": tc.provider,
 				"name":     tc.fileName,
 				"verify":   true,
-			})
+			}, jsoncompat.Encode)
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(string(reqBody)))
 			req.Header.Set("Content-Type", "application/json")
@@ -400,7 +401,7 @@ func TestTargetedOAuthReloginAntigravityRejectsMismatchedAccountAndUpdatesMatchi
 		State        string `json:"state"`
 		TargetAuthID string `json:"target_auth_id"`
 	}
-	_ = json.Unmarshal(wMismatch.Body.Bytes(), &mismatchStart)
+	_ = json.Unmarshal(wMismatch.Body.Bytes(), &mismatchStart, jsoncompat.Decode)
 	t.Cleanup(func() { CancelOAuthSession(mismatchStart.State) })
 	if mismatchStart.TargetAuthID != targetFile {
 		t.Fatalf("target_auth_id = %q, want %q", mismatchStart.TargetAuthID, targetFile)
@@ -433,7 +434,7 @@ func TestTargetedOAuthReloginAntigravityRejectsMismatchedAccountAndUpdatesMatchi
 	var matchStart struct {
 		State string `json:"state"`
 	}
-	_ = json.Unmarshal(wMatch.Body.Bytes(), &matchStart)
+	_ = json.Unmarshal(wMatch.Body.Bytes(), &matchStart, jsoncompat.Decode)
 	t.Cleanup(func() { CancelOAuthSession(matchStart.State) })
 	if _, errCb := WriteOAuthCallbackFileForPendingSession(authDir, "antigravity", matchStart.State, "code-match", ""); errCb != nil {
 		t.Fatalf("write match callback: %v", errCb)
@@ -523,7 +524,7 @@ func TestTargetedOAuthReloginKimiUpdatesTargetFileWithoutAddingNewFiles(t *testi
 			State        string `json:"state"`
 			TargetAuthID string `json:"target_auth_id"`
 		}
-		if errUnmarshal := json.Unmarshal(wStart.Body.Bytes(), &startResp); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(wStart.Body.Bytes(), &startResp, jsoncompat.Decode); errUnmarshal != nil {
 			t.Fatalf("run %d: unmarshal startResp: %v", i+1, errUnmarshal)
 		}
 		t.Cleanup(func() { CancelOAuthSession(startResp.State) })
@@ -612,7 +613,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	t.Cleanup(func() { newDevinOAuthService = origDevin })
 
 	setupTarget := func(provider, fileName string, meta map[string]any) *coreauth.Auth {
-		raw, _ := json.Marshal(meta)
+		raw, _ := json.Marshal(meta, jsoncompat.Encode)
 		path := filepath.Join(authDir, fileName)
 		if errWrite := os.WriteFile(path, raw, 0o600); errWrite != nil {
 			t.Fatalf("write %s: %v", fileName, errWrite)
@@ -657,7 +658,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 		State        string `json:"state"`
 		TargetAuthID string `json:"target_auth_id"`
 	}
-	_ = json.Unmarshal(wClaudeMismatch.Body.Bytes(), &claudeMismatchStart)
+	_ = json.Unmarshal(wClaudeMismatch.Body.Bytes(), &claudeMismatchStart, jsoncompat.Decode)
 	if claudeMismatchStart.TargetAuthID != "claude-custom.json" {
 		t.Fatalf("claude target_auth_id = %q, want claude-custom.json", claudeMismatchStart.TargetAuthID)
 	}
@@ -674,7 +675,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	var claudeMatchStart struct {
 		State string `json:"state"`
 	}
-	_ = json.Unmarshal(wClaudeMatch.Body.Bytes(), &claudeMatchStart)
+	_ = json.Unmarshal(wClaudeMatch.Body.Bytes(), &claudeMatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, claudeMatchStart.State); st["status"] != "ok" || st["auth_id"] != "claude-custom.json" || st["adopted"] != true {
 		t.Fatalf("claude match status = %#v, want ok & adopted", st)
 	}
@@ -684,7 +685,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wXAIMismatch := httptest.NewRecorder()
 	router.ServeHTTP(wXAIMismatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"xai","name":"xai-custom.json"}`)))
 	var xaiMismatchStart struct{ State string }
-	_ = json.Unmarshal(wXAIMismatch.Body.Bytes(), &xaiMismatchStart)
+	_ = json.Unmarshal(wXAIMismatch.Body.Bytes(), &xaiMismatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, xaiMismatchStart.State); st["status"] != "error" {
 		t.Fatalf("xai mismatch status = %#v, want error", st)
 	}
@@ -693,7 +694,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wXAIMatch := httptest.NewRecorder()
 	router.ServeHTTP(wXAIMatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"xai","name":"xai-custom.json"}`)))
 	var xaiMatchStart struct{ State string }
-	_ = json.Unmarshal(wXAIMatch.Body.Bytes(), &xaiMatchStart)
+	_ = json.Unmarshal(wXAIMatch.Body.Bytes(), &xaiMatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, xaiMatchStart.State); st["status"] != "ok" || st["auth_id"] != "xai-custom.json" || st["adopted"] != true {
 		t.Fatalf("xai match status = %#v, want ok & adopted", st)
 	}
@@ -703,7 +704,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wMetaMismatch := httptest.NewRecorder()
 	router.ServeHTTP(wMetaMismatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"meta","name":"meta-custom.json"}`)))
 	var metaMismatchStart struct{ State string }
-	_ = json.Unmarshal(wMetaMismatch.Body.Bytes(), &metaMismatchStart)
+	_ = json.Unmarshal(wMetaMismatch.Body.Bytes(), &metaMismatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, metaMismatchStart.State); st["status"] != "error" {
 		t.Fatalf("meta mismatch status = %#v, want error", st)
 	}
@@ -712,7 +713,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wMetaMatch := httptest.NewRecorder()
 	router.ServeHTTP(wMetaMatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"meta","name":"meta-custom.json"}`)))
 	var metaMatchStart struct{ State string }
-	_ = json.Unmarshal(wMetaMatch.Body.Bytes(), &metaMatchStart)
+	_ = json.Unmarshal(wMetaMatch.Body.Bytes(), &metaMatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, metaMatchStart.State); st["status"] != "ok" || st["auth_id"] != "meta-custom.json" || st["adopted"] != true {
 		t.Fatalf("meta match status = %#v, want ok & adopted", st)
 	}
@@ -722,7 +723,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wDevinMismatch := httptest.NewRecorder()
 	router.ServeHTTP(wDevinMismatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"devin","name":"devin-custom.json"}`)))
 	var devinMismatchStart struct{ State string }
-	_ = json.Unmarshal(wDevinMismatch.Body.Bytes(), &devinMismatchStart)
+	_ = json.Unmarshal(wDevinMismatch.Body.Bytes(), &devinMismatchStart, jsoncompat.Decode)
 	_, _ = WriteOAuthCallbackFileForPendingSession(authDir, "devin", devinMismatchStart.State, "devin-code-1", "")
 	if st := pollOAuthStatusUntilDone(t, router, devinMismatchStart.State); st["status"] != "error" {
 		t.Fatalf("devin mismatch status = %#v, want error", st)
@@ -732,7 +733,7 @@ func TestTargetedOAuthReloginClaudeXAIMetaDevinAndAuthIndexVerify(t *testing.T) 
 	wDevinMatch := httptest.NewRecorder()
 	router.ServeHTTP(wDevinMatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"devin","name":"devin-custom.json"}`)))
 	var devinMatchStart struct{ State string }
-	_ = json.Unmarshal(wDevinMatch.Body.Bytes(), &devinMatchStart)
+	_ = json.Unmarshal(wDevinMatch.Body.Bytes(), &devinMatchStart, jsoncompat.Decode)
 	_, _ = WriteOAuthCallbackFileForPendingSession(authDir, "devin", devinMatchStart.State, "devin-code-2", "")
 	if st := pollOAuthStatusUntilDone(t, router, devinMatchStart.State); st["status"] != "ok" || st["auth_id"] != "devin-custom.json" || st["adopted"] != true {
 		t.Fatalf("devin match status = %#v, want ok & adopted", st)
@@ -831,7 +832,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 		"access_token":      "old-org-a-token",
 		"refresh_token":     "old-org-a-refresh",
 	}
-	rawClaudeOrg, _ := json.Marshal(claudeOrgMeta)
+	rawClaudeOrg, _ := json.Marshal(claudeOrgMeta, jsoncompat.Encode)
 	if errWrite := os.WriteFile(claudeOrgPath, rawClaudeOrg, 0o600); errWrite != nil {
 		t.Fatalf("write claude-org-a.json: %v", errWrite)
 	}
@@ -849,7 +850,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 	wOrgMismatch := httptest.NewRecorder()
 	router.ServeHTTP(wOrgMismatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"claude","name":"claude-org-a.json"}`)))
 	var orgMismatchStart struct{ State string }
-	_ = json.Unmarshal(wOrgMismatch.Body.Bytes(), &orgMismatchStart)
+	_ = json.Unmarshal(wOrgMismatch.Body.Bytes(), &orgMismatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, orgMismatchStart.State); st["status"] != "error" || st["error"] != "Authenticated account does not match target credential" {
 		t.Fatalf("claude org mismatch status = %#v, want error", st)
 	}
@@ -859,7 +860,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 	wOrgMatch := httptest.NewRecorder()
 	router.ServeHTTP(wOrgMatch, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"claude","name":"claude-org-a.json"}`)))
 	var orgMatchStart struct{ State string }
-	_ = json.Unmarshal(wOrgMatch.Body.Bytes(), &orgMatchStart)
+	_ = json.Unmarshal(wOrgMatch.Body.Bytes(), &orgMatchStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, orgMatchStart.State); st["status"] != "ok" || st["auth_id"] != "claude-org-a.json" || st["adopted"] != true {
 		t.Fatalf("claude org match status = %#v, want ok & adopted", st)
 	}
@@ -882,7 +883,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 		"access_token":  "old-xai",
 		"refresh_token": "old-xai-refresh",
 	}
-	rawXAI, _ := json.Marshal(xaiMeta)
+	rawXAI, _ := json.Marshal(xaiMeta, jsoncompat.Encode)
 	if errWrite := os.WriteFile(xaiPath, rawXAI, 0o600); errWrite != nil {
 		t.Fatalf("write xai-both.json: %v", errWrite)
 	}
@@ -900,7 +901,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 	wXAISubOnly := httptest.NewRecorder()
 	router.ServeHTTP(wXAISubOnly, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"xai","name":"xai-both.json"}`)))
 	var xaiSubOnlyStart struct{ State string }
-	_ = json.Unmarshal(wXAISubOnly.Body.Bytes(), &xaiSubOnlyStart)
+	_ = json.Unmarshal(wXAISubOnly.Body.Bytes(), &xaiSubOnlyStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, xaiSubOnlyStart.State); st["status"] != "ok" || st["auth_id"] != "xai-both.json" || st["adopted"] != true {
 		t.Fatalf("xai sub-only status = %#v, want ok & adopted", st)
 	}
@@ -921,7 +922,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 	wXAIEmailOnly := httptest.NewRecorder()
 	router.ServeHTTP(wXAIEmailOnly, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"xai","name":"xai-both.json"}`)))
 	var xaiEmailOnlyStart struct{ State string }
-	_ = json.Unmarshal(wXAIEmailOnly.Body.Bytes(), &xaiEmailOnlyStart)
+	_ = json.Unmarshal(wXAIEmailOnly.Body.Bytes(), &xaiEmailOnlyStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, xaiEmailOnlyStart.State); st["status"] != "ok" || st["auth_id"] != "xai-both.json" || st["adopted"] != true {
 		t.Fatalf("xai email-only status = %#v, want ok & adopted", st)
 	}
@@ -941,7 +942,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 	wXAIConflict := httptest.NewRecorder()
 	router.ServeHTTP(wXAIConflict, httptest.NewRequest(http.MethodPost, "/v8/management/oauth/auth-url", strings.NewReader(`{"provider":"xai","name":"xai-both.json"}`)))
 	var xaiConflictStart struct{ State string }
-	_ = json.Unmarshal(wXAIConflict.Body.Bytes(), &xaiConflictStart)
+	_ = json.Unmarshal(wXAIConflict.Body.Bytes(), &xaiConflictStart, jsoncompat.Decode)
 	if st := pollOAuthStatusUntilDone(t, router, xaiConflictStart.State); st["status"] != "error" {
 		t.Fatalf("xai conflicting email status = %#v, want error", st)
 	}
@@ -954,7 +955,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 		"access_token":  "old-ag",
 		"refresh_token": "old-ag-refresh",
 	}
-	rawAG, _ := json.Marshal(agMeta)
+	rawAG, _ := json.Marshal(agMeta, jsoncompat.Encode)
 	if errWrite := os.WriteFile(agPath, rawAG, 0o600); errWrite != nil {
 		t.Fatalf("write ag-verify.json: %v", errWrite)
 	}
@@ -991,7 +992,7 @@ func TestTargetedOAuthReloginReviewEdgeCasesAndVerification(t *testing.T) {
 		t.Fatalf("antigravity verify StartOAuthV8 status = %d: %s", wVerifyStart.Code, wVerifyStart.Body.String())
 	}
 	var verifyStartBody struct{ State string }
-	_ = json.Unmarshal(wVerifyStart.Body.Bytes(), &verifyStartBody)
+	_ = json.Unmarshal(wVerifyStart.Body.Bytes(), &verifyStartBody, jsoncompat.Decode)
 	_, _ = WriteOAuthCallbackFileForPendingSession(authDir, "antigravity", verifyStartBody.State, "ag-code-verify", "")
 	verifyStatus := pollOAuthStatusUntilDone(t, routerVerify, verifyStartBody.State)
 	if verifyStatus["status"] != "ok" || verifyStatus["inference_verified"] != true || verifyStatus["recovery_stage"] != "inference_verified" {

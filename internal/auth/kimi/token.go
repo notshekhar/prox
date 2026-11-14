@@ -4,12 +4,14 @@
 package kimi
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
@@ -124,9 +126,8 @@ func (ts *KimiTokenStorage) SaveTokenToFile(authFilePath string) error {
 		}
 	}()
 
-	encoder := json.NewEncoder(f)
-	encoder.SetIndent("", "  ")
-	if err = encoder.Encode(data); err != nil {
+	encoder := jsontext.NewEncoder(f, jsoncompat.Encode, jsontext.WithIndent("  "))
+	if err = json.MarshalEncode(encoder, data); err != nil {
 		return fmt.Errorf("failed to write token to file: %w", err)
 	}
 	return nil

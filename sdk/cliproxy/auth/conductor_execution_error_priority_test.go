@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"sync/atomic"
@@ -11,6 +11,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	internalhome "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -47,7 +48,7 @@ func (d *retryTerminalPriorityHomeDispatcher) RPopAuthWithRetryRoundConstraints(
 				Provider: "home-retry-contract",
 				Status:   StatusActive,
 			},
-		})
+		}, jsoncompat.Encode)
 	}
 	if retryRound == 0 {
 		return []byte(`{"error":{"type":"auth_unavailable","message":"a credential is immediately available next round"}}`), nil

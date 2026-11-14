@@ -16,7 +16,8 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"flag"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -64,8 +66,8 @@ type modelEntry struct {
 	DisplayName         string `json:"display_name"`
 	Name                string `json:"name"`
 	Description         string `json:"description"`
-	ContextLength       int    `json:"context_length,omitempty"`
-	MaxCompletionTokens int    `json:"max_completion_tokens,omitempty"`
+	ContextLength       int    `json:"context_length,omitzero"`
+	MaxCompletionTokens int    `json:"max_completion_tokens,omitzero"`
 }
 
 func main() {
@@ -195,9 +197,9 @@ func main() {
 	// Marshal to JSON.
 	var raw []byte
 	if pretty {
-		raw, err = json.MarshalIndent(out, "", "  ")
+		raw, err = json.Marshal(out, jsoncompat.Encode, jsontext.WithIndent("  "))
 	} else {
-		raw, err = json.Marshal(out)
+		raw, err = json.Marshal(out, jsoncompat.Encode)
 	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: failed to marshal JSON: %v\n", err)

@@ -2,12 +2,13 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type recordingPluginStatusClient struct {
@@ -33,7 +34,7 @@ func TestReportPluginStatusPushesNodeReport(t *testing.T) {
 		t.Fatalf("ReportPluginStatus() error = %v", errReport)
 	}
 	var payload homeplugins.SyncReport
-	if errUnmarshal := json.Unmarshal(client.payload, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(client.payload, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v", errUnmarshal)
 	}
 	if payload.NodeID != "node-1" || !payload.OK || len(payload.Plugins) != 1 {
@@ -57,7 +58,7 @@ func TestReportPluginStatusPushesEmptyReport(t *testing.T) {
 		t.Fatalf("ReportPluginStatus() error = %v", errReport)
 	}
 	var payload homeplugins.SyncReport
-	if errUnmarshal := json.Unmarshal(client.payload, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(client.payload, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal payload: %v", errUnmarshal)
 	}
 	if payload.NodeID != "node-1" || len(payload.Plugins) != 0 {

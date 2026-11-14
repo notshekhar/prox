@@ -3,7 +3,8 @@ package helps
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -158,10 +160,10 @@ func EnsureClaudeCredentialDevicePoolRequired(ctx context.Context, auth *cliprox
 		return nil, fmt.Errorf("ensure Claude credential device pool: Home KV get: %w", errGet)
 	} else if found {
 		var stored []string
-		if errUnmarshal := json.Unmarshal(raw, &stored); errUnmarshal == nil {
+		if errUnmarshal := json.Unmarshal(raw, &stored, jsoncompat.Decode); errUnmarshal == nil {
 			if deviceIDs := claudeauth.NormalizeDeviceIDPool(stored); len(deviceIDs) == claudeauth.ClaudeDevicePoolSize {
 				if !claudeauth.HasCanonicalDeviceIDPool(stored) {
-					canonicalRaw, errMarshal := json.Marshal(deviceIDs)
+					canonicalRaw, errMarshal := json.Marshal(deviceIDs, jsoncompat.Encode)
 					if errMarshal != nil {
 						return nil, fmt.Errorf("ensure Claude credential device pool: marshal canonical Home KV value: %w", errMarshal)
 					}
@@ -187,7 +189,7 @@ func EnsureClaudeCredentialDevicePoolRequired(ctx context.Context, auth *cliprox
 			return nil, errGenerate
 		}
 	}
-	raw, errMarshal := json.Marshal(deviceIDs)
+	raw, errMarshal := json.Marshal(deviceIDs, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, fmt.Errorf("ensure Claude credential device pool: marshal Home KV value: %w", errMarshal)
 	}
@@ -202,7 +204,7 @@ func EnsureClaudeCredentialDevicePoolRequired(ctx context.Context, auth *cliprox
 		return nil, fmt.Errorf("ensure Claude credential device pool: Home KV value missing after set")
 	}
 	var stored []string
-	if errUnmarshal := json.Unmarshal(raw, &stored); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &stored, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("ensure Claude credential device pool: decode Home KV value: %w", errUnmarshal)
 	}
 	deviceIDs = claudeauth.NormalizeDeviceIDPool(stored)
@@ -331,7 +333,7 @@ func (v *claudeRootMetadataValidator) finishTopKey() error {
 		copy(rawKey[1:], v.keyBuf[:v.keyLen])
 		rawKey[1+v.keyLen] = '"'
 		var decoded string
-		if errUnmarshal := json.Unmarshal(rawKey[:2+v.keyLen], &decoded); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(rawKey[:2+v.keyLen], &decoded, jsoncompat.Decode); errUnmarshal != nil {
 			return fmt.Errorf("decode JSON object key: %w", errUnmarshal)
 		}
 		isMeta = decoded == "metadata"
@@ -768,7 +770,7 @@ func ApplyClaudeCredentialMetadataDoc(doc *ojson.Doc, auth *cliproxyauth.Auth, s
 			if errUserID != nil {
 				return "", newClaudeCredentialMetadataRequestError(fmt.Errorf("apply Claude credential metadata: metadata: %w", errUserID))
 			}
-			if userIDPresent && json.Unmarshal(userID, &existing) != nil {
+			if userIDPresent && json.Unmarshal(userID, &existing, jsoncompat.Decode) != nil {
 				existing = ""
 			}
 		}
@@ -799,12 +801,12 @@ func ApplyClaudeCredentialMetadataDoc(doc *ojson.Doc, auth *cliproxyauth.Auth, s
 
 type claudeJSONMember struct {
 	key   string
-	value json.RawMessage
+	value jsontext.Value
 }
 
 func uniqueClaudeJSONObjectMember(raw []byte, target string) ([]byte, bool, error) {
 	raw = bytes.TrimSpace(raw)
-	if !json.Valid(raw) || len(raw) < 2 || raw[0] != '{' {
+	if !jsontext.Value(raw).IsValid(jsoncompat.Decode) || len(raw) < 2 || raw[0] != '{' {
 		return nil, false, fmt.Errorf("request must be a JSON object")
 	}
 
@@ -822,7 +824,7 @@ func uniqueClaudeJSONObjectMember(raw []byte, target string) ([]byte, bool, erro
 		keyStart := position
 		keyEnd := skipClaudeJSONString(raw, keyStart)
 		var key string
-		if errUnmarshal := json.Unmarshal(raw[keyStart:keyEnd], &key); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw[keyStart:keyEnd], &key, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, false, fmt.Errorf("decode JSON object key: %w", errUnmarshal)
 		}
 		position = skipClaudeJSONWhitespace(raw, keyEnd)
@@ -926,31 +928,32 @@ func skipClaudeJSONValue(raw []byte, position int) int {
 func rebuildClaudeMetadataUserID(existing, deviceID, accountUUID, sessionID string) ([]byte, error) {
 	extras := make([]claudeJSONMember, 0)
 	rawExisting := []byte(strings.TrimSpace(existing))
-	if json.Valid(rawExisting) && len(rawExisting) >= 2 && rawExisting[0] == '{' {
-		decoder := json.NewDecoder(bytes.NewReader(rawExisting))
-		_, _ = decoder.Token()
+	if jsontext.Value(rawExisting).IsValid(jsoncompat.Decode) && len(rawExisting) >= 2 && rawExisting[0] == '{' {
+		decoder := jsontext.NewDecoder(bytes.NewReader(rawExisting), jsoncompat.Decode)
+		_, _ = decoder.ReadToken()
 		seen := make(map[string]bool)
-		for decoder.More() {
-			token, errToken := decoder.Token()
+		for decoder.PeekKind() != '}' {
+			token, errToken := decoder.ReadToken()
 			if errToken != nil {
 				return nil, errToken
 			}
-			key, ok := token.(string)
-			if !ok {
+			if token.Kind() != '"' {
 				return nil, fmt.Errorf("metadata.user_id contains a non-string key")
 			}
+			key := token.String()
 			if seen[key] {
 				return nil, fmt.Errorf("metadata.user_id contains duplicate key %q", key)
 			}
 			seen[key] = true
-			var value json.RawMessage
-			if errDecode := decoder.Decode(&value); errDecode != nil {
+			value, errDecode := decoder.ReadValue()
+			if errDecode != nil {
 				return nil, errDecode
 			}
 			switch key {
 			case "device_id", "account_uuid", "session_id":
 			default:
-				extras = append(extras, claudeJSONMember{key: key, value: value})
+				// ReadValue's bytes are only valid until the next read.
+				extras = append(extras, claudeJSONMember{key: key, value: value.Clone()})
 			}
 		}
 	}
@@ -973,6 +976,6 @@ func rebuildClaudeMetadataUserID(existing, deviceID, accountUUID, sessionID stri
 }
 
 func writeClaudeJSONQuoted(output *bytes.Buffer, value string) {
-	encoded, _ := json.Marshal(value)
+	encoded, _ := json.Marshal(value, jsoncompat.Encode)
 	output.Write(encoded)
 }

@@ -2,12 +2,13 @@ package config
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,12 +41,12 @@ func TestClientCodexOptimizeMultiAgentV2(t *testing.T) {
 			if sdkCfg.Client.Codex != cfg.Client.Codex {
 				t.Fatal("SDK client configuration differs")
 			}
-			data, errMarshal := json.Marshal(cfg)
+			data, errMarshal := json.Marshal(cfg, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("encode JSON: %v", errMarshal)
 			}
 			var decoded Config
-			if errUnmarshal := json.Unmarshal(data, &decoded); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(data, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("decode JSON: %v", errUnmarshal)
 			}
 			if decoded.Client != cfg.Client || bytes.Count(data, []byte(`"optimize-multi-agent-v2"`)) != 1 {

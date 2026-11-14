@@ -7,31 +7,31 @@ type CacheDetails struct {
 	Mode                    string           `json:"mode,omitempty"`
 	TTL                     string           `json:"ttl,omitempty"`
 	Retention               string           `json:"retention,omitempty"`
-	Ephemeral5mInputTokens  *int64           `json:"ephemeral_5m_input_tokens,omitempty"`
-	Ephemeral30mInputTokens *int64           `json:"ephemeral_30m_input_tokens,omitempty"`
-	Ephemeral1hInputTokens  *int64           `json:"ephemeral_1h_input_tokens,omitempty"`
-	Ephemeral12hInputTokens *int64           `json:"ephemeral_12h_input_tokens,omitempty"`
+	Ephemeral5mInputTokens  *int64           `json:"ephemeral_5m_input_tokens,omitzero"`
+	Ephemeral30mInputTokens *int64           `json:"ephemeral_30m_input_tokens,omitzero"`
+	Ephemeral1hInputTokens  *int64           `json:"ephemeral_1h_input_tokens,omitzero"`
+	Ephemeral12hInputTokens *int64           `json:"ephemeral_12h_input_tokens,omitzero"`
 	ByTTL                   map[string]int64 `json:"by_ttl,omitempty"`
 }
 
 // ToolUsageDetails holds structured server-side tool execution counters.
 type ToolUsageDetails struct {
-	WebSearchCalls         *int64           `json:"web_search_calls,omitempty"`
-	WebSearchQueries       *int64           `json:"web_search_queries,omitempty"`
-	WebFetchCalls          *int64           `json:"web_fetch_calls,omitempty"`
-	NumSearchResults       *int64           `json:"num_search_results,omitempty"`
-	NumSourcesUsed         *int64           `json:"num_sources_used,omitempty"`
-	NumServerSideToolsUsed *int64           `json:"num_server_side_tools_used,omitempty"`
-	ToolCallsRequested     *int64           `json:"tool_calls_requested,omitempty"`
-	ToolCallsExecuted      *int64           `json:"tool_calls_executed,omitempty"`
-	XSearchCalls           *int64           `json:"x_search_calls,omitempty"`
-	XPostsFetched          *int64           `json:"x_posts_fetched,omitempty"`
-	XUsersFetched          *int64           `json:"x_users_fetched,omitempty"`
-	CodeExecutionCalls     *int64           `json:"code_execution_calls,omitempty"`
-	FileSearchCalls        *int64           `json:"file_search_calls,omitempty"`
-	MCPCalls               *int64           `json:"mcp_calls,omitempty"`
-	DocumentSearchCalls    *int64           `json:"document_search_calls,omitempty"`
-	ImageGenerationCalls   *int64           `json:"image_generation_calls,omitempty"`
+	WebSearchCalls         *int64           `json:"web_search_calls,omitzero"`
+	WebSearchQueries       *int64           `json:"web_search_queries,omitzero"`
+	WebFetchCalls          *int64           `json:"web_fetch_calls,omitzero"`
+	NumSearchResults       *int64           `json:"num_search_results,omitzero"`
+	NumSourcesUsed         *int64           `json:"num_sources_used,omitzero"`
+	NumServerSideToolsUsed *int64           `json:"num_server_side_tools_used,omitzero"`
+	ToolCallsRequested     *int64           `json:"tool_calls_requested,omitzero"`
+	ToolCallsExecuted      *int64           `json:"tool_calls_executed,omitzero"`
+	XSearchCalls           *int64           `json:"x_search_calls,omitzero"`
+	XPostsFetched          *int64           `json:"x_posts_fetched,omitzero"`
+	XUsersFetched          *int64           `json:"x_users_fetched,omitzero"`
+	CodeExecutionCalls     *int64           `json:"code_execution_calls,omitzero"`
+	FileSearchCalls        *int64           `json:"file_search_calls,omitzero"`
+	MCPCalls               *int64           `json:"mcp_calls,omitzero"`
+	DocumentSearchCalls    *int64           `json:"document_search_calls,omitzero"`
+	ImageGenerationCalls   *int64           `json:"image_generation_calls,omitzero"`
 	Extra                  map[string]int64 `json:"extra,omitempty"`
 }
 
@@ -39,15 +39,15 @@ type ToolUsageDetails struct {
 type IterationUsage struct {
 	Type                     string        `json:"type,omitempty"`
 	Model                    string        `json:"model,omitempty"`
-	InputTokens              *int64        `json:"input_tokens,omitempty"`
-	OutputTokens             *int64        `json:"output_tokens,omitempty"`
-	ThinkingTokens           *int64        `json:"thinking_tokens,omitempty"`
-	ReasoningTokens          *int64        `json:"reasoning_tokens,omitempty"`
-	CacheReadInputTokens     *int64        `json:"cache_read_input_tokens,omitempty"`
-	CacheCreationInputTokens *int64        `json:"cache_creation_input_tokens,omitempty"`
-	CacheCreation5mTokens    *int64        `json:"cache_creation_5m_tokens,omitempty"`
-	CacheCreation1hTokens    *int64        `json:"cache_creation_1h_tokens,omitempty"`
-	CacheCreation            *CacheDetails `json:"cache_creation,omitempty"`
+	InputTokens              *int64        `json:"input_tokens,omitzero"`
+	OutputTokens             *int64        `json:"output_tokens,omitzero"`
+	ThinkingTokens           *int64        `json:"thinking_tokens,omitzero"`
+	ReasoningTokens          *int64        `json:"reasoning_tokens,omitzero"`
+	CacheReadInputTokens     *int64        `json:"cache_read_input_tokens,omitzero"`
+	CacheCreationInputTokens *int64        `json:"cache_creation_input_tokens,omitzero"`
+	CacheCreation5mTokens    *int64        `json:"cache_creation_5m_tokens,omitzero"`
+	CacheCreation1hTokens    *int64        `json:"cache_creation_1h_tokens,omitzero"`
+	CacheCreation            *CacheDetails `json:"cache_creation,omitzero"`
 }
 
 // ImageDetails holds image/video generation dimension and quality attributes.
@@ -75,10 +75,10 @@ func (d *ImageDetails) Clone() *ImageDetails {
 
 // MediaCounts holds prompt/completion media item counts and audio/video duration.
 type MediaCounts struct {
-	PromptMedia     *int64   `json:"prompt_media,omitempty"`
-	CompletionMedia *int64   `json:"completion_media,omitempty"`
-	PromptAudio     *int64   `json:"prompt_audio,omitempty"`
-	AudioSeconds    *float64 `json:"audio_seconds,omitempty"`
+	PromptMedia     *int64   `json:"prompt_media,omitzero"`
+	CompletionMedia *int64   `json:"completion_media,omitzero"`
+	PromptAudio     *int64   `json:"prompt_audio,omitzero"`
+	AudioSeconds    *float64 `json:"audio_seconds,omitzero"`
 }
 
 // Clone returns a deep copy of MediaCounts.
@@ -96,12 +96,12 @@ func (m *MediaCounts) Clone() *MediaCounts {
 
 // CostDetails holds optional upstream-reported cost information (e.g. OpenRouter).
 type CostDetails struct {
-	Cost                             *float64 `json:"cost,omitempty"`
-	CostInUSDTicks                   *int64   `json:"cost_in_usd_ticks,omitempty"`
-	IsBYOK                           *bool    `json:"is_byok,omitempty"`
-	UpstreamInferenceCost            *float64 `json:"upstream_inference_cost,omitempty"`
-	UpstreamInferencePromptCost      *float64 `json:"upstream_inference_prompt_cost,omitempty"`
-	UpstreamInferenceCompletionsCost *float64 `json:"upstream_inference_completions_cost,omitempty"`
+	Cost                             *float64 `json:"cost,omitzero"`
+	CostInUSDTicks                   *int64   `json:"cost_in_usd_ticks,omitzero"`
+	IsBYOK                           *bool    `json:"is_byok,omitzero"`
+	UpstreamInferenceCost            *float64 `json:"upstream_inference_cost,omitzero"`
+	UpstreamInferencePromptCost      *float64 `json:"upstream_inference_prompt_cost,omitzero"`
+	UpstreamInferenceCompletionsCost *float64 `json:"upstream_inference_completions_cost,omitzero"`
 }
 
 // Int64Ptr returns a pointer to v.

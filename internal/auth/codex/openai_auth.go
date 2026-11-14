@@ -6,7 +6,7 @@ package codex
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/singleflight"
@@ -152,7 +153,7 @@ func (o *CodexAuth) ExchangeCodeForTokensWithRedirect(ctx context.Context, code,
 		ExpiresIn    int    `json:"expires_in"`
 	}
 
-	if err = json.Unmarshal(body, &tokenResp); err != nil {
+	if err = json.Unmarshal(body, &tokenResp, jsoncompat.Decode); err != nil {
 		return nil, fmt.Errorf("failed to parse token response: %w", err)
 	}
 
@@ -260,7 +261,7 @@ func (o *CodexAuth) refreshTokensSingleFlight(ctx context.Context, refreshToken 
 		ExpiresIn    int    `json:"expires_in"`
 	}
 
-	if errUnmarshal := json.Unmarshal(body, &tokenResp); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &tokenResp, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, fmt.Errorf("failed to parse refresh response: %w", errUnmarshal)
 	}
 

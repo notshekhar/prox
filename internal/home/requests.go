@@ -6,14 +6,14 @@ type authDispatchRequest struct {
 	Type                string            `json:"type"`
 	Model               string            `json:"model"`
 	Count               int               `json:"count"`
-	ConcurrencyProtocol int               `json:"concurrency_protocol,omitempty"`
+	ConcurrencyProtocol int               `json:"concurrency_protocol,omitzero"`
 	SessionID           string            `json:"session_id,omitempty"`
 	ParentSessionID     string            `json:"parent_session_id,omitempty"`
 	NodeKind            string            `json:"node_kind,omitempty"`
 	Headers             map[string]string `json:"headers,omitempty"`
 	CredentialPolicy    string            `json:"credential_policy,omitempty"`
-	RetryRound          *int              `json:"retry_round,omitempty"`
-	ExcludedAuthIDs     *[]string         `json:"excluded_auth_ids,omitempty"`
+	RetryRound          *int              `json:"retry_round,omitzero"`
+	ExcludedAuthIDs     *[]string         `json:"excluded_auth_ids,omitzero"`
 	PinnedAuthID        string            `json:"pinned_auth_id,omitempty"`
 }
 
@@ -59,10 +59,10 @@ type InFlightSnapshotFrame struct {
 	Revision            int64                   `json:"revision"`
 	ObservedAt          time.Time               `json:"observed_at"`
 	BarrierRevision     int64                   `json:"barrier_revision"`
-	PartIndex           *int                    `json:"part_index,omitempty"`
-	PartCount           *int                    `json:"part_count,omitempty"`
-	DetailsTruncated    bool                    `json:"details_truncated,omitempty"`
+	PartIndex           *int                    `json:"part_index,omitzero"`
+	PartCount           *int                    `json:"part_count,omitzero"`
+	DetailsTruncated    bool                    `json:"details_truncated,omitzero"`
 	Aggregates          []InFlightAggregate     `json:"aggregates,omitempty"`
 	Details             []InFlightRequestDetail `json:"details,omitempty"`
-	AggregateGroupCount int                     `json:"aggregate_group_count,omitempty"`
+	AggregateGroupCount int                     `json:"aggregate_group_count,omitzero"`
 }

@@ -3,7 +3,8 @@ package openai
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -571,14 +573,14 @@ func restoreResponsesWebsocketCompletionOutput(payload []byte, outputItemsByInde
 }
 
 func reconcileResponsesWebsocketCompletionToolCalls(output ojson.Result, outputItemsByIndex map[int64][]byte, outputItemsFallback [][]byte) ([]byte, bool) {
-	collectedToolCalls := make(map[string]json.RawMessage)
+	collectedToolCalls := make(map[string]jsontext.Value)
 	recordCollectedToolCall := func(raw []byte) {
 		item := util.ParseGJSONBytesNoCopy(raw)
 		if !isCompleteResponsesWebsocketToolCall(item) {
 			return
 		}
 		callID := strings.TrimSpace(item.Get("call_id").String())
-		collectedToolCalls[callID] = append(json.RawMessage(nil), raw...)
+		collectedToolCalls[callID] = append(jsontext.Value(nil), raw...)
 	}
 
 	indexes := make([]int64, 0, len(outputItemsByIndex))
@@ -599,10 +601,10 @@ func reconcileResponsesWebsocketCompletionToolCalls(output ojson.Result, outputI
 	}
 
 	items := output.Array()
-	reconciled := make([]json.RawMessage, 0, len(items))
+	reconciled := make([]jsontext.Value, 0, len(items))
 	changed := false
 	for _, item := range items {
-		raw := json.RawMessage(item.Raw)
+		raw := jsontext.Value(item.Raw)
 		if isResponsesToolCallType(item.Get("type").String()) {
 			callID := strings.TrimSpace(item.Get("call_id").String())
 			if collected, ok := collectedToolCalls[callID]; ok && !bytes.Equal(raw, collected) {
@@ -616,7 +618,7 @@ func reconcileResponsesWebsocketCompletionToolCalls(output ojson.Result, outputI
 		return nil, false
 	}
 
-	marshaledOutput, errMarshal := json.Marshal(reconciled)
+	marshaledOutput, errMarshal := json.Marshal(reconciled, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, false
 	}
@@ -662,13 +664,13 @@ func responseCompletedOutputFromPayload(payload []byte, outputItemsByIndex map[i
 		return indexes[i] < indexes[j]
 	})
 
-	items := make([]json.RawMessage, 0, len(outputItemsByIndex)+len(outputItemsFallback))
+	items := make([]jsontext.Value, 0, len(outputItemsByIndex)+len(outputItemsFallback))
 	appendCollectedItem := func(raw []byte) {
 		item := util.ParseGJSONBytesNoCopy(raw)
 		if isResponsesToolCallType(item.Get("type").String()) && !isCompleteResponsesWebsocketToolCall(item) {
 			return
 		}
-		items = append(items, append(json.RawMessage(nil), raw...))
+		items = append(items, append(jsontext.Value(nil), raw...))
 	}
 	for _, index := range indexes {
 		appendCollectedItem(outputItemsByIndex[index])
@@ -677,7 +679,7 @@ func responseCompletedOutputFromPayload(payload []byte, outputItemsByIndex map[i
 		appendCollectedItem(item)
 	}
 
-	marshaledOutput, errMarshal := json.Marshal(items)
+	marshaledOutput, errMarshal := json.Marshal(items, jsoncompat.Encode)
 	if errMarshal != nil {
 		return []byte("[]")
 	}
@@ -751,7 +753,7 @@ func websocketJSONPayloadsFromChunk(chunk []byte) [][]byte {
 		if len(line) == 0 || bytes.Equal(line, []byte(wsDoneMarker)) {
 			continue
 		}
-		if json.Valid(line) {
+		if jsontext.Value(line).IsValid(jsoncompat.Decode) {
 			payloads = append(payloads, bytes.Clone(line))
 		}
 	}
@@ -764,7 +766,7 @@ func websocketJSONPayloadsFromChunk(chunk []byte) [][]byte {
 	if bytes.HasPrefix(trimmed, []byte("data:")) {
 		trimmed = bytes.TrimSpace(trimmed[len("data:"):])
 	}
-	if len(trimmed) > 0 && !bytes.Equal(trimmed, []byte(wsDoneMarker)) && json.Valid(trimmed) {
+	if len(trimmed) > 0 && !bytes.Equal(trimmed, []byte(wsDoneMarker)) && jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 		payloads = append(payloads, bytes.Clone(trimmed))
 	}
 	return payloads
@@ -835,7 +837,7 @@ func buildResponsesWebsocketErrorPayload(errMsg *interfaces.ErrorMessage) ([]byt
 	}
 
 	hasErrorField := false
-	if len(body) > 0 && json.Valid(body) {
+	if len(body) > 0 && jsontext.Value(body).IsValid(jsoncompat.Decode) {
 		errorNode := ojson.GetBytesNoCopy(body, "error")
 		var errSet error
 		if errorNode.Exists() {

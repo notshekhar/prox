@@ -2,7 +2,8 @@ package home
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"reflect"
@@ -117,7 +118,7 @@ func TestClusterBalanceTargetPreflightFailureRecovery(t *testing.T) {
 				t.Fatal("unacknowledged failure report was discarded")
 			}
 			if report.name == "malformed" {
-				var syntaxError *json.SyntaxError
+				var syntaxError *jsontext.SyntacticError
 				if !errors.As(errRun, &syntaxError) {
 					t.Fatalf("report decoding failure was lost: %v", errRun)
 				}
@@ -337,7 +338,7 @@ func TestClusterBalancePostACKFailurePreservesTakeover(t *testing.T) {
 			}
 			errRun := client.RunConfigSubscriberLifetime(context.Background(), func([]byte) error { return nil }, nil)
 			if failure.malformed {
-				var syntaxError *json.SyntaxError
+				var syntaxError *jsontext.SyntacticError
 				if !errors.As(errRun, &syntaxError) {
 					t.Fatalf("original JSON failure was lost: %v", errRun)
 				}

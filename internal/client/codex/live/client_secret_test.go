@@ -3,7 +3,8 @@ package live
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -48,7 +50,7 @@ func TestCreateClientSecretMapsStandardRealtimeModel(t *testing.T) {
 			Instructions string `json:"instructions"`
 		} `json:"session"`
 	}
-	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal response: %v", errUnmarshal)
 	}
 	if !strings.HasPrefix(response.Value, clientSecretPrefix) {
@@ -119,7 +121,7 @@ func TestClientSecretStoreRejectsExpiredToken(t *testing.T) {
 	store := newClientSecretStore()
 	now := time.Unix(1700000000, 0)
 	store.now = func() time.Time { return now }
-	token, _, _, errCreate := store.create(json.RawMessage(`{"type":"realtime","model":"gpt-live-1-codex"}`), time.Minute, "issuer", "test")
+	token, _, _, errCreate := store.create(jsontext.Value(`{"type":"realtime","model":"gpt-live-1-codex"}`), time.Minute, "issuer", "test")
 	if errCreate != nil {
 		t.Fatalf("create() error = %v", errCreate)
 	}
@@ -133,14 +135,14 @@ func TestClientSecretStoreRejectsExpiredToken(t *testing.T) {
 }
 
 func TestNormalizeClientSecretSessionHandlesWhitespaceNullAndRejectsArrays(t *testing.T) {
-	clientSession, upstreamSession, errNormalize := normalizeClientSecretSession(json.RawMessage("  null \n"))
+	clientSession, upstreamSession, errNormalize := normalizeClientSecretSession(jsontext.Value("  null \n"))
 	if errNormalize != nil {
 		t.Fatalf("normalize whitespace null: %v", errNormalize)
 	}
 	if modelFromJSON(clientSession) != "gpt-realtime" || modelFromJSON(upstreamSession) != defaultLiveModel {
 		t.Fatalf("client=%s upstream=%s", clientSession, upstreamSession)
 	}
-	if _, _, errNormalize = normalizeClientSecretSession(json.RawMessage(`[]`)); errNormalize == nil {
+	if _, _, errNormalize = normalizeClientSecretSession(jsontext.Value(`[]`)); errNormalize == nil {
 		t.Fatal("normalize accepted an array session")
 	}
 }
@@ -239,7 +241,7 @@ func TestSidebandRejectsStandardPrincipalScopeMismatch(t *testing.T) {
 }
 
 func TestApplyClientSecretCallSession(t *testing.T) {
-	session := json.RawMessage(`{"type":"realtime","model":"gpt-live-1-codex","instructions":"help"}`)
+	session := jsontext.Value(`{"type":"realtime","model":"gpt-live-1-codex","instructions":"help"}`)
 	body, contentType, model, errApply := applyClientSecretCallSession([]byte("v=0\r\n"), "application/sdp", defaultLiveModel, session)
 	if errApply != nil {
 		t.Fatalf("applyClientSecretCallSession() error = %v", errApply)
@@ -253,7 +255,7 @@ func TestApplyClientSecretCallSession(t *testing.T) {
 			Instructions string `json:"instructions"`
 		} `json:"session"`
 	}
-	if errUnmarshal := json.Unmarshal(body, &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(body, &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal body: %v", errUnmarshal)
 	}
 	if payload.SDP != "v=0\r\n" || payload.Session.Instructions != "help" {

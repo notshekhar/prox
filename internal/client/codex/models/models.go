@@ -2,13 +2,13 @@
 package models
 
 import (
-	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -92,13 +92,7 @@ func BuildResponseForClientWithSearchToolRoutes(availableModels []map[string]any
 // MarshalCompact serializes a Codex client catalog as a single JSON line.
 // HTML escaping is disabled so instruction text is not expanded into \u003c sequences.
 func MarshalCompact(payload any) ([]byte, error) {
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	encoder.SetEscapeHTML(false)
-	if errEncode := encoder.Encode(payload); errEncode != nil {
-		return nil, errEncode
-	}
-	return bytes.TrimRight(buf.Bytes(), "\n"), nil
+	return json.Marshal(payload, jsoncompat.EncodeNoHTMLEscape)
 }
 
 func buildCodexClientModels(models []map[string]any, providersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) []map[string]any {
@@ -238,7 +232,7 @@ func loadCodexClientModelTemplatesSnapshot(raw []byte, revision uint64) (map[str
 	}
 
 	var payload codexClientModelsPayload
-	err := json.Unmarshal(raw, &payload)
+	err := json.Unmarshal(raw, &payload, jsoncompat.Decode)
 	var templates map[string]map[string]any
 	var defaultTemplate map[string]any
 	if err == nil {
@@ -733,12 +727,12 @@ func codexClientThinkingSupport(model map[string]any) *registry.ThinkingSupport 
 	case registry.ThinkingSupport:
 		return &thinking
 	}
-	data, errMarshal := json.Marshal(raw)
+	data, errMarshal := json.Marshal(raw, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil
 	}
 	var thinking registry.ThinkingSupport
-	if errUnmarshal := json.Unmarshal(data, &thinking); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &thinking, jsoncompat.Decode); errUnmarshal != nil {
 		return nil
 	}
 	return &thinking

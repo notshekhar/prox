@@ -2,18 +2,19 @@ package responses
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
 const patchRequest = `{"tools":[{"type":"namespace","name":"functions","tools":[{"type":"custom","name":"apply_patch","format":{"type":"grammar","definition":"start: patch"}}]}]}`
 const patchText = "  *** Begin Patch\n*** Add File: 中.txt\n+😀\n*** End Patch\n "
 
-func patchJSON(v any) []byte             { b, _ := json.Marshal(v); return b }
+func patchJSON(v any) []byte             { b, _ := json.Marshal(v, jsoncompat.Encode); return b }
 func patchArguments(input string) string { return string(patchJSON(map[string]string{"input": input})) }
 func patchStep(event string, step any) []byte {
 	return patchJSON(map[string]any{"event_type": event, "index": 2, "step": step})

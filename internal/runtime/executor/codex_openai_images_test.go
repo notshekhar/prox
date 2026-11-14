@@ -3,7 +3,8 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -131,7 +133,7 @@ func TestCodexImageResolvedModelOnWire(t *testing.T) {
 					payload, errMarshal := json.Marshal(map[string]any{
 						"model": tc.requested, "prompt": "diagnostic", "stream": !stream,
 						"images": []map[string]string{{"file_id": "source-image"}},
-					})
+					}, jsoncompat.Encode)
 					if errMarshal != nil {
 						t.Fatal(errMarshal)
 					}
@@ -175,7 +177,7 @@ func TestCodexImageResolvedModelOnWire(t *testing.T) {
 					if gotPath != wantPath {
 						t.Fatalf("upstream path = %q, want %q", gotPath, wantPath)
 					}
-					if gotContentType != "application/json" || !json.Valid(gotBody) {
+					if gotContentType != "application/json" || !jsontext.Value(gotBody).IsValid() {
 						t.Fatalf("invalid upstream JSON: Content-Type=%q body=%s", gotContentType, gotBody)
 					}
 					if got := ojson.GetBytes(gotBody, "model").String(); got != tc.want {
@@ -456,7 +458,7 @@ func TestCodexExecutorDirectOpenAIImageEditUsesImagesEditEndpointForMultipart(t 
 	if !strings.HasPrefix(gotContentType, "application/json") {
 		t.Fatalf("Content-Type = %q, want application/json", gotContentType)
 	}
-	if !json.Valid(gotBody) {
+	if !jsontext.Value(gotBody).IsValid() {
 		t.Fatalf("body is not valid JSON: %s", string(gotBody))
 	}
 	if got := ojson.GetBytes(gotBody, "model").String(); got != "gpt-image-1.5" {

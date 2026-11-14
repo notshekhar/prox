@@ -1,10 +1,12 @@
 package registry
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 func TestCodexConfigurationUpdateCapability(t *testing.T) {
@@ -40,7 +42,7 @@ func TestCodexConfigurationUpdateCapability(t *testing.T) {
 				if cloned := cloneModelInfo(info); cloned.SupportConfigurationUpdate != want {
 					t.Errorf("%s clone configuration_update = %v, want %v", id, cloned.SupportConfigurationUpdate, want)
 				}
-				raw, errMarshal := json.Marshal(info)
+				raw, errMarshal := json.Marshal(info, jsoncompat.Encode)
 				if errMarshal != nil {
 					t.Fatal(errMarshal)
 				}
@@ -62,7 +64,7 @@ func TestCodexConfigurationUpdateCapability(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			info := ModelInfo{SupportConfigurationUpdate: true}
-			if errUnmarshal := json.Unmarshal([]byte(tt.raw), &info); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal([]byte(tt.raw), &info, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatal(errUnmarshal)
 			}
 			if info.SupportConfigurationUpdate != tt.want {
@@ -193,7 +195,7 @@ func TestGetXAIModelsPreservesVideo15LiteAfterCatalogRefresh(t *testing.T) {
 	refreshed := *original
 	remoteModel := &ModelInfo{ID: "refreshed-xai-model", OwnedBy: "xai", Type: "xai", DisplayName: "Refreshed model"}
 	refreshed.XAI = []*ModelInfo{remoteModel}
-	payload, err := json.Marshal(&refreshed)
+	payload, err := json.Marshal(&refreshed, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}

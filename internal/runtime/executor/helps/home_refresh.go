@@ -2,7 +2,8 @@ package helps
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
@@ -70,7 +72,7 @@ type homeErrorDetail struct {
 	Message    string                `json:"message"`
 	Code       string                `json:"code,omitempty"`
 	Diagnostic string                `json:"diagnostic,omitempty"`
-	Upstream   *homeUpstreamResponse `json:"upstream,omitempty"`
+	Upstream   *homeUpstreamResponse `json:"upstream,omitzero"`
 }
 
 type homeUpstreamResponse struct {
@@ -127,7 +129,7 @@ func RefreshAuthViaHome(ctx context.Context, cfg *config.Config, auth *cliproxya
 	}
 
 	var env homeErrorEnvelope
-	if errUnmarshal := json.Unmarshal(raw, &env); errUnmarshal == nil && env.Error != nil {
+	if errUnmarshal := json.Unmarshal(raw, &env, jsoncompat.Decode); errUnmarshal == nil && env.Error != nil {
 		code := strings.TrimSpace(env.Error.Type)
 		if code == "" {
 			code = strings.TrimSpace(env.Error.Code)
@@ -176,19 +178,19 @@ func authAccessTokenSHA256(auth *cliproxyauth.Auth) string {
 }
 
 func parseHomeRefreshAuth(raw []byte) (*cliproxyauth.Auth, string, error) {
-	var rawObject map[string]json.RawMessage
-	if errUnmarshal := json.Unmarshal(raw, &rawObject); errUnmarshal != nil {
+	var rawObject map[string]jsontext.Value
+	if errUnmarshal := json.Unmarshal(raw, &rawObject, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, "", errUnmarshal
 	}
 	if _, ok := rawObject["auth"]; ok {
 		var envelope homeRefreshAuthEnvelope
-		if errUnmarshal := json.Unmarshal(raw, &envelope); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &envelope, jsoncompat.Decode); errUnmarshal != nil {
 			return nil, "", errUnmarshal
 		}
 		return &envelope.Auth, strings.TrimSpace(envelope.AuthIndex), nil
 	}
 	var updated cliproxyauth.Auth
-	if errUnmarshal := json.Unmarshal(raw, &updated); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(raw, &updated, jsoncompat.Decode); errUnmarshal != nil {
 		return nil, "", errUnmarshal
 	}
 	return &updated, "", nil

@@ -5,7 +5,8 @@ package handlers
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -50,7 +52,7 @@ type ErrorDetail struct {
 	Code string `json:"code,omitempty"`
 
 	// Retryable optionally indicates whether a retry might fix the issue automatically.
-	Retryable *bool `json:"retryable,omitempty"`
+	Retryable *bool `json:"retryable,omitzero"`
 }
 
 const idempotencyKeyMetadataKey = "idempotency_key"
@@ -85,9 +87,9 @@ func BuildErrorResponseBodyWithError(status int, errText string, err error) []by
 
 	if coreauth.IsTerminalAuthError(err) {
 		message := errText
-		if trimmed != "" && json.Valid([]byte(trimmed)) {
+		if trimmed != "" && jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
 			var parsed map[string]any
-			if errUnmarshal := json.Unmarshal([]byte(trimmed), &parsed); errUnmarshal == nil {
+			if errUnmarshal := json.Unmarshal([]byte(trimmed), &parsed, jsoncompat.Decode); errUnmarshal == nil {
 				if msg, ok := parsed["message"].(string); ok && msg != "" {
 					message = msg
 				} else if errMap, ok := parsed["error"].(map[string]any); ok {
@@ -105,17 +107,17 @@ func BuildErrorResponseBodyWithError(status int, errText string, err error) []by
 				Code:      "upstream_authentication_required",
 				Retryable: &r,
 			},
-		})
+		}, jsoncompat.Encode)
 		if errMarshal != nil {
 			return []byte(fmt.Sprintf(`{"error":{"message":%q,"type":"authentication_error","code":"upstream_authentication_required","retryable":false}}`, message))
 		}
 		return payload
 	}
 
-	if trimmed != "" && json.Valid([]byte(trimmed)) {
-		var compact bytes.Buffer
-		if errCompact := json.Compact(&compact, []byte(trimmed)); errCompact == nil {
-			return compact.Bytes()
+	if trimmed != "" && jsontext.Value(trimmed).IsValid(jsoncompat.Decode) {
+		compact := jsontext.Value(trimmed)
+		if errCompact := compact.Compact(); errCompact == nil {
+			return compact
 		}
 		return []byte(trimmed)
 	}
@@ -151,7 +153,7 @@ func BuildErrorResponseBodyWithError(status int, errText string, err error) []by
 			Type:    errType,
 			Code:    code,
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		return []byte(fmt.Sprintf(`{"error":{"message":%q,"type":"server_error","code":"internal_server_error"}}`, errText))
 	}
@@ -276,7 +278,7 @@ func requestExecutionMetadata(ctx context.Context) map[string]any {
 	if pinnedAuthID := pinnedAuthIDFromContext(ctx); pinnedAuthID != "" {
 		meta[coreexecutor.PinnedAuthMetadataKey] = pinnedAuthID
 	}
-	if selectedCallback := selectedAuthIDCallbackFromContext(ctx); selectedCallback != nil {
+	if selectedCallback := accountRecordingCallback(ginCtx, selectedAuthIDCallbackFromContext(ctx)); selectedCallback != nil {
 		meta[coreexecutor.SelectedAuthCallbackMetadataKey] = selectedCallback
 	}
 	if finalizedFormatCallback := finalizedResponseFormatCallbackFromContext(ctx); finalizedFormatCallback != nil {

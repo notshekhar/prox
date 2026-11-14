@@ -9,7 +9,7 @@
 
 import { apiClient } from './client';
 import { authFilesApi } from './authFiles';
-import { guardConfigConnection } from './configValue';
+import { guardConfigConnection, readConfigDocument } from './configValue';
 import type { AuthFileItem } from '@/types/authFile';
 import {
   ROUTING_COMPAT_FAMILY,
@@ -99,6 +99,7 @@ export function normalizeRoutingStrategy(value: unknown): RoutingStrategy {
     return 'weighted-round-robin';
   }
   if (['fill-first', 'fillfirst', 'ff'].includes(text)) return 'fill-first';
+  if (['least-used', 'leastused', 'lu'].includes(text)) return 'least-used';
   // CPA runs an unrecognised strategy as round-robin.
   return 'round-robin';
 }
@@ -405,7 +406,7 @@ async function forEachWithConcurrency<T>(
 
 export const routingApi = {
   /** The stored v8 configuration document, unnormalized. */
-  getRawConfig: () => apiClient.get<unknown>('/config'),
+  getRawConfig: () => readConfigDocument(),
 
   /** The credentials the board shows next to the stored configuration. */
   async listCredentials(): Promise<AuthFileItem[]> {

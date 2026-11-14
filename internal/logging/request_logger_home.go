@@ -3,12 +3,13 @@ package logging
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"strings"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 type homeRequestLogClient interface {
@@ -62,7 +63,7 @@ func (l *FileRequestLogger) forwardRequestLogToHome(ctx context.Context, headers
 		RequestID:  strings.TrimSpace(requestID),
 		RequestLog: logText,
 	}
-	raw, errMarshal := json.Marshal(&payload)
+	raw, errMarshal := json.Marshal(&payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return errMarshal
 	}
@@ -251,7 +252,7 @@ func (w *homeStreamingLogWriter) Close() error {
 		RequestID:  w.requestID,
 		RequestLog: buf.String(),
 	}
-	raw, errMarshal := json.Marshal(&payload)
+	raw, errMarshal := json.Marshal(&payload, jsoncompat.Encode)
 	if errMarshal != nil {
 		return errMarshal
 	}

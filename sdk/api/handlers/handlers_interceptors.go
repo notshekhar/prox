@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"maps"
 	"net/http"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -686,7 +688,7 @@ func (h *BaseAPIHandler) WriteModelListResponse(c *gin.Context, sourceFormat str
 		body = cloneBytes(v)
 	default:
 		var errMarshal error
-		body, errMarshal = json.Marshal(payload)
+		body, errMarshal = json.Marshal(payload, jsoncompat.Encode)
 		if errMarshal != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": errMarshal.Error()})
 			return
@@ -736,21 +738,21 @@ func (h *BaseAPIHandler) WriteModelListResponse(c *gin.Context, sourceFormat str
 	if modelID, detail := c.Get(ModelDetailIDContextKey); detail {
 		c.Writer.Header().Del("Content-Length")
 		var catalog struct {
-			Data   []json.RawMessage `json:"data"`
-			Models []json.RawMessage `json:"models"`
+			Data   []jsontext.Value `json:"data"`
+			Models []jsontext.Value `json:"models"`
 		}
-		if errUnmarshal := json.Unmarshal(body, &catalog); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(body, &catalog, jsoncompat.Decode); errUnmarshal != nil {
 			lifecycle.complete(pluginapi.RequestCompletionFailed, http.StatusBadGateway, errUnmarshal)
 			c.JSON(http.StatusBadGateway, gin.H{"error": gin.H{"message": "Invalid model catalog", "type": "api_error"}})
 			return
 		}
-		var selected json.RawMessage
+		var selected jsontext.Value
 		for _, model := range append(catalog.Data, catalog.Models...) {
 			var entry struct {
 				ID   string `json:"id"`
 				Slug string `json:"slug"`
 			}
-			if errUnmarshal := json.Unmarshal(model, &entry); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(model, &entry, jsoncompat.Decode); errUnmarshal != nil {
 				continue
 			}
 			if entry.ID == "" {

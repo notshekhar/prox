@@ -3,7 +3,8 @@ package pluginhost
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -1093,7 +1095,7 @@ func (a *executorAdapter) observeAndTranslateExecutorStream(ctx context.Context,
 						helps.ObservePluginExecutorStreamUsage(prepared.outputFormat.String(), line, &streamUsage)
 					}
 					if len(lineBuffer) > 0 {
-						if jsonBytes := helps.ExtractStreamJSONPayload(lineBuffer); len(jsonBytes) > 0 && json.Valid(jsonBytes) {
+						if jsonBytes := helps.ExtractStreamJSONPayload(lineBuffer); len(jsonBytes) > 0 && jsontext.Value(jsonBytes).IsValid(jsoncompat.Decode) {
 							helps.ObservePluginExecutorStreamUsage(prepared.outputFormat.String(), lineBuffer, &streamUsage)
 							lineBuffer = nil
 						}
@@ -1347,7 +1349,7 @@ func storageJSONFromAuth(auth *coreauth.Auth) []byte {
 	if len(auth.Metadata) == 0 {
 		return nil
 	}
-	data, errMarshal := json.Marshal(auth.Metadata)
+	data, errMarshal := json.Marshal(auth.Metadata, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil
 	}

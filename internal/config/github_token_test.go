@@ -1,12 +1,13 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -45,7 +46,7 @@ func TestGitHubTokenConfigRoundTrip(t *testing.T) {
 	if clone.GitHubToken != cfg.GitHubToken {
 		t.Fatal("clone lost token")
 	}
-	data, err = json.Marshal(cfg)
+	data, err = json.Marshal(cfg, jsoncompat.Encode)
 	if err != nil {
 		t.Fatal(err)
 	}

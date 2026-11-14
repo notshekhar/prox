@@ -1,14 +1,19 @@
 package util
 
-import "encoding/json"
+import (
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
+)
 
 const emptyClaudeToolInputSchema = `{"type":"object","properties":{}}`
 
 // NormalizeClaudeToolInputSchema makes a JSON Schema compatible with Claude's
 // requirement that a tool input schema is an object without root-level unions.
 func NormalizeClaudeToolInputSchema(schema []byte) []byte {
-	var root map[string]json.RawMessage
-	if len(schema) == 0 || json.Unmarshal(schema, &root) != nil || root == nil {
+	var root map[string]jsontext.Value
+	if len(schema) == 0 || json.Unmarshal(schema, &root, jsoncompat.Decode) != nil || root == nil {
 		return []byte(emptyClaudeToolInputSchema)
 	}
 
@@ -20,13 +25,13 @@ func NormalizeClaudeToolInputSchema(schema []byte) []byte {
 		}
 		delete(root, unionName)
 
-		var branches []json.RawMessage
-		if json.Unmarshal(unionRaw, &branches) != nil {
+		var branches []jsontext.Value
+		if json.Unmarshal(unionRaw, &branches, jsoncompat.Decode) != nil {
 			continue
 		}
 		for _, branchRaw := range branches {
-			var branch map[string]json.RawMessage
-			if json.Unmarshal(branchRaw, &branch) != nil || !claudeSchemaCanBeObject(branch) {
+			var branch map[string]jsontext.Value
+			if json.Unmarshal(branchRaw, &branch, jsoncompat.Decode) != nil || !claudeSchemaCanBeObject(branch) {
 				continue
 			}
 			for name, property := range claudeSchemaObject(branch["properties"]) {
@@ -40,44 +45,44 @@ func NormalizeClaudeToolInputSchema(schema []byte) []byte {
 		}
 	}
 
-	root["type"] = json.RawMessage(`"object"`)
-	propertiesRaw, errMarshalProperties := json.Marshal(properties)
+	root["type"] = jsontext.Value(`"object"`)
+	propertiesRaw, errMarshalProperties := json.Marshal(properties, jsoncompat.Encode)
 	if errMarshalProperties != nil {
 		return []byte(emptyClaudeToolInputSchema)
 	}
 	root["properties"] = propertiesRaw
 
-	normalized, errMarshalRoot := json.Marshal(root)
+	normalized, errMarshalRoot := json.Marshal(root, jsoncompat.Encode)
 	if errMarshalRoot != nil {
 		return []byte(emptyClaudeToolInputSchema)
 	}
 	return normalized
 }
 
-func claudeSchemaObject(raw json.RawMessage) map[string]json.RawMessage {
-	object := make(map[string]json.RawMessage)
+func claudeSchemaObject(raw jsontext.Value) map[string]jsontext.Value {
+	object := make(map[string]jsontext.Value)
 	if len(raw) == 0 {
 		return object
 	}
-	if errUnmarshal := json.Unmarshal(raw, &object); errUnmarshal != nil || object == nil {
-		return make(map[string]json.RawMessage)
+	if errUnmarshal := json.Unmarshal(raw, &object, jsoncompat.Decode); errUnmarshal != nil || object == nil {
+		return make(map[string]jsontext.Value)
 	}
 	return object
 }
 
-func claudeSchemaCanBeObject(schema map[string]json.RawMessage) bool {
+func claudeSchemaCanBeObject(schema map[string]jsontext.Value) bool {
 	typeRaw, exists := schema["type"]
 	if !exists {
 		return true
 	}
 
 	var schemaType string
-	if json.Unmarshal(typeRaw, &schemaType) == nil {
+	if json.Unmarshal(typeRaw, &schemaType, jsoncompat.Decode) == nil {
 		return schemaType == "object"
 	}
 
 	var schemaTypes []string
-	if json.Unmarshal(typeRaw, &schemaTypes) != nil {
+	if json.Unmarshal(typeRaw, &schemaTypes, jsoncompat.Decode) != nil {
 		return false
 	}
 	for _, candidate := range schemaTypes {
@@ -88,16 +93,16 @@ func claudeSchemaCanBeObject(schema map[string]json.RawMessage) bool {
 	return false
 }
 
-func mergeClaudeSchemaRequired(root map[string]json.RawMessage, branchRequired json.RawMessage) {
+func mergeClaudeSchemaRequired(root map[string]jsontext.Value, branchRequired jsontext.Value) {
 	var required []string
 	if rootRequired, exists := root["required"]; exists {
-		if errUnmarshal := json.Unmarshal(rootRequired, &required); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(rootRequired, &required, jsoncompat.Decode); errUnmarshal != nil {
 			required = nil
 		}
 	}
 
 	var branchNames []string
-	if json.Unmarshal(branchRequired, &branchNames) != nil {
+	if json.Unmarshal(branchRequired, &branchNames, jsoncompat.Decode) != nil {
 		return
 	}
 
@@ -115,7 +120,7 @@ func mergeClaudeSchemaRequired(root map[string]json.RawMessage, branchRequired j
 	if len(required) == 0 {
 		return
 	}
-	requiredRaw, errMarshal := json.Marshal(required)
+	requiredRaw, errMarshal := json.Marshal(required, jsoncompat.Encode)
 	if errMarshal == nil {
 		root["required"] = requiredRaw
 	}

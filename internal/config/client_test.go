@@ -1,12 +1,13 @@
 package config
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,12 +42,12 @@ func TestClientCodexEnableApplyPatch(t *testing.T) {
 			if sdkCfg.Client.Codex.EnableApplyPatch != tc.want {
 				t.Fatalf("SDK EnableApplyPatch = %t, want %t", sdkCfg.Client.Codex.EnableApplyPatch, tc.want)
 			}
-			data, errMarshal := json.Marshal(cfg)
+			data, errMarshal := json.Marshal(cfg, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("encode JSON: %v", errMarshal)
 			}
 			var decoded Config
-			if errUnmarshal := json.Unmarshal(data, &decoded); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(data, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("decode JSON: %v", errUnmarshal)
 			}
 			if decoded.Client.Codex.EnableApplyPatch != tc.want {
@@ -174,12 +175,12 @@ func TestClientCodexWebSearchResultCache(t *testing.T) {
 			if sdkCfg.Client.Codex.WebSearchResultCache != tc.want {
 				t.Fatalf("SDK WebSearchResultCache = %+v, want %+v", sdkCfg.Client.Codex.WebSearchResultCache, tc.want)
 			}
-			data, errMarshal := json.Marshal(cfg)
+			data, errMarshal := json.Marshal(cfg, jsoncompat.Encode)
 			if errMarshal != nil {
 				t.Fatalf("encode JSON: %v", errMarshal)
 			}
 			var decoded Config
-			if errUnmarshal := json.Unmarshal(data, &decoded); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(data, &decoded, jsoncompat.Decode); errUnmarshal != nil {
 				t.Fatalf("decode JSON: %v", errUnmarshal)
 			}
 			if decoded.Client.Codex.WebSearchResultCache != tc.want {
@@ -202,7 +203,7 @@ func TestClientCodexWebSearchResultCache(t *testing.T) {
 	}
 
 	var fromJSONNumber Config
-	if errUnmarshal := json.Unmarshal([]byte(`{"client":{"codex":{"web-search-result-cache":{"enabled":true,"ttl":1800,"limit":256}}}}`), &fromJSONNumber); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(`{"client":{"codex":{"web-search-result-cache":{"enabled":true,"ttl":1800,"limit":256}}}}`), &fromJSONNumber, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal JSON number ttl: %v", errUnmarshal)
 	}
 	if fromJSONNumber.Client.Codex.WebSearchResultCache.EffectiveTTL() != 30*time.Minute || fromJSONNumber.Client.Codex.WebSearchResultCache.EffectiveLimit() != 256 {

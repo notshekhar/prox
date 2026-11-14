@@ -2,7 +2,8 @@ package synthesizer
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 	log "github.com/sirupsen/logrus"
@@ -61,7 +63,7 @@ func (s *FileSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth, e
 			}
 			continue
 		}
-		if !json.Valid(data) {
+		if !jsontext.Value(data).IsValid(jsoncompat.Decode) {
 			ctx.RecordIncompleteFile(full)
 			continue
 		}
@@ -90,7 +92,7 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 	}
 	now := ctx.Now
 	var metadata map[string]any
-	if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		if ctx.StrictFileParsing {
 			return nil, fmt.Errorf("parse auth file: %w", errUnmarshal)
 		}
@@ -332,17 +334,17 @@ func extractOAuthModelAliasesFromMetadata(metadata map[string]any) []config.OAut
 		if !ok || raw == nil {
 			continue
 		}
-		data, errMarshal := json.Marshal(raw)
+		data, errMarshal := json.Marshal(raw, jsoncompat.Encode)
 		if errMarshal != nil {
 			continue
 		}
-		var items []json.RawMessage
-		if errUnmarshal := json.Unmarshal(data, &items); errUnmarshal != nil {
+		var items []jsontext.Value
+		if errUnmarshal := json.Unmarshal(data, &items, jsoncompat.Decode); errUnmarshal != nil {
 			continue
 		}
 		for _, item := range items {
 			var alias config.OAuthModelAlias
-			if errUnmarshal := json.Unmarshal(item, &alias); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(item, &alias, jsoncompat.Decode); errUnmarshal != nil {
 				continue
 			}
 			combined = append(combined, alias)
@@ -385,17 +387,17 @@ func applyVertexOpenAPISettingsAttribute(auth *coreauth.Auth, metadata map[strin
 	seenAlias := make(map[string]struct{})
 	seenNameOnly := make(map[string]struct{})
 	for _, key := range []string{"model_aliases", "model-aliases", "models"} {
-		data, errMarshal := json.Marshal(metadata[key])
+		data, errMarshal := json.Marshal(metadata[key], jsoncompat.Encode)
 		if errMarshal != nil {
 			continue
 		}
-		var items []json.RawMessage
-		if errUnmarshal := json.Unmarshal(data, &items); errUnmarshal != nil {
+		var items []jsontext.Value
+		if errUnmarshal := json.Unmarshal(data, &items, jsoncompat.Decode); errUnmarshal != nil {
 			continue
 		}
 		for _, item := range items {
 			var rule config.OAuthModelAlias
-			if errUnmarshal := json.Unmarshal(item, &rule); errUnmarshal != nil {
+			if errUnmarshal := json.Unmarshal(item, &rule, jsoncompat.Decode); errUnmarshal != nil {
 				continue
 			}
 			rule.Name = strings.TrimSpace(rule.Name)
@@ -424,7 +426,7 @@ func applyVertexOpenAPISettingsAttribute(auth *coreauth.Auth, metadata map[strin
 		}
 	}
 	if len(rules) > 0 {
-		if data, errMarshal := json.Marshal(rules); errMarshal == nil {
+		if data, errMarshal := json.Marshal(rules, jsoncompat.Encode); errMarshal == nil {
 			auth.Attributes["vertex_model_openapi"] = string(data)
 		}
 	}

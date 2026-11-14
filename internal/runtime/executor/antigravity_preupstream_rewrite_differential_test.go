@@ -2,13 +2,14 @@ package executor
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"math/rand"
 	"strings"
 	"testing"
 
 	"github.com/MoeForge/moego/ojson"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -107,7 +108,7 @@ func randomAntigravityFunctionHistory(randomSource *rand.Rand) []byte {
 		}
 		contents = append(contents, responseContent)
 	}
-	payload, errMarshal := json.Marshal(map[string]any{"request": map[string]any{"contents": contents}})
+	payload, errMarshal := json.Marshal(map[string]any{"request": map[string]any{"contents": contents}}, jsoncompat.Encode)
 	if errMarshal != nil {
 		panic(errMarshal)
 	}
@@ -380,7 +381,7 @@ func randomAntigravitySchemaRequest(randomSource *rand.Rand) string {
 			},
 		}
 	}
-	payload, errMarshal := json.Marshal(map[string]any{"request": request})
+	payload, errMarshal := json.Marshal(map[string]any{"request": request}, jsoncompat.Encode)
 	if errMarshal != nil {
 		panic(errMarshal)
 	}

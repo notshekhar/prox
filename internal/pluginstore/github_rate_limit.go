@@ -1,7 +1,7 @@
 package pluginstore
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // RateLimitError reports a GitHub API cooldown without exposing response bodies
@@ -180,7 +182,7 @@ func githubRateLimitMessage(body []byte) bool {
 	var message struct {
 		Message string `json:"message"`
 	}
-	if errDecode := json.Unmarshal(body, &message); errDecode != nil {
+	if errDecode := json.Unmarshal(body, &message, jsoncompat.Decode); errDecode != nil {
 		return false
 	}
 	text := strings.ToLower(message.Message)

@@ -2,11 +2,12 @@ package htmlsanitize
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"html"
-	"io"
 	"mime"
 	"strings"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 )
 
 // String escapes text before it is returned to browser-facing management clients.
@@ -30,24 +31,15 @@ func JSONBody(body []byte) ([]byte, bool) {
 		return body, false
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(trimmed))
-	decoder.UseNumber()
 	var value any
-	if errDecode := decoder.Decode(&value); errDecode != nil {
+	if errDecode := json.Unmarshal(trimmed, &value, jsoncompat.DecodeUseNumber); errDecode != nil {
 		return body, false
 	}
-	var extra any
-	if errExtra := decoder.Decode(&extra); errExtra != io.EOF {
+	out, errEncode := json.Marshal(JSONValue(value), jsoncompat.EncodeNoHTMLEscape)
+	if errEncode != nil {
 		return body, false
 	}
-
-	var buffer bytes.Buffer
-	encoder := json.NewEncoder(&buffer)
-	encoder.SetEscapeHTML(false)
-	if errEncode := encoder.Encode(JSONValue(value)); errEncode != nil {
-		return body, false
-	}
-	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), true
+	return out, true
 }
 
 // JSONBodyIfLikely escapes JSON bodies when the content type or body shape indicates JSON.

@@ -5,11 +5,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -51,7 +52,7 @@ func normalizeEvents(t *testing.T, raw []byte) []byte {
 			if err := json.Unmarshal(line[6:], &v); err != nil {
 				t.Fatalf("unparseable event: %s", line)
 			}
-			canon, _ := json.Marshal(zero(v))
+			canon, _ := json.Marshal(zero(v), jsoncompat.Encode)
 			out = append(out, canon...)
 			out = append(out, '\n')
 		} else {
@@ -145,7 +146,7 @@ func TestClaudeEchoGoldenOutputs(t *testing.T) {
 			if err := json.Unmarshal(non, &v); err != nil {
 				t.Fatalf("%s: nonstream unparseable: %v", tc.name, err)
 			}
-			canon, _ := json.Marshal(zeroCreated(v))
+			canon, _ := json.Marshal(zeroCreated(v), jsoncompat.Encode)
 			// created_at is time-based in non-stream too; normalize via map walk.
 			non = canon
 		}
@@ -226,7 +227,7 @@ func egNormalize(t *testing.T, raw []byte) []byte {
 			if err := json.Unmarshal(line[6:], &v); err != nil {
 				t.Fatalf("unparseable: %s", line)
 			}
-			canon, _ := json.Marshal(egZero(v))
+			canon, _ := json.Marshal(egZero(v), jsoncompat.Encode)
 			out = append(out, canon...)
 		} else {
 			out = append(out, line...)
@@ -307,7 +308,7 @@ func TestClaudeEchoGoldenEdgeCases(t *testing.T) {
 			if err := json.Unmarshal(non, &v); err != nil {
 				t.Fatalf("%s nonstream unparseable: %v", tc.name, err)
 			}
-			non, _ = json.Marshal(egZero(v))
+			non, _ = json.Marshal(egZero(v), jsoncompat.Encode)
 		}
 		if got := egHash(egNormalize(t, out)); got != want[tc.name][0] {
 			t.Errorf("%s stream: hash %s, want %s", tc.name, got, want[tc.name][0])

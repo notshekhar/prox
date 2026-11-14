@@ -1,7 +1,7 @@
 package management
 
 import (
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -18,6 +18,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/credentialweight"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -95,7 +96,7 @@ func parseLastRefreshValue(v any) (time.Time, bool) {
 			return time.Time{}, false
 		}
 		return time.Unix(int64(val), 0).UTC(), true
-	case json.Number:
+	case jsoncompat.Number:
 		if i, err := val.Int64(); err == nil && i > 0 {
 			return time.Unix(i, 0).UTC(), true
 		}
@@ -865,7 +866,7 @@ func (h *Handler) buildAuthFileEntryLocked(auth *coreauth.Auth, quota authFileQu
 
 func authFileRequestRetryFromJSON(data []byte) (int, bool) {
 	var metadata map[string]any
-	if errUnmarshal := json.Unmarshal(data, &metadata); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(data, &metadata, jsoncompat.Decode); errUnmarshal != nil {
 		return 0, false
 	}
 	return (&coreauth.Auth{Metadata: metadata}).RequestRetryOverride()

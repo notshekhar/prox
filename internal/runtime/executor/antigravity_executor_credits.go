@@ -3,7 +3,7 @@ package executor
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"math/rand"
@@ -16,6 +16,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -135,7 +136,7 @@ func antigravityAuthHasCreditsRequired(ctx context.Context, auth *cliproxyauth.A
 			return true, nil
 		}
 		var homeBalance antigravityCreditsBalance
-		if errUnmarshal := json.Unmarshal(raw, &homeBalance); errUnmarshal != nil {
+		if errUnmarshal := json.Unmarshal(raw, &homeBalance, jsoncompat.Decode); errUnmarshal != nil {
 			return false, errUnmarshal
 		}
 		return antigravityCreditsBalanceAvailable(authID, homeBalance), nil
@@ -184,7 +185,7 @@ func parseMetaFloat(metadata map[string]any, key string) (float64, bool) {
 		return float64(typed), true
 	case uint64:
 		return float64(typed), true
-	case json.Number:
+	case jsoncompat.Number:
 		if f, err := typed.Float64(); err == nil {
 			return f, true
 		}
@@ -533,7 +534,7 @@ func (e *AntigravityExecutor) updateAntigravityCreditsBalanceForTask(ctx context
 		"metadata": map[string]string{
 			"ideType": "ANTIGRAVITY",
 		},
-	})
+	}, jsoncompat.Encode)
 	if errMarshal != nil {
 		log.Debugf("antigravity executor: marshal loadCodeAssist request error: %v", errMarshal)
 		return
@@ -779,7 +780,7 @@ func storeAntigravityCreditsBalanceBestEffort(authID string, bal antigravityCred
 			log.Errorf("antigravity executor: home kv best-effort credits balance set failed prefix=cpa:antigravity:*: %v", errClient)
 			return
 		}
-		raw, errMarshal := json.Marshal(bal)
+		raw, errMarshal := json.Marshal(bal, jsoncompat.Encode)
 		if errMarshal != nil {
 			log.Errorf("antigravity executor: home kv best-effort credits balance set failed prefix=cpa:antigravity:*: %v", errMarshal)
 			return

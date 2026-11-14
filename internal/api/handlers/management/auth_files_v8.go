@@ -2,7 +2,7 @@ package management
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
 )
@@ -157,7 +158,7 @@ func (h *Handler) StartOAuthV8(c *gin.Context) {
 				return
 			}
 			var bodyMap map[string]any
-			if errUnmarshal := json.Unmarshal(rawBody, &bodyMap); errUnmarshal != nil || bodyMap == nil {
+			if errUnmarshal := json.Unmarshal(rawBody, &bodyMap, jsoncompat.Decode); errUnmarshal != nil || bodyMap == nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 				return
 			}
@@ -350,7 +351,7 @@ func (h *Handler) StartOAuthV8(c *gin.Context) {
 		if diskPath != "" {
 			if raw, errRead := os.ReadFile(diskPath); errRead == nil && len(raw) > 0 {
 				var diskMeta map[string]any
-				if json.Unmarshal(raw, &diskMeta) == nil && len(diskMeta) > 0 {
+				if json.Unmarshal(raw, &diskMeta, jsoncompat.Decode) == nil && len(diskMeta) > 0 {
 					mergedMeta := make(map[string]any, len(diskMeta)+len(targetAuth.Metadata))
 					for k, v := range diskMeta {
 						mergedMeta[k] = v
@@ -558,7 +559,7 @@ func (h *Handler) VerifyAuthFileV8(c *gin.Context) {
 		}
 		if len(bytes.TrimSpace(rawBody)) > 0 {
 			var bodyMap map[string]any
-			if errUnmarshal := json.Unmarshal(rawBody, &bodyMap); errUnmarshal != nil || bodyMap == nil {
+			if errUnmarshal := json.Unmarshal(rawBody, &bodyMap, jsoncompat.Decode); errUnmarshal != nil || bodyMap == nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 				return
 			}

@@ -1,7 +1,8 @@
 package api
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/client/grokbuild"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
@@ -56,7 +58,7 @@ func TestModelsDispatchByGrokShellUserAgent(t *testing.T) {
 					} `json:"reasoning_efforts"`
 				} `json:"data"`
 			}
-			if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+			if err := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); err != nil {
 				t.Fatalf("decode response: %v; body=%s", err, recorder.Body.String())
 			}
 			if response.Object != "list" {
@@ -113,7 +115,7 @@ func TestModelsDispatchKeepsOrdinaryOpenAIResponse(t *testing.T) {
 		Object string           `json:"object"`
 		Data   []map[string]any `json:"data"`
 	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response, jsoncompat.Decode); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 	if response.Object != "list" {
@@ -158,9 +160,9 @@ func TestGrokHomeModelAdapterOmitsReasoning(t *testing.T) {
 		t.Fatalf("marshal Home response: %v", errMarshal)
 	}
 	var wireResponse struct {
-		Data []map[string]json.RawMessage `json:"data"`
+		Data []map[string]jsontext.Value `json:"data"`
 	}
-	if errUnmarshal := json.Unmarshal(wire, &wireResponse); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal(wire, &wireResponse, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("decode Home response JSON: %v; body=%s", errUnmarshal, wire)
 	}
 	if len(wireResponse.Data) != 2 {

@@ -2,7 +2,7 @@ package management
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -62,7 +63,7 @@ func TestListAuthFilesFiltersByNameAndAuthIndex(t *testing.T) {
 	var payload struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v", errDecode)
 	}
 	if len(payload.Files) != 1 {
@@ -105,7 +106,7 @@ func TestListAuthFilesFromDiskFiltersByNameAndRejectsAuthIndex(t *testing.T) {
 	var payload struct {
 		Files []map[string]any `json:"files"`
 	}
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode response: %v", errDecode)
 	}
 	if len(payload.Files) != 1 || payload.Files[0]["name"] != "beta.json" {
@@ -122,7 +123,7 @@ func TestListAuthFilesFromDiskFiltersByNameAndRejectsAuthIndex(t *testing.T) {
 		t.Fatalf("status = %d, want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	payload.Files = nil
-	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload); errDecode != nil {
+	if errDecode := json.Unmarshal(rec.Body.Bytes(), &payload, jsoncompat.Decode); errDecode != nil {
 		t.Fatalf("decode auth_index response: %v", errDecode)
 	}
 	if len(payload.Files) != 0 {

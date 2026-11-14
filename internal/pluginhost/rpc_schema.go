@@ -1,16 +1,18 @@
 package pluginhost
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"net/http"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
 type rpcLifecycleRequest struct {
 	ConfigYAML         []byte `json:"config_yaml"`
 	SchemaVersion      uint32 `json:"schema_version"`
-	MultiAuthProviders bool   `json:"multi_auth_providers,omitempty"`
+	MultiAuthProviders bool   `json:"multi_auth_providers,omitzero"`
 }
 
 type rpcRegistration struct {
@@ -25,10 +27,10 @@ type rpcCapabilities struct {
 	AuthProvider                      bool                         `json:"auth_provider"`
 	FrontendAuthProvider              bool                         `json:"frontend_auth_provider"`
 	FrontendAuthProviderExclusive     bool                         `json:"frontend_auth_provider_exclusive"`
-	FrontendAuthProviderOmitBody      bool                         `json:"frontend_auth_provider_omit_body,omitempty"`
-	FrontendAuthOmitBody              bool                         `json:"frontend_auth_omit_body,omitempty"`
+	FrontendAuthProviderOmitBody      bool                         `json:"frontend_auth_provider_omit_body,omitzero"`
+	FrontendAuthOmitBody              bool                         `json:"frontend_auth_omit_body,omitzero"`
 	Scheduler                         bool                         `json:"scheduler"`
-	SchedulerAcrossPriorities         bool                         `json:"scheduler_across_priorities,omitempty"`
+	SchedulerAcrossPriorities         bool                         `json:"scheduler_across_priorities,omitzero"`
 	ModelRouter                       bool                         `json:"model_router"`
 	Executor                          bool                         `json:"executor"`
 	ExecutorModelScope                pluginapi.ExecutorModelScope `json:"executor_model_scope"`
@@ -37,12 +39,12 @@ type rpcCapabilities struct {
 	RequestTranslator                 bool                         `json:"request_translator"`
 	RequestNormalizer                 bool                         `json:"request_normalizer"`
 	RequestInterceptor                bool                         `json:"request_interceptor"`
-	RequestInterceptorOmitBodyBefore  bool                         `json:"request_interceptor_omit_body_before,omitempty"`
-	RequestInterceptorOmitBodyAfter   bool                         `json:"request_interceptor_omit_body_after,omitempty"`
-	RequestBodyPatcherBefore          bool                         `json:"request_body_patcher_before,omitempty"`
-	RequestBodyPatcherAfter           bool                         `json:"request_body_patcher_after,omitempty"`
-	RequestInterceptorPatchBodyBefore bool                         `json:"request_interceptor_patch_body_before,omitempty"`
-	RequestInterceptorPatchBodyAfter  bool                         `json:"request_interceptor_patch_body_after,omitempty"`
+	RequestInterceptorOmitBodyBefore  bool                         `json:"request_interceptor_omit_body_before,omitzero"`
+	RequestInterceptorOmitBodyAfter   bool                         `json:"request_interceptor_omit_body_after,omitzero"`
+	RequestBodyPatcherBefore          bool                         `json:"request_body_patcher_before,omitzero"`
+	RequestBodyPatcherAfter           bool                         `json:"request_body_patcher_after,omitzero"`
+	RequestInterceptorPatchBodyBefore bool                         `json:"request_interceptor_patch_body_before,omitzero"`
+	RequestInterceptorPatchBodyAfter  bool                         `json:"request_interceptor_patch_body_after,omitzero"`
 	RequestLifecyclePlugin            bool                         `json:"request_lifecycle_plugin"`
 	ResponseTranslator                bool                         `json:"response_translator"`
 	ResponseBeforeTranslator          bool                         `json:"response_before_translator"`
@@ -266,9 +268,9 @@ func rpcCapabilitiesFromPlugin(plugin pluginapi.Plugin) rpcCapabilities {
 }
 
 func marshalRPCResult(v any) ([]byte, error) {
-	result, errMarshal := json.Marshal(v)
+	result, errMarshal := json.Marshal(v, jsoncompat.Encode)
 	if errMarshal != nil {
 		return nil, errMarshal
 	}
-	return marshalRPCEnvelope(json.RawMessage(result))
+	return marshalRPCEnvelope(jsontext.Value(result))
 }

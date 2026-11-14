@@ -3,7 +3,8 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 )
 
@@ -59,7 +61,7 @@ func (m *Manager) BindCodexSIWC(ctx context.Context, id string, expectedEpoch ui
 			return fmt.Errorf("bind SIWC: read backing file: %w", errRead)
 		}
 		var disk map[string]any
-		if json.Unmarshal(data, &disk) != nil || !codexBindingHasOuter(disk) {
+		if json.Unmarshal(data, &disk, jsoncompat.Decode) != nil || !codexBindingHasOuter(disk) {
 			return fmt.Errorf("bind SIWC: invalid Codex OAuth file")
 		}
 		kind, _ := disk["type"].(string)
@@ -71,12 +73,12 @@ func (m *Manager) BindCodexSIWC(ctx context.Context, id string, expectedEpoch ui
 		}
 		// Keep arbitrary disk values (including large JSON numbers) losslessly. Only
 		// the two explicitly bound fields are replaced; no metadata normalization runs.
-		var raw map[string]json.RawMessage
-		if errJSON := json.Unmarshal(data, &raw); errJSON != nil {
+		var raw map[string]jsontext.Value
+		if errJSON := json.Unmarshal(data, &raw, jsoncompat.Decode); errJSON != nil {
 			return errJSON
 		}
 		replacement := tokenData.ToMap()
-		siwc, errJSON := json.Marshal(replacement)
+		siwc, errJSON := json.Marshal(replacement, jsoncompat.Encode)
 		if errJSON != nil {
 			return errJSON
 		}
@@ -84,7 +86,7 @@ func (m *Manager) BindCodexSIWC(ctx context.Context, id string, expectedEpoch ui
 		for key, value := range raw {
 			out[key] = value
 		}
-		out["siwc"] = json.RawMessage(siwc)
+		out["siwc"] = jsontext.Value(siwc)
 		out["use_siwc"] = true
 		if errCtx := ctx.Err(); errCtx != nil {
 			return errCtx

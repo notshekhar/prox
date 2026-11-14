@@ -2,7 +2,7 @@ package executor
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +11,7 @@ import (
 
 	"github.com/MoeForge/moego/ojson"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -44,7 +45,7 @@ func (*kimiHomeModelCapabilityDispatcher) RPopAuth(context.Context, string, stri
 				"expired":      time.Now().Add(time.Hour).Format(time.RFC3339),
 			},
 		},
-	})
+	}, jsoncompat.Encode)
 }
 
 func (*kimiHomeModelCapabilityDispatcher) AbortAmbiguousDispatch() {}

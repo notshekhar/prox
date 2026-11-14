@@ -1,11 +1,13 @@
 package auth
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
 	"maps"
 	"strings"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
@@ -136,18 +138,18 @@ func homeAPIKeyModelOptions(auth *Auth, model, routeModel string) (internalconfi
 	if !exists {
 		return empty, false
 	}
-	data, errMarshal := json.Marshal(raw)
+	data, errMarshal := json.Marshal(raw, jsoncompat.Encode)
 	if errMarshal != nil {
 		return empty, false
 	}
 	var options struct {
-		Models json.RawMessage `json:"models"`
+		Models jsontext.Value `json:"models"`
 	}
-	if errDecode := json.Unmarshal(data, &options); errDecode != nil || len(options.Models) == 0 {
+	if errDecode := json.Unmarshal(data, &options, jsoncompat.Decode); errDecode != nil || len(options.Models) == 0 {
 		return empty, false
 	}
 	var models []internalconfig.OpenAICompatibilityModel
-	if errDecode := json.Unmarshal(options.Models, &models); errDecode != nil {
+	if errDecode := json.Unmarshal(options.Models, &models, jsoncompat.Decode); errDecode != nil {
 		return empty, false
 	}
 	requested := strings.TrimSpace(model)

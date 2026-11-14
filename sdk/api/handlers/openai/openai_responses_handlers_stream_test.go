@@ -2,7 +2,7 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json/v2"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +12,7 @@ import (
 	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/jsoncompat"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 )
@@ -438,7 +439,7 @@ func TestForwardResponsesStreamErrorEventPreservesNestedError(t *testing.T) {
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if errUnmarshal := json.Unmarshal([]byte(jsonPayload), &payload); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(jsonPayload), &payload, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error event payload: %v (raw: %s)", errUnmarshal, jsonPayload)
 	}
 	if payload.Type != "error" {
@@ -469,7 +470,7 @@ func TestResponsesSSEFramerRepairErrorPayloadCalculatesCorrectSequenceNumber(t *
 		Error          map[string]any `json:"error"`
 	}
 	payload1 := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(out1.String()), "event: error\ndata: "))
-	if err := json.Unmarshal([]byte(payload1), &p1); err != nil {
+	if err := json.Unmarshal([]byte(payload1), &p1, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal error payload: %v", err)
 	}
 	if p1.SequenceNumber != 0 {
@@ -489,7 +490,7 @@ func TestResponsesSSEFramerRepairErrorPayloadCalculatesCorrectSequenceNumber(t *
 		Error          map[string]any `json:"error"`
 	}
 	payload2 := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(out2.String()), "event: error\ndata: "))
-	if err := json.Unmarshal([]byte(payload2), &p2); err != nil {
+	if err := json.Unmarshal([]byte(payload2), &p2, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal error payload: %v", err)
 	}
 	if p2.SequenceNumber != 2 {
@@ -525,7 +526,7 @@ func TestForwardResponsesStreamErrorEventPreservesExplicitSequenceNumber(t *test
 	}
 	lastPart := strings.TrimSpace(strings.Split(strings.TrimSpace(body), "\n\n")[0])
 	payload := strings.TrimSpace(strings.TrimPrefix(lastPart, "event: error\ndata: "))
-	if err := json.Unmarshal([]byte(payload), &p); err != nil {
+	if err := json.Unmarshal([]byte(payload), &p, jsoncompat.Decode); err != nil {
 		t.Fatalf("unmarshal error payload: %v (raw: %s)", err, payload)
 	}
 	if p.SequenceNumber != 9 {
@@ -545,7 +546,7 @@ func TestResponsesStreamErrorTextSanitizesNestedSensitiveFieldsAndDotKeys(t *tes
 		Error          map[string]any `json:"error"`
 		SequenceNumber int            `json:"sequence_number"`
 	}
-	if errUnmarshal := json.Unmarshal([]byte(out), &parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(out), &parsed, jsoncompat.Decode); errUnmarshal != nil {
 		t.Fatalf("unmarshal error text output: %v (raw: %s)", errUnmarshal, out)
 	}
 
@@ -589,19 +590,17 @@ func TestResponsesStreamErrorTextPreservesTokenCountersAndLargeInts(t *testing.T
 	var parsed struct {
 		Error map[string]any `json:"error"`
 	}
-	dec := json.NewDecoder(strings.NewReader(out))
-	dec.UseNumber()
-	if errUnmarshal := dec.Decode(&parsed); errUnmarshal != nil {
+	if errUnmarshal := json.Unmarshal([]byte(out), &parsed, jsoncompat.DecodeUseNumber); errUnmarshal != nil {
 		t.Fatalf("unmarshal error: %v", errUnmarshal)
 	}
 
 	if parsed.Error["access_token"] != "[REDACTED]" {
 		t.Fatalf("access_token should be redacted: %v", parsed.Error["access_token"])
 	}
-	if parsed.Error["input_tokens"] != json.Number("42") {
+	if parsed.Error["input_tokens"] != jsoncompat.Number("42") {
 		t.Fatalf("input_tokens should remain number 42, got %v", parsed.Error["input_tokens"])
 	}
-	if parsed.Error["token_limit"] != json.Number("8192") {
+	if parsed.Error["token_limit"] != jsoncompat.Number("8192") {
 		t.Fatalf("token_limit should remain number 8192, got %v", parsed.Error["token_limit"])
 	}
 }

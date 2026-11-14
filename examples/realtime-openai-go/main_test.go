@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "encoding/json/v2"
 	"github.com/MoeForge/moego/base64"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +39,7 @@ func TestRunSendsAndReceivesSpeechAudio(t *testing.T) {
 				return
 			}
 			var body map[string]any
-			if errDecode := json.NewDecoder(request.Body).Decode(&body); errDecode != nil || !validAudioSession(body) {
+			if errDecode := json.UnmarshalRead(request.Body, &body); errDecode != nil || !validAudioSession(body) {
 				http.Error(writer, "invalid audio session", http.StatusBadRequest)
 				return
 			}
