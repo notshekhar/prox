@@ -7,6 +7,7 @@ import { AuthFilesOAuthModelAliasEditPage } from '@/pages/AuthFilesOAuthModelAli
 import { OAuthPage } from '@/features/oauth/OAuthPage';
 import { QuotaPage } from '@/features/quota/QuotaPage';
 import { RoutingPage } from '@/features/routing/RoutingPage';
+import { LocalModelsPage } from '@/features/localModels/LocalModelsPage';
 import { PluginResourcePage } from '@/features/plugins/PluginResourcePage';
 import { PluginsPage } from '@/features/plugins/PluginsPage';
 import { PluginStorePage } from '@/features/plugins/PluginStorePage';
@@ -26,6 +27,7 @@ const createMainRoutes = (supportsPlugin: boolean) => [
   { path: '/accounts/oauth-model-alias', element: <AuthFilesOAuthModelAliasEditPage /> },
   { path: '/add-account', element: <OAuthPage /> },
   { path: '/routing', element: <RoutingPage /> },
+  { path: '/local-models', element: <LocalModelsPage /> },
   { path: '/usage', element: <QuotaPage /> },
   ...(supportsPlugin
     ? [

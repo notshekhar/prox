@@ -1,0 +1,141 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+  width: 100%;
+}
+
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.errorBox {
+  padding: $spacing-md;
+  border: 1px solid var(--danger-color);
+  border-radius: $radius-md;
+  background: var(--bg-error-light);
+  color: var(--danger-color);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.modelName {
+  color: var(--text-primary);
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
+  font-size: 13px;
+}
+
+.modelDescription {
+  max-width: 460px;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.mono {
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
+  font-size: 12.5px;
+}
+
+// Colour only carries status, as everywhere else in the dashboard.
+.status {
+  --tone: var(--text-quaternary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  white-space: nowrap;
+
+  &[data-tone='busy'] {
+    --tone: var(--warning-color);
+  }
+  &[data-tone='ready'] {
+    --tone: var(--text-secondary);
+  }
+  &[data-tone='live'] {
+    --tone: var(--success-color);
+  }
+  &[data-tone='error'] {
+    --tone: var(--danger-color);
+  }
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+
+  .status[data-tone='busy'] & {
+    animation: pulse 1.2s var(--ease-out-strong, ease-out) infinite alternate;
+  }
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status[data-tone='busy'] .dot {
+    animation: none;
+  }
+}
+
+.statusDetail {
+  max-width: 360px;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+}
+
+.code {
+  margin: 0;
+  padding: $spacing-md;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: var(--font-mono, 'Geist Mono Variable', monospace);
+  font-size: 12px;
+  line-height: 1.6;
+}

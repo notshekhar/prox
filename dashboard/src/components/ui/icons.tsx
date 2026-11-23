@@ -514,6 +514,17 @@ export function IconSidebarRouting({ size = 20, ...props }: IconProps) {
   );
 }
 
+/** Lucide "cpu": models that run on this machine. */
+export function IconSidebarLocalModels({ size = 20, ...props }: IconProps) {
+  return (
+    <svg {...baseSvgProps} width={size} height={size} {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="2" />
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+      <path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2" />
+    </svg>
+  );
+}
+
 /** Lucide "grip-vertical". */
 export function IconGripVertical({ size = 20, ...props }: IconProps) {
   return (

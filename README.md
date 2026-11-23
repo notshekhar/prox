@@ -41,6 +41,7 @@ prox dashboard        # open the dashboard
 | `prox status` | Show whether the proxy is running |
 | `prox doctor` | Find out why routing or an account is not working |
 | `prox dashboard` | Open the dashboard |
+| `prox local [install\|remove <model>]` | Models that run on this machine, no sign-in needed |
 | `prox service on\|off` | Run in the background and start at login (macOS, Linux) |
 | `prox upgrade [--force]` | Update to the latest release |
 | `prox version` | Show the version |
@@ -51,6 +52,42 @@ full log is in `~/.prox/logs/main.log` and on the dashboard's Logs page.
 Everything lives in `~/.prox`: `config.yaml`, your logins in
 `auth/`, logs in `logs/` and the binary in `bin/`. Set `PROX_HOME` to use another folder. Logins
 from `~/.cli-proxy-api` are copied in the first time you run `prox start`.
+
+## Local models
+
+Some models run on your machine instead of an account, the way Ollama does it.
+They need no login: install one and prox serves it. The first is **Julia 2 Flash**
+from [Supersonic Labs](https://supersoniclabs.ai/julia-2/), a decision model: you
+send a state and named questions, it answers each with probabilities and writes
+no text.
+
+```bash
+prox local install julia-2-flash   # about 430 MB; needs uv (brew install uv)
+```
+
+It answers the System One API that TypeSafe's Jev uses, with your client key:
+
+```bash
+curl http://127.0.0.1:8317/v1/systemone \
+  -H "Authorization: Bearer $PROX_KEY" -H "Content-Type: application/json" \
+  -d '{"model": "julia-2-flash",
+       "state": "Help! My payouts have been failing for 3 days.",
+       "questions": {
+         "is_urgent": {"type": "noul", "instructions": "Does this convey urgency?"},
+         "team": {"type": "choice", "criteria": {"billing": "Payments", "technical": "Bugs"}},
+         "priority": {"type": "score", "criteria": ["Can wait", "This week", "Today"]}}}'
+```
+
+Answers come back as `{"model", "answers": {...}, "usage"}`: `noul` is the chance
+of yes, `choice` the pick with every option's probability, and `score` the
+probability-weighted level with its legend. `GET /v1/systemone/models` lists the
+local models. Text and JSON states only for now: no images, audio or `box`
+questions.
+
+The model starts on the first request (about 5 s), stays loaded (about 1 GB of
+memory) and stops with prox. It uses the Apple or NVIDIA GPU when there is one;
+set `PROX_LOCAL_DEVICE=cpu` to keep it off. Models and their Python runtime live
+in `~/.prox/local`. The dashboard's Local models page installs and removes them too.
 
 ## Master password
 

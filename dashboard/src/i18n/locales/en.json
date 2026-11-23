@@ -107,6 +107,7 @@
     "auth_files": "Accounts",
     "oauth": "Add account",
     "routing": "Routing",
+    "local_models": "Local models",
     "quota_management": "Usage limits",
     "plugins": "Plugins",
     "plugin_store": "Plugin store",
@@ -127,6 +128,7 @@
     "auth_files": "Auth files & credentials",
     "oauth": "OAuth authorization",
     "routing": "Priority tiers and failover",
+    "local_models": "Runs on this machine",
     "quota_management": "API keys & limits",
     "plugins": "Plugin toggles & config",
     "plugin_store": "Discover & install plugins",
@@ -1611,6 +1613,29 @@
     "weekday_thu": "Thu",
     "weekday_fri": "Fri",
     "weekday_sat": "Sat"
+  },
+  "local_models": {
+    "title": "Local models",
+    "description": "Models that run on this machine. No account or sign-in needed: install one and prox serves it.",
+    "column": {
+      "model": "Model",
+      "provider": "Provider",
+      "size": "Download",
+      "status": "Status"
+    },
+    "status": {
+      "not_installed": "Not installed",
+      "installing": "Installing",
+      "failed": "Install failed",
+      "installed": "Installed",
+      "running": "Running"
+    },
+    "install": "Install",
+    "remove": "Remove",
+    "remove_title": "Remove {{model}}?",
+    "remove_body": "This deletes the model from this machine. You can install it again later.",
+    "usage_title": "Ask it",
+    "usage_description": "Decision models answer the System One API (the one Jev uses) with your prox client key. The first request loads the model, which takes a few seconds."
   },
   "routing": {
     "title": "Routing",

@@ -23,6 +23,7 @@ const usage = `prox: use all your AI accounts through one local endpoint
   prox status             Show whether the proxy is running
   prox doctor             Find out why routing or an account is not working
   prox dashboard          Open the dashboard
+  prox local              Models that run on this machine, no sign-in needed
   prox service on|off     Run in the background and start at login
   prox upgrade [--force]  Update to the latest release
   prox version            Show the version
@@ -86,6 +87,8 @@ func runCommand(p Paths, cfg settings, args []string, out, errOut io.Writer) Out
 		return finished(upgrade(cfg, rest, out, errOut))
 	case "service":
 		return service(p, cfg, rest, out, errOut)
+	case "local":
+		return finished(local(p, rest, out, errOut))
 	}
 	if command == "discover" {
 		return Outcome{ServerArgs: args}
