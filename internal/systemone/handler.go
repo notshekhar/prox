@@ -4,16 +4,13 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
-	"io"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/localmodels"
 	log "github.com/sirupsen/logrus"
 )
-
-// maxBody bounds a request; System One's own limit is 64k tokens of state.
-const maxBody = 32 << 20
 
 // Engine answers decision requests; localmodels.Manager is the real one.
 type Engine interface {
@@ -29,30 +26,16 @@ func NewHandler(engine Engine) *Handler { return &Handler{engine: engine} }
 
 // Decide is POST /v1/systemone.
 func (h *Handler) Decide(c *gin.Context) {
-	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody))
-	if err != nil {
-		detail(c, http.StatusBadRequest, "could not read the request body")
+	name, req, ok := buildRequest(c)
+	if !ok {
 		return
 	}
-	req, fieldErrs := parseRequest(body)
-	if len(fieldErrs) > 0 {
-		writeJSON(c, http.StatusUnprocessableEntity, map[string]any{"detail": fieldErrs})
-		return
-	}
-	if msg := unsupported(req); msg != "" {
-		detail(c, http.StatusBadRequest, msg)
-		return
-	}
-	model, err := h.engine.Resolve(req.Model)
+	model, err := h.engine.Resolve(name)
 	if err != nil {
 		detail(c, http.StatusBadRequest, err.Error())
 		return
 	}
-	h.answer(c, model, req)
-}
-
-func (h *Handler) answer(c *gin.Context, model localmodels.Model, req parsed) {
-	result, err := h.engine.Decide(c.Request.Context(), model, localmodels.Request{State: req.State, Questions: req.Questions})
+	result, err := h.engine.Decide(c.Request.Context(), model, req)
 	if err != nil {
 		h.decideFailed(c, model, err)
 		return
@@ -63,6 +46,32 @@ func (h *Handler) answer(c *gin.Context, model localmodels.Model, req parsed) {
 		return
 	}
 	writeJSON(c, http.StatusOK, Response{Model: model.ID, Answers: answers, Usage: Usage{InputTokens: result.InputTokens}})
+}
+
+// buildRequest reads, validates and assembles a request and names its model,
+// answering the caller itself when it cannot.
+func buildRequest(c *gin.Context) (string, localmodels.Request, bool) {
+	b, serr := readBody(c.Writer, c.Request)
+	if serr != nil {
+		detail(c, serr.status, serr.detail)
+		return "", localmodels.Request{}, false
+	}
+	req, fieldErrs := parseRequest(b.json)
+	if len(fieldErrs) > 0 {
+		writeJSON(c, http.StatusUnprocessableEntity, map[string]any{"detail": fieldErrs})
+		return "", localmodels.Request{}, false
+	}
+	assets, serr := parseAssets(req.Assets, b.files)
+	if serr != nil {
+		detail(c, serr.status, serr.detail)
+		return "", localmodels.Request{}, false
+	}
+	out := localmodels.Request{State: req.State, Questions: req.Questions, Assets: assets}
+	if msg := unsupported(out); msg != "" {
+		detail(c, http.StatusBadRequest, msg)
+		return "", localmodels.Request{}, false
+	}
+	return req.Model, out, true
 }
 
 func (h *Handler) decideFailed(c *gin.Context, model localmodels.Model, err error) {
@@ -78,28 +87,32 @@ func (h *Handler) decideFailed(c *gin.Context, model localmodels.Model, err erro
 	detail(c, http.StatusServiceUnavailable, err.Error())
 }
 
-// unsupported names what a valid System One request asks for that local models cannot do yet.
-func unsupported(req parsed) string {
-	if req.HasAssets {
-		return "image assets are not supported by local models yet; send a text or JSON state"
-	}
+// unsupported names what a valid System One request asks for that local
+// models cannot do, or an asset nothing points at.
+func unsupported(req localmodels.Request) string {
 	for _, q := range req.Questions {
 		if q.Type == typeBox {
-			return "box questions need images, which local models do not support yet"
+			return "box questions are not supported by local models yet"
 		}
+	}
+	if id := unreferenced(req); id != "" {
+		return fmt.Sprintf("asset %q is not referenced in state, instructions or criteria", id)
 	}
 	return ""
 }
 
 // Models is GET /v1/systemone/models, in System One's model-list shape plus
-// what a local model needs: who makes it and whether it is installed.
+// what a local model needs: who makes it, whether it is installed, what it
+// reads and, for closed-label models, the labels it can answer with.
 func (h *Handler) Models(c *gin.Context) {
 	type entry struct {
-		Name        string `json:"name"`
-		Description string `json:"description"`
-		ReleaseDate string `json:"release_date"`
-		Provider    string `json:"provider"`
-		Installed   bool   `json:"installed"`
+		Name        string                             `json:"name"`
+		Description string                             `json:"description"`
+		ReleaseDate string                             `json:"release_date"`
+		Provider    string                             `json:"provider"`
+		Installed   bool                               `json:"installed"`
+		Inputs      []string                           `json:"inputs"`
+		Labels      map[localmodels.MediaKind][]string `json:"labels,omitempty"`
 	}
 	models := []entry{}
 	for _, st := range h.engine.Statuses() {
@@ -107,7 +120,12 @@ func (h *Handler) Models(c *gin.Context) {
 			continue
 		}
 		m := st.Model
-		models = append(models, entry{Name: m.ID, Description: m.Description, ReleaseDate: m.ReleaseDate, Provider: m.ProviderName, Installed: st.Installed})
+		inputs := []string{"text"}
+		for _, kind := range m.Inputs {
+			inputs = append(inputs, string(kind))
+		}
+		models = append(models, entry{Name: m.ID, Description: m.Description, ReleaseDate: m.ReleaseDate, Provider: m.ProviderName,
+			Installed: st.Installed, Inputs: inputs, Labels: st.Labels})
 	}
 	writeJSON(c, http.StatusOK, map[string]any{"models": models})
 }

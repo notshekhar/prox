@@ -3,6 +3,9 @@ package localmodels
 import (
 	"context"
 	_ "embed"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -99,7 +102,58 @@ func (r *pythonRuntime) start(ctx context.Context, l Layout, m Model) (session, 
 	if err := os.WriteFile(r.workerScript(l), r.worker, 0o644); err != nil {
 		return nil, fmt.Errorf("write the %s worker: %w", r.name, err)
 	}
-	return startWorker(ctx, r.command(l, m))
+	w, err := startWorker(ctx, r.command(l, m))
+	if err != nil {
+		return nil, err
+	}
+	return juliaSession{w}, nil
+}
+
+// juliaSession turns a request's assets into the Julia runtime's state parts
+// before handing it to the worker.
+type juliaSession struct{ *worker }
+
+func (s juliaSession) decide(ctx context.Context, req Request) (Result, error) {
+	state, err := juliaState(req)
+	if err != nil {
+		return Result{}, &RequestError{Message: err.Error()}
+	}
+	req.State, req.Assets = state, nil
+	return s.worker.decide(ctx, req)
+}
+
+// juliaState is the state as the Julia runtime reads media: one part per
+// image or clip, as a data URL, then the state text with each reference
+// replaced by its label, e.g. "[image 1]".
+func juliaState(req Request) (jsontext.Value, error) {
+	if len(req.Assets) == 0 {
+		return req.State, nil
+	}
+	refs := FindReferences(req)
+	if len(refs.Elsewhere) > 0 {
+		return nil, errors.New(`Julia 2 Flash reads images and audio only as whole values in the state, like "state": {"photo": "<asset id>"}; not inside instructions, criteria or longer text`)
+	}
+	var parts []any
+	seen := map[string]bool{}
+	for _, id := range refs.StateWhole {
+		if !seen[id] {
+			seen[id] = true
+			parts = append(parts, mediaPart(req.Assets[id]))
+		}
+	}
+	text, err := ReplaceWholeReferences(req.State, req.Assets)
+	if err != nil {
+		return nil, err
+	}
+	parts = append(parts, map[string]string{"type": "text", "text": StateText(text)})
+	return json.Marshal(parts)
+}
+
+func mediaPart(a Asset) map[string]string {
+	if a.Kind == MediaAudio {
+		return map[string]string{"type": "input_audio", "input_audio": a.DataURL()}
+	}
+	return map[string]string{"type": "image", "image": a.DataURL()}
 }
 
 func (r *pythonRuntime) command(l Layout, m Model) *exec.Cmd {

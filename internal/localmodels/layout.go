@@ -26,9 +26,23 @@ func (l Layout) RuntimeDir(r Runtime) string { return filepath.Join(l.Root, "run
 
 func (l Layout) InstallLog(m Model) string { return filepath.Join(l.Root, "logs", m.ID+"-install.log") }
 
-// Installed reports whether the model finished installing and its runtime is still there.
+// Installed reports whether the model finished installing, has every file this
+// version needs, and its runtime is still there.
 func (l Layout) Installed(m Model) bool {
-	return exists(filepath.Join(l.ModelDir(m), installedMarker)) && m.Runtime.ready(l, m)
+	return l.markedInstalled(m) && l.hasRequired(m) && m.Runtime.ready(l, m)
+}
+
+func (l Layout) markedInstalled(m Model) bool {
+	return exists(filepath.Join(l.ModelDir(m), installedMarker))
+}
+
+func (l Layout) hasRequired(m Model) bool {
+	for _, rel := range m.Required {
+		if !exists(filepath.Join(l.ModelDir(m), filepath.FromSlash(rel))) {
+			return false
+		}
+	}
+	return true
 }
 
 func exists(path string) bool {
@@ -53,7 +67,7 @@ func (l Layout) Remove(m Model) error {
 
 func (l Layout) runtimeInUse(r Runtime) bool {
 	for _, other := range catalog {
-		if other.Runtime == r && exists(filepath.Join(l.ModelDir(other), installedMarker)) {
+		if other.Runtime == r && l.markedInstalled(other) {
 			return true
 		}
 	}

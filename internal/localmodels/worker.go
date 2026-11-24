@@ -26,8 +26,8 @@ type readyLine struct {
 	Error  string `json:"error"`
 }
 
-// maxLine bounds one protocol line; answers are small, but a 255-option
-// choice with long keys is a few hundred KB.
+// maxLine bounds one protocol line read back from the worker; answers are
+// small, but a 255-option choice with long keys is a few hundred KB.
 const maxLine = 16 << 20
 
 // stderrTail is how much of the worker's stderr is kept to explain a crash.

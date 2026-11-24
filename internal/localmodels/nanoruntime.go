@@ -29,20 +29,35 @@ func (*nanoRuntime) install(ctx context.Context, in *Installer, log io.Writer, m
 }
 
 func (*nanoRuntime) start(_ context.Context, l Layout, m Model) (session, error) {
-	model, err := nano.Load(filepath.Join(l.ModelDir(m), filepath.FromSlash(nanoTextWeights)))
+	dir := l.ModelDir(m)
+	model, err := nano.Load(filepath.Join(dir, filepath.FromSlash(nanoTextWeights)))
 	if err != nil {
 		return nil, fmt.Errorf("load %s: %w", m.ID, err)
 	}
-	return &nanoSession{model: model}, nil
+	media, err := loadNanoMedia(dir)
+	if err != nil {
+		return nil, fmt.Errorf("load %s: %w", m.ID, err)
+	}
+	return &nanoSession{model: model, media: media}, nil
 }
 
-// nanoSession is a loaded Nano model. It is read-only, so requests share it
-// without locking.
-type nanoSession struct{ model *nano.Model }
+// nanoSession is a loaded Nano: the text model plus the image and speech
+// models. All are read-only, so requests share them without locking.
+type nanoSession struct {
+	model *nano.Model
+	media nanoMedia
+}
 
 var nanoTypes = map[string]nano.QuestionType{TypeChoice: nano.Choice, TypeNoul: nano.YesNo, TypeScore: nano.Score}
 
 func (s *nanoSession) decide(ctx context.Context, req Request) (Result, error) {
+	if len(req.Assets) > 0 {
+		res, err := s.media.decide(req)
+		if err != nil {
+			return Result{}, &RequestError{Message: err.Error()}
+		}
+		return res, nil
+	}
 	state := StateText(req.State)
 	res := Result{Answers: make(map[string]RawAnswer, len(req.Questions))}
 	for _, q := range req.Questions {

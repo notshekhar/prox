@@ -20,6 +20,7 @@ const (
 type Request struct {
 	State     jsontext.Value // a JSON string, object, or array of strings
 	Questions []Question
+	Assets    map[string]Asset // images and audio, keyed by the id the request uses
 }
 
 // Question is one named question. Instructions and criteria stay raw JSON:

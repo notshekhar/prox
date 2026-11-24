@@ -183,13 +183,11 @@ func TestWorkerConcurrentCalls(t *testing.T) {
 func installedLayout(t *testing.T, m Model) Layout {
 	t.Helper()
 	layout := Layout{Root: t.TempDir()}
-	for _, path := range []string{filepath.Join(layout.ModelDir(m), installedMarker), julia2Runtime.pythonPath(layout)} {
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, nil, 0o644); err != nil {
-			t.Fatal(err)
-		}
+	if err := touchAll(layout.ModelDir(m), append([]string{installedMarker}, m.Required...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := touchAll(filepath.Dir(julia2Runtime.pythonPath(layout)), []string{"python"}); err != nil {
+		t.Fatal(err)
 	}
 	return layout
 }
@@ -266,8 +264,17 @@ func TestManagerResolve(t *testing.T) {
 	if _, err := mg.Resolve("gpt-5"); !errors.Is(err, ErrUnknownModel) {
 		t.Fatalf("err = %v, want ErrUnknownModel", err)
 	}
-	mg = NewManager(installedLayout(t, m))
+	layout := installedLayout(t, m)
+	mg = NewManager(layout)
 	if got, err := mg.Resolve("Julia-2-Flash"); err != nil || got.ID != m.ID {
 		t.Fatalf("resolve = %v %v", got.ID, err)
+	}
+	// An install from before images and audio lacks their files.
+	if err := os.Remove(filepath.Join(layout.ModelDir(m), "image.safetensors")); err != nil {
+		t.Fatal(err)
+	}
+	_, err := mg.Resolve("julia-2-flash")
+	if !errors.As(err, &notInstalled) || !notInstalled.Outdated || !strings.Contains(err.Error(), "prox local install julia-2-flash") {
+		t.Fatalf("outdated install: err = %v", err)
 	}
 }

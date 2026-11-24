@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -26,6 +27,24 @@ func (f *fakeRunner) Run(_ context.Context, _ io.Writer, name string, args ...st
 		python := filepath.Join(args[len(args)-1], "bin", "python")
 		_ = os.MkdirAll(filepath.Dir(python), 0o755)
 		return os.WriteFile(python, nil, 0o755)
+	}
+	if len(args) > 0 && args[0] == "download" {
+		flash, _ := Find("julia-2-flash")
+		return touchAll(args[slices.Index(args, "--local-dir")+1], flash.Required)
+	}
+	return nil
+}
+
+// touchAll creates empty files at each path under dir.
+func touchAll(dir string, rels []string) error {
+	for _, rel := range rels {
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, nil, 0o644); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -51,10 +70,13 @@ func TestInstallRunsTheStepsAndMarksTheModel(t *testing.T) {
 		t.Fatalf("steps = %v", *steps)
 	}
 	download := runner.commands[len(runner.commands)-1]
-	for _, want := range []string{"hf download SupersonicLabs/Julia-2-Flash --revision " + m.Revision, "--exclude=image.safetensors", "--exclude=audio.safetensors"} {
+	for _, want := range []string{"hf download SupersonicLabs/Julia-2-Flash --revision " + m.Revision, "--exclude=assets/*"} {
 		if !strings.Contains(download, want) {
 			t.Fatalf("download command %q is missing %q", download, want)
 		}
+	}
+	if strings.Contains(download, "safetensors") {
+		t.Fatalf("download command %q leaves out weights images or audio need", download)
 	}
 }
 

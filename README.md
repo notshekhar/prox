@@ -59,12 +59,12 @@ Some models run on your machine instead of an account, the way Ollama does it.
 They need no login: install one and prox serves it. Two are available, both
 decision models from [Supersonic Labs](https://supersoniclabs.ai/julia-2/): you
 send a state and named questions, they answer each with probabilities and write
-no text.
+no text. Both read text, images and speech.
 
-| Model | Download | Runs | Speed | Notes |
+| Model | Download | Runs | Text | Images and speech |
 |---|---|---|---|---|
-| `julia-2-flash` | 430 MB + Python | a Python worker, GPU when there is one | ~0.35 s a request | the accurate one; first request loads it (~5 s) |
-| `julia-2-nano` | 8 MB | inside prox, pure Go, no Python | ~3 ms a request | English and Portuguese; agrees with Julia 2 about 6 times in 10 |
+| `julia-2-flash` | 660 MB + Python | a Python worker, GPU when there is one | any question, ~0.35 s | any question about them |
+| `julia-2-nano` | 15 MB | inside prox, pure Go, no Python | English and Portuguese, ~3 ms; agrees with Julia 2 about 6 times in 10 | picks from fixed labels: 112 photo classes, 14 banking intents |
 
 ```bash
 prox local install julia-2-nano    # seconds; nothing else needed
@@ -87,17 +87,43 @@ curl http://127.0.0.1:8317/v1/systemone \
 Answers come back as `{"model", "answers": {...}, "usage"}`: `noul` is the chance
 of yes, `choice` the pick with every option's probability, and `score` the
 probability-weighted level with its legend. `GET /v1/systemone/models` lists the
-local models. Text and JSON states only for now: no images, audio or `box`
-questions.
+local models, what each reads, and Nano's labels.
+
+**Images and speech** travel as System One assets: an id in `assets`, and the
+same id as a value in the state. Images are PNG or JPEG. Audio is prox's own
+addition (System One has none): `"type": "audio"`, WAV for both models, FLAC or
+OGG for Flash.
+
+```bash
+curl http://127.0.0.1:8317/v1/systemone -H "Authorization: Bearer $PROX_KEY" \
+  -F 'request={"model": "julia-2-flash",
+       "state": {"photo": "p-1", "call": "c-1"},
+       "assets": {"p-1": {"type": "image", "part": "photo"},
+                  "c-1": {"type": "audio", "part": "call"}},
+       "questions": {"damaged": {"type": "noul", "instructions": "Is the parcel in `photo` damaged?"},
+                     "angry": {"type": "noul", "instructions": "Does the caller sound angry?"}}};type=application/json' \
+  -F 'photo=@parcel.jpg' -F 'call=@call.wav'
+```
+
+Or inline: `"assets": {"p-1": {"type": "image", "format": "jpg", "data_base64": "…"}}`.
+Each file is at most 16 MiB and a request 32 MiB. Flash takes any number of
+images and clips, as whole values in the state. Nano takes one image or clip as
+the whole state, with `choice` questions whose options are its labels, such as
+`{"golf ball": "", "sunflower": ""}` or `{"balance": "", "freeze": ""}`; the
+probabilities are a softmax over just those labels. `box` questions are not
+supported.
 
 Flash starts on its first request, stays loaded (about 1 GB of memory) and stops
 with prox. It uses the Apple or NVIDIA GPU when there is one; set
-`PROX_LOCAL_DEVICE=cpu` to keep it off. Nano is a Go port of Supersonic Labs'
-C program that gives the same scores (checked against it to 1e-8); its
-probabilities are a softmax over those scores. Downloads are pinned to the
-model commit prox was tested with, and Nano's file is checked against the
-repository's SHA256SUMS. Everything lives in `~/.prox/local`, and the dashboard's
-Local models page installs and removes models too.
+`PROX_LOCAL_DEVICE=cpu` to keep it off. Nano is a Go port of Supersonic Labs' C
+programs that gives the same scores (text to 1e-8, speech to 1e-6, images to
+1e-3, which is the C program's own spread between compilers); photos are
+resized and cropped as `FORMATS.md` describes, matching Pillow within a few
+levels. Downloads are pinned to the model commit prox was tested with, and Nano's
+files are checked against the repository's SHA256SUMS. Installs from before
+prox 0.6 lack the image and audio files: run `prox local install <model>` again.
+Everything lives in `~/.prox/local`, and the dashboard's Local models page
+installs and removes models too.
 
 ## Master password
 

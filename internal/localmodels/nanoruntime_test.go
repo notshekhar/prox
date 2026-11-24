@@ -56,7 +56,10 @@ func nanoInstaller(t *testing.T, hub *httptest.Server) *Installer {
 }
 
 func nanoFiles() map[string]string {
-	return map[string]string{nanoTextWeights: "JNT3 weights", "LICENSE": "Apache-2.0", "NOTICE": "Supersonic Labs"}
+	return map[string]string{
+		nanoTextWeights: "JNT3 weights", nanoImageWeights: "JNI1 weights", nanoSpeechWeights: "JNS1 weights",
+		nanoImageLabels: `["golf ball"]`, nanoSpeechLabels: `["balance"]`, "LICENSE": "Apache-2.0", "NOTICE": "Supersonic Labs",
+	}
 }
 
 func TestNanoInstallsWithoutPython(t *testing.T) {
@@ -104,30 +107,42 @@ func TestNanoInstallReportsAMissingFile(t *testing.T) {
 	}
 }
 
-// With the real weights (see nano/model_test.go), the manager serves Nano in
-// process and its answers follow the reference C's choice.
-func TestNanoAnswersThroughTheManager(t *testing.T) {
-	weights := os.Getenv("PROX_NANO_MODEL")
-	if weights == "" {
-		t.Skip("set PROX_NANO_MODEL to a nano_text.bin")
+// nanoDir is a downloaded Julia-2-Nano repository (see nano/model_test.go).
+const nanoDirEnv = "PROX_NANO_DIR"
+
+// realNanoManager serves Nano from the real download, linked into a temp layout.
+func realNanoManager(t *testing.T) (*Manager, Model) {
+	t.Helper()
+	dir := os.Getenv(nanoDirEnv)
+	if dir == "" {
+		t.Skipf("set %s to a Julia-2-Nano download", nanoDirEnv)
 	}
 	m, _ := Find("julia-2-nano")
 	layout := Layout{Root: t.TempDir()}
-	dir := filepath.Join(layout.ModelDir(m), "text")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(layout.ModelDir(m)), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(weights, filepath.Join(dir, "nano_text.bin")); err != nil {
+	if err := os.Symlink(dir, layout.ModelDir(m)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(layout.ModelDir(m), installedMarker), nil, 0o644); err != nil {
-		t.Fatal(err)
+	marker := filepath.Join(dir, installedMarker)
+	if !exists(marker) {
+		if err := os.WriteFile(marker, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Remove(marker) })
 	}
 	mg := NewManager(layout)
-	defer mg.Close(context.Background())
+	t.Cleanup(func() { mg.Close(context.Background()) })
 	if _, err := mg.Resolve("julia-2-nano"); err != nil {
 		t.Fatal(err)
 	}
+	return mg, m
+}
+
+// The manager serves Nano in process, and its answers follow the reference C's choice.
+func TestNanoAnswersThroughTheManager(t *testing.T) {
+	mg, m := realNanoManager(t)
 	req := Request{
 		State: []byte(`"Help! My payouts have been failing for 3 days."`),
 		Questions: []Question{
@@ -146,18 +161,23 @@ func TestNanoAnswersThroughTheManager(t *testing.T) {
 	if p := res.Answers["urgent"].Noul; p == nil || *p <= 0 || *p >= 1 {
 		t.Fatalf("urgent = %v", p)
 	}
-	total := 0.0
-	for _, p := range res.Answers["level"].Probabilities {
-		total += p
-	}
-	if len(res.Answers["level"].Probabilities) != 3 || total < 0.999 || total > 1.001 {
-		t.Fatalf("level probabilities = %v", res.Answers["level"].Probabilities)
-	}
+	assertDistribution(t, res.Answers["level"].Probabilities, 3)
 	if res.InputTokens == 0 {
 		t.Fatal("no tokens counted")
 	}
-	if st := mg.Statuses()[1]; !st.Running || st.Device != "cpu" {
-		t.Fatalf("status = %+v", st)
+	if st := mg.Statuses()[1]; !st.Running || st.Device != "cpu" || len(st.Labels[MediaImage]) != 112 || len(st.Labels[MediaAudio]) != 14 {
+		t.Fatalf("status = running %v device %q labels %d/%d", st.Running, st.Device, len(st.Labels[MediaImage]), len(st.Labels[MediaAudio]))
+	}
+}
+
+func assertDistribution(t *testing.T, probs map[string]float64, n int) {
+	t.Helper()
+	total := 0.0
+	for _, p := range probs {
+		total += p
+	}
+	if len(probs) != n || total < 0.999 || total > 1.001 {
+		t.Fatalf("probabilities = %v, want %d summing to 1", probs, n)
 	}
 }
 

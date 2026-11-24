@@ -20,10 +20,18 @@ const workerStopGrace = 5 * time.Second
 var ErrUnknownModel = errors.New("unknown local model")
 
 // NotInstalledError names the command that installs the missing model.
-type NotInstalledError struct{ Model Model }
+// Outdated is an install from an older prox that lacks files this one needs.
+type NotInstalledError struct {
+	Model    Model
+	Outdated bool
+}
 
 func (e *NotInstalledError) Error() string {
-	return fmt.Sprintf("%s is not installed; run `prox local install %s` or install it from the dashboard", e.Model.ID, e.Model.ID)
+	state := "is not installed"
+	if e.Outdated {
+		state = "needs files this version of prox added (images and audio)"
+	}
+	return fmt.Sprintf("%s %s; run `prox local install %s` or install it from the dashboard", e.Model.ID, state, e.Model.ID)
 }
 
 // InstallProgress is the state of a background install started from the dashboard.
@@ -40,6 +48,7 @@ type Status struct {
 	Running   bool
 	Device    string
 	Install   *InstallProgress
+	Labels    map[MediaKind][]string // closed answer lists, for models that have them
 }
 
 // Manager owns the local models of one prox server: it loads a model on first
@@ -72,7 +81,7 @@ func (mg *Manager) Resolve(name string) (Model, error) {
 		return Model{}, fmt.Errorf("%w %q", ErrUnknownModel, name)
 	}
 	if !mg.layout.Installed(m) {
-		return Model{}, &NotInstalledError{Model: m}
+		return Model{}, &NotInstalledError{Model: m, Outdated: mg.layout.markedInstalled(m)}
 	}
 	return m, nil
 }
@@ -136,6 +145,9 @@ func (mg *Manager) Statuses() []Status {
 	out := make([]Status, 0, len(catalog))
 	for _, m := range catalog {
 		st := Status{Model: m, Installed: mg.layout.Installed(m)}
+		if st.Installed && m.Runtime == nanoTextRuntime {
+			st.Labels = nanoLabels(mg.layout.ModelDir(m))
+		}
 		if s := mg.sessions[m.ID]; s != nil && s.alive() {
 			st.Running, st.Device = true, s.device()
 		}

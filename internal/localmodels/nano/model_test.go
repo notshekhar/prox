@@ -5,14 +5,26 @@ import (
 	json "encoding/json/v2"
 	"math"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 )
 
-// modelEnv points at a downloaded text/nano_text.bin. The file is 8 MB and
-// not in the repo, so the golden test only runs when it is set.
-const modelEnv = "PROX_NANO_MODEL"
+// dirEnv points at a downloaded Julia-2-Nano repository (text/, image/,
+// speech/). The weights are 15 MB and not in this repo, so the golden tests
+// only run when it is set.
+const dirEnv = "PROX_NANO_DIR"
+
+// nanoFile resolves a file in the downloaded repository, or skips the test.
+func nanoFile(t *testing.T, rel string) string {
+	t.Helper()
+	dir := os.Getenv(dirEnv)
+	if dir == "" {
+		t.Skipf("set %s to a Julia-2-Nano download to compare against the reference C", dirEnv)
+	}
+	return filepath.Join(dir, filepath.FromSlash(rel))
+}
 
 // scoreTolerance allows for float rounding: C may fuse multiply-adds that Go
 // rounds separately, and erff and Erf differ in the last bits. Measured: 1.3e-8.
@@ -32,11 +44,7 @@ type referenceItem struct {
 
 func loadReference(t *testing.T) (*Model, []referenceItem) {
 	t.Helper()
-	path := os.Getenv(modelEnv)
-	if path == "" {
-		t.Skipf("set %s to a nano_text.bin to compare against the reference C", modelEnv)
-	}
-	m, err := Load(path)
+	m, err := Load(nanoFile(t, "text/nano_text.bin"))
 	if err != nil {
 		t.Fatal(err)
 	}

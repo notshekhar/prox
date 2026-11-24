@@ -34,23 +34,42 @@ def pick_device(torch, wanted):
     return "cpu"
 
 
+def modalities(model_dir):
+    """Text always; image and audio when their towers were downloaded."""
+    return ("text",) + tuple(m for m in ("image", "audio") if os.path.exists(os.path.join(model_dir, f"{m}.safetensors")))
+
+
 def load(model_dir, wanted_device):
     sys.path.insert(0, os.path.join(model_dir, "runtime"))
     import torch
     from julia2 import Runtime
 
-    rt = Runtime(model_dir, modalities=("text",), device=pick_device(torch, wanted_device))
+    rt = Runtime(model_dir, modalities=modalities(model_dir), device=pick_device(torch, wanted_device))
     # The first forward on a device compiles kernels (2.6 s on Apple GPUs); pay it before saying ready.
     rt.predict_questions("warm-up", WARMUP_QUESTIONS)
     return rt
+
+
+def part_text(part):
+    """One state part's text; media parts (data URLs) are not text and are not counted."""
+    if isinstance(part, str):
+        return part
+    if isinstance(part, dict) and "type" in part:
+        return part.get("text", "") if part["type"] == "text" else ""
+    return json.dumps(part, ensure_ascii=False)
+
+
+def state_text(state):
+    if isinstance(state, list):
+        return "\n".join(part_text(p) for p in state)
+    return part_text(state)
 
 
 def input_tokens(rt, state, questions):
     """Billable input the way System One counts it: the state once plus each question."""
     from julia2 import prompt as P
 
-    state_text = state if isinstance(state, str) else json.dumps(state, ensure_ascii=False)
-    total = len(rt.tok.encode(state_text))
+    total = len(rt.tok.encode(state_text(state)))
     for q in questions.values():
         total += len(rt.tok.encode(rt._tail(q["type"], q.get("instructions", ""), P.options_for(q))))
     return total

@@ -23,8 +23,10 @@ type Model struct {
 	Revision     string   // the repository commit prox was checked against
 	Exclude      []string // Python runtimes: repository files left out of the download
 	Files        []string // native runtimes: the only files downloaded
-	DownloadSize string   // rough size of the download, for the install prompt
-	ReleaseDate  string   // when the repository was published
+	Required     []string // files a complete install has; older installs lacking one need installing again
+	Inputs       []MediaKind
+	DownloadSize string // rough size of the download, for the install prompt
+	ReleaseDate  string // when the repository was published
 	Runtime      Runtime
 }
 
@@ -36,13 +38,14 @@ var catalog = []Model{
 		ID:           "julia-2-flash",
 		Provider:     "supersonic",
 		ProviderName: "Supersonic Labs",
-		Description:  "Julia 2 Flash: answers choice, score and yes/no questions about a text or JSON state with probabilities. Nothing is generated.",
+		Description:  "Julia 2 Flash: answers choice, score and yes/no questions about text, JSON, images and speech with probabilities. Nothing is generated.",
 		Kind:         KindDecision,
 		Repo:         "SupersonicLabs/Julia-2-Flash",
 		Revision:     "2656be556d8a36be317ce7cc27cb6d0fcdbef67b",
-		// Text only for now: the image and audio towers are 230 MB the API cannot use yet.
-		Exclude:      []string{"image.safetensors", "audio.safetensors", "assets/*"},
-		DownloadSize: "430 MB",
+		Exclude:      []string{"assets/*"}, // the model card's pictures
+		Required:     []string{"text.safetensors", "image.safetensors", "audio.safetensors"},
+		Inputs:       []MediaKind{MediaImage, MediaAudio},
+		DownloadSize: "660 MB",
 		ReleaseDate:  "2026-11-17",
 		Runtime:      julia2Runtime,
 	},
@@ -50,12 +53,14 @@ var catalog = []Model{
 		ID:           "julia-2-nano",
 		Provider:     "supersonic",
 		ProviderName: "Supersonic Labs",
-		Description:  "Julia 2 Nano: the microcontroller Julia, run inside prox with no Python. English and Portuguese; agrees with Julia 2 about 6 times in 10, so use it where speed and size matter more than accuracy.",
+		Description:  "Julia 2 Nano: the microcontroller Julia, run inside prox with no Python. Text in English and Portuguese (agrees with Julia 2 about 6 times in 10), plus photos and spoken banking requests scored against fixed label lists.",
 		Kind:         KindDecision,
 		Repo:         "SupersonicLabs/Julia-2-Nano",
 		Revision:     "96bfb8a5cbc51643bb28fb7b96f45feed8bb0449",
-		Files:        []string{nanoTextWeights, "LICENSE", "NOTICE"},
-		DownloadSize: "8 MB",
+		Files:        []string{nanoTextWeights, nanoImageWeights, nanoSpeechWeights, nanoImageLabels, nanoSpeechLabels, "LICENSE", "NOTICE"},
+		Required:     []string{nanoTextWeights, nanoImageWeights, nanoSpeechWeights, nanoImageLabels, nanoSpeechLabels},
+		Inputs:       []MediaKind{MediaImage, MediaAudio},
+		DownloadSize: "15 MB",
 		ReleaseDate:  "2026-11-21",
 		Runtime:      nanoTextRuntime,
 	},

@@ -42,7 +42,7 @@ type parsed struct {
 	Model     string
 	State     jsontext.Value
 	Questions []localmodels.Question
-	HasAssets bool
+	Assets    jsontext.Value // parsed separately: multipart files may fill it
 }
 
 // parseRequest decodes and validates a body, returning every problem at once
@@ -60,8 +60,7 @@ func parseRequest(body []byte) (parsed, []FieldError) {
 	errs = append(errs, stateErrs...)
 	questions, questionErrs := parseQuestions(req.Questions)
 	errs = append(errs, questionErrs...)
-	hasAssets := len(req.Assets) > 0 && req.Assets.Kind() == '{' && string(req.Assets) != "{}"
-	return parsed{Model: req.Model, State: state, Questions: questions, HasAssets: hasAssets}, errs
+	return parsed{Model: req.Model, State: state, Questions: questions, Assets: req.Assets}, errs
 }
 
 func missing(field string) FieldError {
