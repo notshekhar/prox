@@ -52,7 +52,7 @@ func (h *Handler) Decide(c *gin.Context) {
 }
 
 func (h *Handler) answer(c *gin.Context, model localmodels.Model, req parsed) {
-	result, err := h.engine.Decide(c.Request.Context(), model, localmodels.Request{State: req.State, Questions: questionsJSON(req.Questions)})
+	result, err := h.engine.Decide(c.Request.Context(), model, localmodels.Request{State: req.State, Questions: req.Questions})
 	if err != nil {
 		h.decideFailed(c, model, err)
 		return
@@ -89,16 +89,6 @@ func unsupported(req parsed) string {
 		}
 	}
 	return ""
-}
-
-// questionsJSON rebuilds the questions object in the caller's order.
-func questionsJSON(questions []question) []byte {
-	obj := make(orderedObject, len(questions))
-	for i, q := range questions {
-		obj[i] = member{q.Name, q}
-	}
-	out, _ := obj.MarshalJSON()
-	return out
 }
 
 // Models is GET /v1/systemone/models, in System One's model-list shape plus

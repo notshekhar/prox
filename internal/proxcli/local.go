@@ -15,7 +15,7 @@ import (
 const localUsage = `prox local: models that run on this machine, no sign-in needed
 
   prox local                  List the local models and which are installed
-  prox local install <model>  Download a model and its runtime (needs uv)
+  prox local install <model>  Download a model and its runtime (Python models need uv)
   prox local remove <model>   Delete a model from this machine
 
 Installed decision models answer at POST /v1/systemone (the Jev / System One API).

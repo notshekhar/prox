@@ -13,32 +13,6 @@ import (
 	"sync"
 )
 
-// Request is one decision request in the worker's protocol. Questions stay raw
-// JSON so the order of a choice question's options, which the model sees,
-// survives the trip.
-type Request struct {
-	State     jsontext.Value `json:"state"`
-	Questions jsontext.Value `json:"questions"`
-}
-
-// RawAnswer is an answer as the runtime returns it, before any API shapes it.
-type RawAnswer struct {
-	Type          string             `json:"type"`
-	Choice        string             `json:"choice,omitempty"`
-	Score         *int               `json:"score,omitempty"`
-	ExpectedLevel *float64           `json:"expected_level,omitempty"`
-	Noul          *float64           `json:"noul,omitempty"`
-	Confidence    float64            `json:"confidence"`
-	Probabilities map[string]float64 `json:"probabilities,omitempty"`
-	Truncated     bool               `json:"truncated,omitempty"`
-}
-
-// Result is the worker's reply to one Request.
-type Result struct {
-	Answers     map[string]RawAnswer `json:"answers"`
-	InputTokens int                  `json:"input_tokens"`
-}
-
 type workerReply struct {
 	ID int64 `json:"id"`
 	Result
@@ -65,7 +39,7 @@ const stderrTail = 4 << 10
 type worker struct {
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
-	device string
+	runsOn string // the device the worker reported when ready
 
 	writeMu sync.Mutex
 	mu      sync.Mutex
@@ -135,7 +109,7 @@ func (w *worker) readReady(lines *bufio.Scanner) error {
 		_ = w.cmd.Wait()
 		return errors.New(ready.Error)
 	}
-	w.device = ready.Device
+	w.runsOn = ready.Device
 	return nil
 }
 
@@ -174,8 +148,10 @@ func (w *worker) describeExit(what string) error {
 	return fmt.Errorf("%s: %s", what, lastLines(detail, 6))
 }
 
-// call sends one request and waits for its reply.
-func (w *worker) call(ctx context.Context, req Request) (Result, error) {
+func (w *worker) device() string { return w.runsOn }
+
+// decide sends one request and waits for its reply.
+func (w *worker) decide(ctx context.Context, req Request) (Result, error) {
 	id, ch := w.register()
 	defer w.unregister(id)
 	if err := w.send(id, req); err != nil {
@@ -210,10 +186,15 @@ func (w *worker) unregister(id int64) {
 }
 
 func (w *worker) send(id int64, req Request) error {
+	questions, err := questionsJSON(req.Questions)
+	if err != nil {
+		return err
+	}
 	line, err := json.Marshal(struct {
-		ID int64 `json:"id"`
-		Request
-	}{id, req})
+		ID        int64          `json:"id"`
+		State     jsontext.Value `json:"state"`
+		Questions jsontext.Value `json:"questions"`
+	}{id, req.State, questions})
 	if err != nil {
 		return err
 	}

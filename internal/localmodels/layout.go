@@ -12,9 +12,8 @@ const installedMarker = ".prox-installed"
 
 // Layout is where local models live, normally ~/.prox/local:
 //
-//	models/<id>/          the downloaded repository
-//	runtimes/<name>/venv  the Python environment a runtime shares across models
-//	runtimes/<name>/worker.py
+//	models/<id>/          the downloaded repository files
+//	runtimes/<name>/      what a runtime shares across models, e.g. a Python venv
 //	logs/<id>-install.log
 type Layout struct{ Root string }
 
@@ -23,19 +22,13 @@ func LayoutIn(proxHome string) Layout { return Layout{Root: filepath.Join(proxHo
 
 func (l Layout) ModelDir(m Model) string { return filepath.Join(l.Root, "models", m.ID) }
 
-func (l Layout) RuntimeDir(r *Runtime) string { return filepath.Join(l.Root, "runtimes", r.Name) }
-
-func (l Layout) Venv(r *Runtime) string { return filepath.Join(l.RuntimeDir(r), "venv") }
-
-func (l Layout) Python(r *Runtime) string { return filepath.Join(l.Venv(r), "bin", "python") }
-
-func (l Layout) WorkerScript(r *Runtime) string { return filepath.Join(l.RuntimeDir(r), "worker.py") }
+func (l Layout) RuntimeDir(r Runtime) string { return filepath.Join(l.Root, "runtimes", r.Name()) }
 
 func (l Layout) InstallLog(m Model) string { return filepath.Join(l.Root, "logs", m.ID+"-install.log") }
 
 // Installed reports whether the model finished installing and its runtime is still there.
 func (l Layout) Installed(m Model) bool {
-	return exists(filepath.Join(l.ModelDir(m), installedMarker)) && exists(l.Python(m.Runtime))
+	return exists(filepath.Join(l.ModelDir(m), installedMarker)) && m.Runtime.ready(l, m)
 }
 
 func exists(path string) bool {
@@ -58,7 +51,7 @@ func (l Layout) Remove(m Model) error {
 	return err
 }
 
-func (l Layout) runtimeInUse(r *Runtime) bool {
+func (l Layout) runtimeInUse(r Runtime) bool {
 	for _, other := range catalog {
 		if other.Runtime == r && exists(filepath.Join(l.ModelDir(other), installedMarker)) {
 			return true

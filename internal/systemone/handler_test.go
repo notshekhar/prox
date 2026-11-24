@@ -64,9 +64,9 @@ const fullRequest = `{
 
 func fullAnswers() map[string]localmodels.RawAnswer {
 	return map[string]localmodels.RawAnswer{
-		"is_urgent":  {Type: "noul", Noul: ptr(0.85), Confidence: 0.7},
-		"department": {Type: "choice", Choice: "billing", Confidence: 0.9, Probabilities: map[string]float64{"technical": 0.04, "billing": 0.94, "sales": 0.02}},
-		"priority":   {Type: "score", Score: ptr(2), ExpectedLevel: ptr(1.87), Confidence: 0.78, Probabilities: map[string]float64{"0": 0.01, "1": 0.10, "2": 0.89}},
+		"is_urgent":  {Type: "noul", Noul: ptr(0.85)},
+		"department": {Type: "choice", Choice: "billing", Probabilities: map[string]float64{"technical": 0.04, "billing": 0.94, "sales": 0.02}},
+		"priority":   {Type: "score", Probabilities: map[string]float64{"0": 0.01, "1": 0.10, "2": 0.89}},
 	}
 }
 
@@ -124,15 +124,19 @@ func roundFloats(t *testing.T, s string) string {
 func TestDecideKeepsQuestionAndOptionOrderForTheModel(t *testing.T) {
 	engine := &fakeEngine{answers: fullAnswers()}
 	serve(t, engine, http.MethodPost, "/v1/systemone", fullRequest)
-	got := string(engine.got.Questions)
-	order := []string{`"is_urgent"`, `"department"`, `"technical"`, `"billing"`, `"sales"`, `"priority"`}
-	last := -1
-	for _, key := range order {
-		at := strings.Index(got, key)
-		if at < last {
-			t.Fatalf("%s moved out of order in %s", key, got)
-		}
-		last = at
+	var names []string
+	for _, q := range engine.got.Questions {
+		names = append(names, q.Name)
+	}
+	if got := strings.Join(names, ","); got != "is_urgent,department,priority" {
+		t.Fatalf("questions reached the model as %s", got)
+	}
+	keys, err := optionKeys(engine.got.Questions[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(keys, ","); got != "technical,billing,sales" {
+		t.Fatalf("options reached the model as %s", got)
 	}
 }
 

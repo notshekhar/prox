@@ -1,26 +1,27 @@
 package localmodels
 
-import _ "embed"
+import (
+	"context"
+	"io"
+)
 
-// Runtime is how a family of models runs: the Python it needs, the packages
-// installed into its environment, and the worker script that serves requests.
-// Models sharing a runtime share one environment under local/runtimes/<name>.
-type Runtime struct {
-	Name     string
-	Python   string   // version uv installs, e.g. "3.12"
-	Packages []string // pip requirements, including the Hugging Face downloader
-	Worker   []byte   // the worker script, written next to the environment at start
+// Runtime is how a family of models runs: what install puts on disk and how a
+// model is loaded. Julia 2 Flash runs in a Python worker; Julia 2 Nano runs
+// inside prox. A chat runtime would be one more implementation.
+type Runtime interface {
+	Name() string
+	// install puts the runtime and the model's files on disk.
+	install(ctx context.Context, in *Installer, log io.Writer, m Model) error
+	// ready reports whether the runtime's own files are still there.
+	ready(l Layout, m Model) bool
+	// start loads a model so it can answer.
+	start(ctx context.Context, l Layout, m Model) (session, error)
 }
 
-// The model's own runtime/ folder holds the julia2 package; the worker adds it
-// to sys.path, so only its dependencies are installed here.
-//
-//go:embed julia2_worker.py
-var julia2Worker []byte
-
-var julia2Runtime = &Runtime{
-	Name:     "julia2",
-	Python:   "3.12",
-	Packages: []string{"torch>=2.6", "safetensors", "tokenizers", "numpy", "pillow", "soundfile", "scipy", "huggingface_hub"},
-	Worker:   julia2Worker,
+// session is one loaded model.
+type session interface {
+	decide(ctx context.Context, req Request) (Result, error)
+	device() string // where it runs, for the dashboard: "mps", "cuda", "cpu"
+	alive() bool
+	stop(ctx context.Context)
 }

@@ -76,7 +76,7 @@ func fakeCommand(mode string) *exec.Cmd {
 
 func textRequest(state string) Request {
 	s, _ := json.Marshal(state)
-	return Request{State: s, Questions: jsontext.Value(`{"q":{"type":"noul"}}`)}
+	return Request{State: s, Questions: []Question{{Name: "q", Type: TypeNoul}}}
 }
 
 func startFake(t *testing.T, mode string) *worker {
@@ -91,10 +91,10 @@ func startFake(t *testing.T, mode string) *worker {
 
 func TestWorkerAnswersAndReportsDevice(t *testing.T) {
 	w := startFake(t, "ok")
-	if w.device != "cpu" {
-		t.Fatalf("device = %q", w.device)
+	if w.device() != "cpu" {
+		t.Fatalf("device = %q", w.device())
 	}
-	res, err := w.call(context.Background(), textRequest("hello"))
+	res, err := w.decide(context.Background(), textRequest("hello"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,12 +118,12 @@ func TestWorkerLoadFailureCarriesTheReason(t *testing.T) {
 
 func TestWorkerRequestErrorKeepsTheModelUp(t *testing.T) {
 	w := startFake(t, "ok")
-	_, err := w.call(context.Background(), textRequest("bad"))
+	_, err := w.decide(context.Background(), textRequest("bad"))
 	var reqErr *RequestError
 	if !errors.As(err, &reqErr) {
 		t.Fatalf("err = %v, want a RequestError", err)
 	}
-	if _, err = w.call(context.Background(), textRequest("after")); err != nil {
+	if _, err = w.decide(context.Background(), textRequest("after")); err != nil {
 		t.Fatalf("next call failed: %v", err)
 	}
 }
@@ -134,7 +134,7 @@ func TestWorkerAbandonedCallDoesNotShiftReplies(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		_, err := w.call(ctx, textRequest("slow"))
+		_, err := w.decide(ctx, textRequest("slow"))
 		done <- err
 	}()
 	time.Sleep(50 * time.Millisecond) // let the slow request reach the worker first
@@ -142,7 +142,7 @@ func TestWorkerAbandonedCallDoesNotShiftReplies(t *testing.T) {
 	if err := <-done; !errors.Is(err, context.Canceled) {
 		t.Fatalf("abandoned call err = %v", err)
 	}
-	res, err := w.call(context.Background(), textRequest("second"))
+	res, err := w.decide(context.Background(), textRequest("second"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestWorkerAbandonedCallDoesNotShiftReplies(t *testing.T) {
 
 func TestWorkerCrashFailsPendingCall(t *testing.T) {
 	w := startFake(t, "ok")
-	_, err := w.call(context.Background(), textRequest("crash"))
+	_, err := w.decide(context.Background(), textRequest("crash"))
 	if err == nil || !strings.Contains(err.Error(), "the model stopped") {
 		t.Fatalf("err = %v", err)
 	}
@@ -170,7 +170,7 @@ func TestWorkerConcurrentCalls(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			state := strings.Repeat("x", i+1)
-			res, err := w.call(context.Background(), textRequest(state))
+			res, err := w.decide(context.Background(), textRequest(state))
 			if err != nil || res.InputTokens != len(state) {
 				t.Errorf("call %d: tokens %d err %v", i, res.InputTokens, err)
 			}
@@ -183,7 +183,7 @@ func TestWorkerConcurrentCalls(t *testing.T) {
 func installedLayout(t *testing.T, m Model) Layout {
 	t.Helper()
 	layout := Layout{Root: t.TempDir()}
-	for _, path := range []string{filepath.Join(layout.ModelDir(m), installedMarker), layout.Python(m.Runtime)} {
+	for _, path := range []string{filepath.Join(layout.ModelDir(m), installedMarker), julia2Runtime.pythonPath(layout)} {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -194,10 +194,16 @@ func installedLayout(t *testing.T, m Model) Layout {
 	return layout
 }
 
-func TestManagerRestartsADeadWorker(t *testing.T) {
+// fakeManager serves julia-2-flash from the fake worker.
+func fakeManager(t *testing.T) (*Manager, Model) {
 	m, _ := Find("julia-2-flash")
 	mg := NewManager(installedLayout(t, m))
-	mg.command = func(Model) *exec.Cmd { return fakeCommand("ok") }
+	mg.load = func(ctx context.Context, _ Model) (session, error) { return startWorker(ctx, fakeCommand("ok")) }
+	return mg, m
+}
+
+func TestManagerRestartsADeadWorker(t *testing.T) {
+	mg, m := fakeManager(t)
 	defer mg.Close(context.Background())
 
 	if _, err := mg.Decide(context.Background(), m, textRequest("crash")); err == nil {
@@ -207,15 +213,36 @@ func TestManagerRestartsADeadWorker(t *testing.T) {
 	if err != nil || res.InputTokens != len("again") {
 		t.Fatalf("after restart: %v %v", res, err)
 	}
-	if script, _ := os.ReadFile(mg.layout.WorkerScript(m.Runtime)); string(script) != string(julia2Worker) {
+}
+
+// The real Python command runs: the test binary stands in for the venv's
+// python and answers as the fake worker.
+func TestPythonRuntimeStartsItsWorker(t *testing.T) {
+	m, _ := Find("julia-2-flash")
+	layout := installedLayout(t, m)
+	python := julia2Runtime.pythonPath(layout)
+	if err := os.Remove(python); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(os.Args[0], python); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(fakeWorkerEnv, "ok")
+	s, err := julia2Runtime.start(context.Background(), layout, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.stop(context.Background())
+	if _, err = s.decide(context.Background(), textRequest("hi")); err != nil {
+		t.Fatal(err)
+	}
+	if script, _ := os.ReadFile(julia2Runtime.workerScript(layout)); string(script) != string(julia2Worker) {
 		t.Fatal("worker script was not written next to the runtime")
 	}
 }
 
 func TestManagerCloseStopsWorkers(t *testing.T) {
-	m, _ := Find("julia-2-flash")
-	mg := NewManager(installedLayout(t, m))
-	mg.command = func(Model) *exec.Cmd { return fakeCommand("ok") }
+	mg, m := fakeManager(t)
 	if _, err := mg.Decide(context.Background(), m, textRequest("hi")); err != nil {
 		t.Fatal(err)
 	}

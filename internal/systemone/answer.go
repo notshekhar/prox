@@ -42,7 +42,7 @@ type scoreAnswer struct {
 }
 
 // shapeAnswers turns the runtime's answers into System One's, in question order.
-func shapeAnswers(questions []question, raw map[string]localmodels.RawAnswer) (orderedObject, error) {
+func shapeAnswers(questions []localmodels.Question, raw map[string]localmodels.RawAnswer) (orderedObject, error) {
 	var answers orderedObject
 	for _, q := range questions {
 		a, ok := raw[q.Name]
@@ -58,17 +58,20 @@ func shapeAnswers(questions []question, raw map[string]localmodels.RawAnswer) (o
 	return answers, nil
 }
 
-func shapeAnswer(q question, a localmodels.RawAnswer) (any, error) {
+func shapeAnswer(q localmodels.Question, a localmodels.RawAnswer) (any, error) {
 	switch q.Type {
-	case typeNoul:
+	case localmodels.TypeNoul:
 		if a.Noul == nil {
 			return nil, fmt.Errorf("the model returned no probability for %q", q.Name)
 		}
-		return noulAnswer{Type: typeNoul, Noul: *a.Noul}, nil
-	case typeChoice:
-		keys := q.criteriaKeys()
-		return choiceAnswer{Type: typeChoice, Choice: a.Choice, Confidence: peakConfidence(a.Probabilities), Probabilities: probabilities(keys, a.Probabilities)}, nil
-	case typeScore:
+		return noulAnswer{Type: q.Type, Noul: *a.Noul}, nil
+	case localmodels.TypeChoice:
+		keys, err := optionKeys(q)
+		if err != nil {
+			return nil, err
+		}
+		return choiceAnswer{Type: q.Type, Choice: a.Choice, Confidence: peakConfidence(a.Probabilities), Probabilities: probabilities(keys, a.Probabilities)}, nil
+	case localmodels.TypeScore:
 		return shapeScore(q, a), nil
 	}
 	return nil, fmt.Errorf("question %q has unsupported type %q", q.Name, q.Type)
@@ -76,8 +79,8 @@ func shapeAnswer(q question, a localmodels.RawAnswer) (any, error) {
 
 // shapeScore reports the probability-weighted level, as System One does, not
 // the runtime's most likely level.
-func shapeScore(q question, a localmodels.RawAnswer) scoreAnswer {
-	levels := q.scoreLevels()
+func shapeScore(q localmodels.Question, a localmodels.RawAnswer) scoreAnswer {
+	levels := scoreLevels(q)
 	keys := make([]string, len(levels))
 	legend := make(orderedObject, len(levels))
 	expected := 0.0
@@ -86,7 +89,20 @@ func shapeScore(q question, a localmodels.RawAnswer) scoreAnswer {
 		legend[i] = member{keys[i], level}
 		expected += float64(i) * a.Probabilities[keys[i]]
 	}
-	return scoreAnswer{Type: typeScore, Score: expected, Confidence: peakConfidence(a.Probabilities), Legend: legend, Probabilities: probabilities(keys, a.Probabilities)}
+	return scoreAnswer{Type: q.Type, Score: expected, Confidence: peakConfidence(a.Probabilities), Legend: legend, Probabilities: probabilities(keys, a.Probabilities)}
+}
+
+// optionKeys lists a question's option keys in the order the model saw them.
+func optionKeys(q localmodels.Question) ([]string, error) {
+	opts, err := localmodels.Options(q)
+	if err != nil {
+		return nil, err
+	}
+	keys := make([]string, len(opts))
+	for i, o := range opts {
+		keys[i] = o.Key
+	}
+	return keys, nil
 }
 
 // peakConfidence is System One's confidence: (n·max − 1)/(n − 1), 0 when every

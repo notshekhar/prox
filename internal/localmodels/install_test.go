@@ -51,7 +51,7 @@ func TestInstallRunsTheStepsAndMarksTheModel(t *testing.T) {
 		t.Fatalf("steps = %v", *steps)
 	}
 	download := runner.commands[len(runner.commands)-1]
-	for _, want := range []string{"hf download SupersonicLabs/Julia-2-Flash", "--exclude=image.safetensors", "--exclude=audio.safetensors"} {
+	for _, want := range []string{"hf download SupersonicLabs/Julia-2-Flash --revision " + m.Revision, "--exclude=image.safetensors", "--exclude=audio.safetensors"} {
 		if !strings.Contains(download, want) {
 			t.Fatalf("download command %q is missing %q", download, want)
 		}

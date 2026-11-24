@@ -9,6 +9,8 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 	"io"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/localmodels"
 )
 
 // Question limits from the System One API.
@@ -17,12 +19,8 @@ const (
 	maxScoreLevels   = 10
 )
 
-const (
-	typeNoul   = "noul"
-	typeChoice = "choice"
-	typeScore  = "score"
-	typeBox    = "box"
-)
+// typeBox asks for a bounding box in an image; local models have no images yet.
+const typeBox = "box"
 
 // Request is the body of POST /v1/systemone.
 type Request struct {
@@ -30,14 +28,6 @@ type Request struct {
 	State     jsontext.Value `json:"state"`
 	Questions jsontext.Value `json:"questions"`
 	Assets    jsontext.Value `json:"assets,omitzero"`
-}
-
-// question is one named question, kept in the order the caller sent it.
-type question struct {
-	Name         string         `json:"-"`
-	Type         string         `json:"type"`
-	Instructions jsontext.Value `json:"instructions,omitzero"`
-	Criteria     jsontext.Value `json:"criteria,omitzero"`
 }
 
 // FieldError is one entry of a 422 response, in FastAPI's shape as System One returns it.
@@ -51,7 +41,7 @@ type FieldError struct {
 type parsed struct {
 	Model     string
 	State     jsontext.Value
-	Questions []question
+	Questions []localmodels.Question
 	HasAssets bool
 }
 
@@ -116,7 +106,7 @@ func flattenArray(raw jsontext.Value) (jsontext.Value, []FieldError) {
 
 // parseQuestions walks the questions object token by token so the caller's
 // order survives; Go maps would shuffle it.
-func parseQuestions(raw jsontext.Value) ([]question, []FieldError) {
+func parseQuestions(raw jsontext.Value) ([]localmodels.Question, []FieldError) {
 	if len(raw) == 0 || raw.Kind() == 'n' {
 		return nil, []FieldError{missing("questions")}
 	}
@@ -127,7 +117,7 @@ func parseQuestions(raw jsontext.Value) ([]question, []FieldError) {
 	if _, err := dec.ReadToken(); err != nil {
 		return nil, []FieldError{{Loc: []any{"body", "questions"}, Msg: err.Error(), Type: "dict_type"}}
 	}
-	var questions []question
+	var questions []localmodels.Question
 	var errs []FieldError
 	for dec.PeekKind() != '}' {
 		q, qErrs, err := readQuestion(dec)
@@ -142,16 +132,16 @@ func parseQuestions(raw jsontext.Value) ([]question, []FieldError) {
 	return questions, errs
 }
 
-func readQuestion(dec *jsontext.Decoder) (question, []FieldError, error) {
+func readQuestion(dec *jsontext.Decoder) (localmodels.Question, []FieldError, error) {
 	// A token is only valid until the next read, so take the name out first.
 	nameToken, err := dec.ReadToken()
 	if err != nil {
-		return question{}, nil, err
+		return localmodels.Question{}, nil, err
 	}
-	q := question{Name: nameToken.String()}
+	q := localmodels.Question{Name: nameToken.String()}
 	value, err := dec.ReadValue()
 	if err != nil {
-		return question{}, nil, err
+		return localmodels.Question{}, nil, err
 	}
 	if value.Kind() != '{' {
 		return q, []FieldError{{Loc: questionLoc(q.Name), Msg: "Input should be a valid object", Type: "dict_type"}}, nil
@@ -159,21 +149,21 @@ func readQuestion(dec *jsontext.Decoder) (question, []FieldError, error) {
 	if err = json.Unmarshal(value, &q); err != nil {
 		return q, []FieldError{{Loc: questionLoc(q.Name), Msg: err.Error(), Type: "dict_type"}}, nil
 	}
-	return q, q.validate(), nil
+	return q, validateQuestion(q), nil
 }
 
 func questionLoc(name string, more ...any) []any {
 	return append([]any{"body", "questions", name}, more...)
 }
 
-func (q question) validate() []FieldError {
+func validateQuestion(q localmodels.Question) []FieldError {
 	switch q.Type {
-	case typeNoul, typeBox:
+	case localmodels.TypeNoul, typeBox:
 		return nil
-	case typeChoice:
-		return q.validateCount('{', "object", 1, maxChoiceOptions)
-	case typeScore:
-		return q.validateCount('[', "array", 1, maxScoreLevels)
+	case localmodels.TypeChoice:
+		return validateCount(q, '{', "object", 1, maxChoiceOptions)
+	case localmodels.TypeScore:
+		return validateCount(q, '[', "array", 1, maxScoreLevels)
 	case "":
 		return []FieldError{{Loc: questionLoc(q.Name, "type"), Msg: "Field required", Type: "missing"}}
 	}
@@ -181,7 +171,7 @@ func (q question) validate() []FieldError {
 }
 
 // validateCount checks that criteria is an object or array of min..max entries.
-func (q question) validateCount(kind jsontext.Kind, kindName string, min, max int) []FieldError {
+func validateCount(q localmodels.Question, kind jsontext.Kind, kindName string, min, max int) []FieldError {
 	loc := questionLoc(q.Name, "criteria")
 	if len(q.Criteria) == 0 {
 		return []FieldError{{Loc: loc, Msg: "Field required", Type: "missing"}}
@@ -222,28 +212,8 @@ func countEntries(raw jsontext.Value) (int, error) {
 	return n, nil
 }
 
-// criteriaKeys lists a choice question's option names in the order sent.
-func (q question) criteriaKeys() []string {
-	dec := jsontext.NewDecoder(bytes.NewReader(q.Criteria))
-	if _, err := dec.ReadToken(); err != nil {
-		return nil
-	}
-	var keys []string
-	for dec.PeekKind() == '"' {
-		key, err := dec.ReadToken()
-		if err != nil {
-			return keys
-		}
-		keys = append(keys, key.String())
-		if dec.SkipValue() != nil {
-			return keys
-		}
-	}
-	return keys
-}
-
 // scoreLevels lists a score question's level descriptions, level 0 first.
-func (q question) scoreLevels() []jsontext.Value {
+func scoreLevels(q localmodels.Question) []jsontext.Value {
 	var levels []jsontext.Value
 	_ = json.Unmarshal(q.Criteria, &levels)
 	return levels

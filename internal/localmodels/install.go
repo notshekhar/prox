@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,6 +23,9 @@ const (
 // ErrNoUV means uv, which installs Python and the runtime, is missing.
 var ErrNoUV = errors.New("uv is not installed; install it with `brew install uv` or from https://docs.astral.sh/uv/")
 
+// HubURL is where model files come from.
+const HubURL = "https://huggingface.co"
+
 // CommandRunner runs one install command, sending its output to log.
 type CommandRunner interface {
 	Run(ctx context.Context, log io.Writer, name string, args ...string) error
@@ -35,22 +39,24 @@ func (execRunner) Run(ctx context.Context, log io.Writer, name string, args ...s
 	return cmd.Run()
 }
 
-// Installer puts a model and its runtime into a Layout.
+// Installer puts a model and its runtime into a Layout. Each runtime decides
+// what that takes; the installer supplies the tools and marks the result.
 type Installer struct {
 	Layout   Layout
 	Runner   CommandRunner
 	FindUV   func() (string, error)
+	HTTP     *http.Client
+	HubURL   string
 	Progress func(step string)
 }
 
-// NewInstaller installs with real commands.
+// NewInstaller installs with real commands and downloads.
 func NewInstaller(layout Layout, progress func(string)) *Installer {
-	return &Installer{Layout: layout, Runner: execRunner{}, FindUV: findUV, Progress: progress}
+	return &Installer{Layout: layout, Runner: execRunner{}, FindUV: findUV, HTTP: http.DefaultClient, HubURL: HubURL, Progress: progress}
 }
 
 // Install sets up the runtime, downloads the model and marks it installed.
-// Running it again resumes: the environment is reused and the download picks
-// up the files already there.
+// Running it again resumes: what is already there is reused.
 func (in *Installer) Install(ctx context.Context, m Model) (err error) {
 	log, err := in.openLog(m)
 	if err != nil {
@@ -61,11 +67,11 @@ func (in *Installer) Install(ctx context.Context, m Model) (err error) {
 			err = errClose
 		}
 	}()
-	if err = in.ensureRuntime(ctx, log, m.Runtime); err != nil {
+	if err = m.Runtime.install(ctx, in, log, m); err != nil {
 		return fmt.Errorf("%w (details in %s)", err, in.Layout.InstallLog(m))
 	}
-	if err = in.download(ctx, log, m); err != nil {
-		return fmt.Errorf("download %s: %w (details in %s)", m.Repo, err, in.Layout.InstallLog(m))
+	if err = in.markInstalled(m); err != nil {
+		return err
 	}
 	in.report(StepDone)
 	return nil
@@ -79,42 +85,10 @@ func (in *Installer) openLog(m Model) (*os.File, error) {
 	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 }
 
-func (in *Installer) ensureRuntime(ctx context.Context, log io.Writer, r *Runtime) error {
-	uv, err := in.FindUV()
-	if err != nil {
-		return err
-	}
-	if !exists(in.Layout.Python(r)) {
-		in.report(StepPython)
-		if err = in.Runner.Run(ctx, log, uv, "venv", "--python", r.Python, in.Layout.Venv(r)); err != nil {
-			return fmt.Errorf("create the Python environment: %w", err)
-		}
-	}
-	in.report(StepPackages)
-	args := append([]string{"pip", "install", "--python", in.Layout.Python(r)}, r.Packages...)
-	if err = in.Runner.Run(ctx, log, uv, args...); err != nil {
-		return fmt.Errorf("install the runtime packages: %w", err)
-	}
-	return nil
-}
-
-func (in *Installer) download(ctx context.Context, log io.Writer, m Model) error {
-	in.report(StepDownload)
-	dir := in.Layout.ModelDir(m)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
-	}
-	hf := filepath.Join(in.Layout.Venv(m.Runtime), "bin", "hf")
-	args := []string{"download", m.Repo, "--local-dir", dir}
-	for _, pattern := range m.Exclude {
-		// One --exclude per pattern with "=": a bare list after --exclude is read as file names.
-		args = append(args, "--exclude="+pattern)
-	}
-	if err := in.Runner.Run(ctx, log, hf, args...); err != nil {
-		return err
-	}
-	stamp := fmt.Sprintf("%s\n%s\n", m.Repo, time.Now().UTC().Format(time.RFC3339))
-	return os.WriteFile(filepath.Join(dir, installedMarker), []byte(stamp), 0o644)
+// markInstalled is the last step, so an install cut short never looks finished.
+func (in *Installer) markInstalled(m Model) error {
+	stamp := fmt.Sprintf("%s@%s\n%s\n", m.Repo, m.Revision, time.Now().UTC().Format(time.RFC3339))
+	return os.WriteFile(filepath.Join(in.Layout.ModelDir(m), installedMarker), []byte(stamp), 0o644)
 }
 
 func (in *Installer) report(step string) {

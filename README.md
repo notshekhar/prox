@@ -56,16 +56,22 @@ from `~/.cli-proxy-api` are copied in the first time you run `prox start`.
 ## Local models
 
 Some models run on your machine instead of an account, the way Ollama does it.
-They need no login: install one and prox serves it. The first is **Julia 2 Flash**
-from [Supersonic Labs](https://supersoniclabs.ai/julia-2/), a decision model: you
-send a state and named questions, it answers each with probabilities and writes
+They need no login: install one and prox serves it. Two are available, both
+decision models from [Supersonic Labs](https://supersoniclabs.ai/julia-2/): you
+send a state and named questions, they answer each with probabilities and write
 no text.
 
+| Model | Download | Runs | Speed | Notes |
+|---|---|---|---|---|
+| `julia-2-flash` | 430 MB + Python | a Python worker, GPU when there is one | ~0.35 s a request | the accurate one; first request loads it (~5 s) |
+| `julia-2-nano` | 8 MB | inside prox, pure Go, no Python | ~3 ms a request | English and Portuguese; agrees with Julia 2 about 6 times in 10 |
+
 ```bash
-prox local install julia-2-flash   # about 430 MB; needs uv (brew install uv)
+prox local install julia-2-nano    # seconds; nothing else needed
+prox local install julia-2-flash   # needs uv (brew install uv)
 ```
 
-It answers the System One API that TypeSafe's Jev uses, with your client key:
+They answer the System One API that TypeSafe's Jev uses, with your client key:
 
 ```bash
 curl http://127.0.0.1:8317/v1/systemone \
@@ -84,10 +90,14 @@ probability-weighted level with its legend. `GET /v1/systemone/models` lists the
 local models. Text and JSON states only for now: no images, audio or `box`
 questions.
 
-The model starts on the first request (about 5 s), stays loaded (about 1 GB of
-memory) and stops with prox. It uses the Apple or NVIDIA GPU when there is one;
-set `PROX_LOCAL_DEVICE=cpu` to keep it off. Models and their Python runtime live
-in `~/.prox/local`. The dashboard's Local models page installs and removes them too.
+Flash starts on its first request, stays loaded (about 1 GB of memory) and stops
+with prox. It uses the Apple or NVIDIA GPU when there is one; set
+`PROX_LOCAL_DEVICE=cpu` to keep it off. Nano is a Go port of Supersonic Labs'
+C program that gives the same scores (checked against it to 1e-8); its
+probabilities are a softmax over those scores. Downloads are pinned to the
+model commit prox was tested with, and Nano's file is checked against the
+repository's SHA256SUMS. Everything lives in `~/.prox/local`, and the dashboard's
+Local models page installs and removes models too.
 
 ## Master password
 
